@@ -1,9 +1,9 @@
--- ProEventIQ Database Schema
+-- AProEventIQ Database Schema
 -- Created: June 17, 2025
 
 -- Drop tables if they exist (in reverse order to avoid foreign key constraints)
 DROP TABLE IF EXISTS Seat;
-DROP TABLE IF EXISTS Row;
+DROP TABLE IF EXISTS `Row`; -- Using backticks to escape the reserved keyword
 DROP TABLE IF EXISTS Sector;
 DROP TABLE IF EXISTS Venue;
 
@@ -34,8 +34,8 @@ CREATE TABLE Sector (
     FOREIGN KEY (venue_id) REFERENCES Venue(venue_id) ON DELETE CASCADE
 );
 
--- Create Row table
-CREATE TABLE Row ( -- 'Row' is a reserved word but we'll use it directly for consistency
+-- Create Row table (using backticks to escape reserved word)
+CREATE TABLE `Row` (
     row_id INT AUTO_INCREMENT PRIMARY KEY,
     sector_id INT NOT NULL,
     name VARCHAR(50) NOT NULL,
@@ -57,13 +57,13 @@ CREATE TABLE Seat (
     status ENUM('AVAILABLE', 'UNAVAILABLE', 'BROKEN', 'RESERVED') DEFAULT 'AVAILABLE',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (row_id) REFERENCES Row(row_id) ON DELETE CASCADE,
+    FOREIGN KEY (row_id) REFERENCES `Row`(row_id) ON DELETE CASCADE,
     UNIQUE KEY unique_seat_in_row (row_id, order_number)
 );
 
 -- Create indexes for better performance
 CREATE INDEX idx_venue_country_city ON Venue(country, city);
 CREATE INDEX idx_sector_venue ON Sector(venue_id);
-CREATE INDEX idx_row_sector ON Row(sector_id);
+CREATE INDEX idx_row_sector ON `Row`(sector_id);
 CREATE INDEX idx_seat_row ON Seat(row_id);
 CREATE INDEX idx_seat_status ON Seat(status);

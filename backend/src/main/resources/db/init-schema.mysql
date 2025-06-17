@@ -1,0 +1,69 @@
+-- ProEventIQ Database Schema
+-- Created: June 17, 2025
+
+-- Drop tables if they exist (in reverse order to avoid foreign key constraints)
+DROP TABLE IF EXISTS Seat;
+DROP TABLE IF EXISTS Row;
+DROP TABLE IF EXISTS Sector;
+DROP TABLE IF EXISTS Venue;
+
+-- Create Venue table
+CREATE TABLE Venue (
+    venue_id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    country VARCHAR(100) NOT NULL,
+    city VARCHAR(100) NOT NULL,
+    address VARCHAR(255) NOT NULL,
+    thumbnail VARCHAR(255),
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Create Sector table
+CREATE TABLE Sector (
+    sector_id INT AUTO_INCREMENT PRIMARY KEY,
+    venue_id INT NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    position_x FLOAT,
+    position_y FLOAT,
+    price_category VARCHAR(50),
+    status ENUM('ACTIVE', 'INACTIVE', 'UNDER_MAINTENANCE') DEFAULT 'ACTIVE',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (venue_id) REFERENCES Venue(venue_id) ON DELETE CASCADE
+);
+
+-- Create Row table
+CREATE TABLE Row ( -- 'Row' is a reserved word but we'll use it directly for consistency
+    row_id INT AUTO_INCREMENT PRIMARY KEY,
+    sector_id INT NOT NULL,
+    name VARCHAR(50) NOT NULL,
+    order_number INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (sector_id) REFERENCES Sector(sector_id) ON DELETE CASCADE,
+    UNIQUE KEY unique_row_in_sector (sector_id, order_number)
+);
+
+-- Create Seat table
+CREATE TABLE Seat (
+    seat_id INT AUTO_INCREMENT PRIMARY KEY,
+    row_id INT NOT NULL,
+    order_number INT NOT NULL,
+    position_x FLOAT,
+    position_y FLOAT,
+    price_category VARCHAR(50),
+    status ENUM('AVAILABLE', 'UNAVAILABLE', 'BROKEN', 'RESERVED') DEFAULT 'AVAILABLE',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (row_id) REFERENCES Row(row_id) ON DELETE CASCADE,
+    UNIQUE KEY unique_seat_in_row (row_id, order_number)
+);
+
+-- Create indexes for better performance
+CREATE INDEX idx_venue_country_city ON Venue(country, city);
+CREATE INDEX idx_sector_venue ON Sector(venue_id);
+CREATE INDEX idx_row_sector ON Row(sector_id);
+CREATE INDEX idx_seat_row ON Seat(row_id);
+CREATE INDEX idx_seat_status ON Seat(status);

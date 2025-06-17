@@ -1,0 +1,39 @@
+openapi: 3.0.1
+info:
+  title: ProEventIQ Rest API
+  description: API for ProEventIQ
+  version: "0.2"
+servers: 
+  - url: http://{hostname}:{port}/api
+    variables:
+      hostname:
+        default: localhost
+      port:
+        enum:
+          - "8080"
+          - "443"
+        default: "8080"
+tags:
+  - name: ProEventIQ 
+    description: ProEventIQ endpoints
+
+paths:
+
+  /test:
+    get:
+      tags:
+        - ProEventIQ
+      summary: Test endpoint
+      description: A simple test endpoint
+      operationId: testEndpoint
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Test successful"

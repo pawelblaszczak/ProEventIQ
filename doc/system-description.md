@@ -48,7 +48,7 @@ ProEventIQ - System for organizing and managing events, e.g. theater performance
         3.2.3 Shows a graphical preview of the venue
             3.2.3.1 Shows the sectors of the venue with their names
             3.2.3.2 Allows zooming in and out
-            3.2.3.3 When zoomed out, only the shapes of sectors are shown (for performance and legibility)
+            3.2.3.3 When zoomed out, only the shapes of sectors are shown, not individual seats (for performance and legibility)
             3.2.3.4 When zoomed in, individual seats are shown
         3.2.4 "Edit" button starts editing the venue
             3.2.4.1 It is possible to edit venue features

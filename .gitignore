@@ -64,3 +64,17 @@ logs/
 
 # Environment variables
 .env
+
+# Auto-generated API files
+frontend/src/app/api/api/
+frontend/src/app/api/model/
+frontend/src/app/api/git_push.sh
+backend/target/generated-sources/
+backend/src/main/java/dev/knightcore/proeventiq/api/model/
+backend/src/main/java/dev/knightcore/proeventiq/api/controller/
+
+# OpenAPI Generator files
+.openapi-generator/
+.openapi-generator-ignore
+.openapitools.json
+openapitools.json

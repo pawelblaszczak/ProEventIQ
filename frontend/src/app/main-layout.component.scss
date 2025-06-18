@@ -29,13 +29,14 @@
 }
 
 .app-title {
-  font-family: 'Montserrat', sans-serif;
+  font-family: 'Poppins', 'Montserrat', sans-serif;
   font-size: 1.4rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.5px;
   background: linear-gradient(45deg, #ffffff, #f0f0f0);
   -webkit-background-clip: text;
   background-clip: text;
+  -webkit-text-fill-color: transparent;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
@@ -51,10 +52,22 @@
   width: 72px;
   transition: width 0.3s ease;
   overflow: hidden;
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  background-color: #f9fafc;
 }
 
 .sidenav.expanded {
   width: 200px;
+}
+
+.menu-header {
+  padding: 16px 24px 8px;
+  color: rgba(0, 0, 0, 0.5);
+  font-size: 13px;
+  font-family: 'Poppins', 'Roboto', sans-serif;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
 }
 
 mat-nav-list {
@@ -62,9 +75,16 @@ mat-nav-list {
 }
 
 mat-list-item {
-  height: 48px;
+  height: 50px;
   display: flex;
   align-items: center;
+  margin: 4px 8px;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+  
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.04);
+  }
 }
 
 .content-container {
@@ -73,22 +93,41 @@ mat-list-item {
 }
 
 .active {
-  background-color: rgba(0, 0, 0, 0.04);
+  background-color: rgba(63, 81, 181, 0.08) !important;
+  color: #3f51b5;
+  font-weight: 500;
 }
 
 /* Improve icon alignment in side menu */
 mat-nav-list a {
   display: flex !important;
   align-items: center;
-  height: 48px;
+  height: 50px;
   padding: 0 !important;
 }
 
 /* Keep icons in consistent position for both states */
 .sidenav mat-nav-list a {
   justify-content: flex-start;
-  padding-left: 24px !important;
+  padding: 0 12px !important;
   line-height: 24px;
+  
+  &.active mat-icon {
+    color: #3f51b5;
+  }
+  
+  &.active .menu-item-text {
+    color: #3f51b5;
+    font-weight: 500;
+  }
+}
+
+.menu-icon-container {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   
   mat-icon {
     margin: 0;
@@ -97,22 +136,57 @@ mat-nav-list a {
     display: flex;
     align-items: center;
     justify-content: center;
+    color: rgba(0, 0, 0, 0.65);
   }
-    span {
-    margin-left: 16px;
-    white-space: nowrap;
-    overflow: hidden;
-    line-height: 24px;
-    display: flex;
-    align-items: center;
-    position: relative;
-    top: 2px;  /* Move the label slightly lower */
-  }
+}
+
+.menu-item-text {
+  margin-left: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  line-height: 24px;
+  font-family: 'Poppins', 'Roboto', sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  color: rgba(0, 0, 0, 0.75);
+  letter-spacing: 0.2px;
 }
 
 .menu-item-content {
   display: flex;
-  align-items: flex-start;  /* Changed from center to flex-start to allow for vertical positioning */
-  height: 24px;
+  align-items: center;
+  height: 100%;
   width: 100%;
+}
+
+/* Custom tooltip styling - Add this at the end of the file */
+::ng-deep .mat-mdc-tooltip {
+  font-family: 'Poppins', 'Roboto', sans-serif !important;
+  font-size: 14px !important;
+  margin-left: 8px !important;
+}
+
+/* Fix double border/padding issue and customize tooltip appearance */
+::ng-deep .mat-mdc-tooltip .mdc-tooltip__surface {
+  font-weight: 500 !important;
+  letter-spacing: 0.2px !important;
+  max-width: none !important;
+  background-color: rgba(97, 97, 97, 0.9) !important;
+  border-radius: 4px !important;
+  padding: 6px 10px !important;
+  /* Remove any extra box-shadow or border */
+  box-shadow: none !important;
+  border: none !important;
+  /* Remove any transforms that might cause visual artifacts */
+  transform: none !important;
+}
+
+/* Additional fixes for tooltip double border */
+::ng-deep .mat-mdc-tooltip-panel-wrap .mat-mdc-tooltip-panel {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+::ng-deep .mat-mdc-tooltip .mdc-tooltip__caret {
+  display: none !important;
 }

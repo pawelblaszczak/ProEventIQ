@@ -9,30 +9,53 @@
   <!-- Add user profile and other top-right icons if needed -->
 </mat-toolbar>
 
-<mat-sidenav-container class="sidenav-container">
-  <mat-sidenav mode="side" [opened]="true" class="sidenav" [ngClass]="{'expanded': isExpanded()}">    <mat-nav-list>
-      <a mat-list-item routerLink="/home" routerLinkActive="active">
+<mat-sidenav-container class="sidenav-container">  <mat-sidenav mode="side" [opened]="true" class="sidenav" [ngClass]="{'expanded': isExpanded()}">    
+    <div class="menu-header" *ngIf="isExpanded()">
+      <span>NAVIGATION</span>
+    </div>
+    
+    <mat-nav-list>      <a mat-list-item routerLink="/home" routerLinkActive="active"
+         [matTooltip]="!isExpanded() ? 'Home' : ''" 
+         matTooltipPosition="right"
+         [matTooltipDisabled]="isExpanded()">
         <div class="menu-item-content">
-          <mat-icon>home</mat-icon>
-          <span *ngIf="isExpanded()">Home</span>
+          <div class="menu-icon-container">
+            <mat-icon>home</mat-icon>
+          </div>
+          <span class="menu-item-text" *ngIf="isExpanded()">Home</span>
         </div>
       </a>
-      <a mat-list-item routerLink="/venues" routerLinkActive="active">
+      <a mat-list-item routerLink="/venues" routerLinkActive="active"
+         [matTooltip]="!isExpanded() ? 'Venues' : ''" 
+         matTooltipPosition="right"
+         [matTooltipDisabled]="isExpanded()">
         <div class="menu-item-content">
-          <mat-icon>stadium</mat-icon>
-          <span *ngIf="isExpanded()">Venues</span>
+          <div class="menu-icon-container">
+            <mat-icon>stadium</mat-icon>
+          </div>
+          <span class="menu-item-text" *ngIf="isExpanded()">Venues</span>
         </div>
       </a>
-      <a mat-list-item routerLink="/events" routerLinkActive="active">
+      <a mat-list-item routerLink="/events" routerLinkActive="active"
+         [matTooltip]="!isExpanded() ? 'Events' : ''" 
+         matTooltipPosition="right"
+         [matTooltipDisabled]="isExpanded()">
         <div class="menu-item-content">
-          <mat-icon>event</mat-icon>
-          <span *ngIf="isExpanded()">Events</span>
+          <div class="menu-icon-container">
+            <mat-icon>event</mat-icon>
+          </div>
+          <span class="menu-item-text" *ngIf="isExpanded()">Events</span>
         </div>
       </a>
-      <a mat-list-item routerLink="/statistics" routerLinkActive="active">
+      <a mat-list-item routerLink="/statistics" routerLinkActive="active"
+         [matTooltip]="!isExpanded() ? 'Statistics' : ''" 
+         matTooltipPosition="right"
+         [matTooltipDisabled]="isExpanded()">
         <div class="menu-item-content">
-          <mat-icon>bar_chart</mat-icon>
-          <span *ngIf="isExpanded()">Statistics</span>
+          <div class="menu-icon-container">
+            <mat-icon>bar_chart</mat-icon>
+          </div>
+          <span class="menu-item-text" *ngIf="isExpanded()">Statistics</span>
         </div>
       </a>
       <!-- Add more menu items based on system requirements -->

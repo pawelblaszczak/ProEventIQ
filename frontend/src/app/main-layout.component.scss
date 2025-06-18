@@ -1,0 +1,89 @@
+.toolbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  padding-left: 0 !important;
+}
+
+.toolbar button[mat-icon-button] {
+  margin-left: 12px;
+}
+
+.toolbar-spacer {
+  flex: 1 1 auto;
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  margin-left: 8px;
+  font-size: 1.2rem;
+  font-weight: 500;
+}
+
+.logo {
+  height: 32px;
+  margin-right: 8px;
+}
+
+.sidenav-container {
+  position: absolute;
+  top: 64px; /* Toolbar height */
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+.sidenav {
+  width: 72px;
+  transition: width 0.3s ease;
+  overflow: hidden;
+}
+
+.sidenav.expanded {
+  width: 200px;
+}
+
+mat-nav-list {
+  padding: 0;
+}
+
+mat-list-item {
+  height: 48px;
+}
+
+.content-container {
+  padding: 20px;
+  height: calc(100% - 40px);
+}
+
+.active {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+/* Improve icon alignment in side menu */
+mat-nav-list a {
+  display: flex !important;
+  align-items: center;
+  height: 48px;
+  padding: 0 !important;
+}
+
+/* Keep icons in consistent position for both states */
+.sidenav mat-nav-list a {
+  justify-content: flex-start;
+  padding-left: 24px !important;
+  
+  mat-icon {
+    margin: 0;
+    min-width: 24px;
+  }
+  
+  span {
+    margin-left: 16px;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+}

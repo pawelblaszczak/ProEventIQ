@@ -1,0 +1,58 @@
+<div class="venues-container">
+  <div class="header-actions">
+    <h1>Venues</h1>
+    <div class="actions">
+      <button mat-raised-button color="primary" (click)="addVenue()">
+        <mat-icon>add</mat-icon>
+        Add Venue
+      </button>
+    </div>
+  </div>
+
+  <div class="filter-container">
+    <mat-form-field appearance="outline" class="search-field">
+      <mat-label>Search Venues</mat-label>
+      <input matInput (keyup)="applyFilter($event)" placeholder="Search by name, city, etc.">
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>Country</mat-label>
+      <input matInput placeholder="Filter by country" (input)="filterByCountry($event)">
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>City</mat-label>
+      <input matInput placeholder="Filter by city" (input)="filterByCity($event)">
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>Min Seat Count</mat-label>
+      <input matInput type="number" placeholder="Min seats" (input)="filterByMinSeats($event)">
+    </mat-form-field>
+  </div>
+
+  @if (isLoading()) {
+    <div class="loading-spinner">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
+  } @else if (filteredVenues().length === 0) {
+    <mat-card class="empty-state">
+      <mat-card-content>
+        <mat-icon class="empty-icon">event_seat</mat-icon>
+        <h2>No Venues Found</h2>
+        <p>There are no venues matching your criteria.</p>
+        <button mat-stroked-button color="primary" (click)="resetFilters()">Reset Filters</button>
+      </mat-card-content>
+    </mat-card>  } @else {
+    <mat-list class="venues-list">
+      @for (venue of filteredVenues(); track venue.venueId) {
+        <mat-list-item class="venue-item" [routerLink]="['/venues', venue.venueId]">
+          <img matListItemAvatar [src]="venue.thumbnail || 'assets/venue-placeholder.jpg'" [alt]="venue.name || 'Venue'">
+          <div matListItemTitle>{{ venue.name }}</div>
+          <div matListItemLine>{{ venue.city }}, {{ venue.country }}</div>
+          <div matListItemLine>{{ venue.numberOfSeats || 0 }} seats</div>
+          <div matListItemLine class="description">{{ (venue.description || '') | slice:0:100 }}{{ (venue.description?.length || 0) > 100 ? '...' : '' }}</div>
+        </mat-list-item>
+        <mat-divider></mat-divider>
+      }
+    </mat-list>
+  }
+</div>

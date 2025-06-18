@@ -1,0 +1,124 @@
+.venues-container {
+  padding: 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  
+  h1 {
+    margin: 0;
+    font-size: 28px;
+  }
+  
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  
+  .search-field {
+    width: 300px;
+  }
+}
+
+.filter-container {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  
+  .filter-field {
+    flex: 1;
+    min-width: 150px;
+  }
+}
+
+.venues-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 24px;
+}
+
+.venue-card {
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  }
+  
+  img {
+    height: 180px;
+    object-fit: cover;
+  }
+  
+  mat-card-content {
+    flex: 1;
+    
+    h2 {
+      margin-top: 0;
+      margin-bottom: 8px;
+      font-size: 20px;
+    }
+    
+    .location {
+      color: rgba(0, 0, 0, 0.7);
+      margin-bottom: 8px;
+    }
+    
+    .seat-count {
+      color: rgba(0, 0, 0, 0.7);
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+    
+    .description {
+      color: rgba(0, 0, 0, 0.6);
+      margin-bottom: 0;
+    }
+  }
+  
+  mat-card-actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 48px;
+  
+  .empty-icon {
+    font-size: 64px;
+    width: 64px;
+    height: 64px;
+    margin-bottom: 16px;
+    opacity: 0.4;
+  }
+  
+  h2 {
+    margin-top: 0;
+    margin-bottom: 8px;
+  }
+  
+  p {
+    margin-bottom: 24px;
+    color: rgba(0, 0, 0, 0.6);
+  }
+}
+
+.loading-spinner {
+  display: flex;
+  justify-content: center;
+  padding: 64px 0;
+}

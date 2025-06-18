@@ -33,8 +33,7 @@
               "src/styles.scss"
             ],
             "scripts": []
-          },
-          "configurations": {
+          },          "configurations": {
             "production": {
               "budgets": [
                 {
@@ -48,7 +47,13 @@
                   "maximumError": "4kb"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.prod.ts"
+                }
+              ]
             },
             "development": {
               "optimization": false,

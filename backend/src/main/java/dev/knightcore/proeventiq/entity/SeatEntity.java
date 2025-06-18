@@ -13,8 +13,8 @@ public class SeatEntity {
     private String status;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "row_id")
-    private RowEntity row;
+    @JoinColumn(name = "seat_row_id")
+    private SeatRowEntity seatRow;
 
     // Getters and setters
     public Long getSeatId() { return seatId; }
@@ -23,6 +23,6 @@ public class SeatEntity {
     public void setPosition(String position) { this.position = position; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
-    public RowEntity getRow() { return row; }
-    public void setRow(RowEntity row) { this.row = row; }
+    public SeatRowEntity getSeatRow() { return seatRow; }
+    public void setSeatRow(SeatRowEntity seatRow) { this.seatRow = seatRow; }
 }

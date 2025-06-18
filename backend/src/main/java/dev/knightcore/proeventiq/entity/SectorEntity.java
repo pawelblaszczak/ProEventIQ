@@ -19,7 +19,7 @@ public class SectorEntity {
     private VenueEntity venue;
 
     @OneToMany(mappedBy = "sector", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private List<RowEntity> rows;
+    private List<SeatRowEntity> seatRows;
 
     // Getters and setters
     public Long getSectorId() { return sectorId; }
@@ -32,6 +32,6 @@ public class SectorEntity {
     public void setStatus(String status) { this.status = status; }
     public VenueEntity getVenue() { return venue; }
     public void setVenue(VenueEntity venue) { this.venue = venue; }
-    public List<RowEntity> getRows() { return rows; }
-    public void setRows(List<RowEntity> rows) { this.rows = rows; }
+    public List<SeatRowEntity> getSeatRows() { return seatRows; }
+    public void setSeatRows(List<SeatRowEntity> seatRows) { this.seatRows = seatRows; }
 }

@@ -1,0 +1,11 @@
+SeatRow:
+  type: object
+  properties:
+    seatRowId:
+      type: string
+    name:
+      type: string
+    seats:
+      type: array
+      items:
+        $ref: './seat.yaml#/Seat'

@@ -2,7 +2,7 @@ openapi: 3.0.1
 info:
   title: ProEventIQ Rest API
   description: API for ProEventIQ
-  version: "0.3"
+  version: "0.4"
 servers:
   - url: http://{hostname}:{port}/api
     variables:
@@ -29,8 +29,8 @@ paths:
   /sectors/{sectorId}/rows:
     $ref: './sector/sector-controller.yaml#/rowsBySector'
   /rows/{rowId}:
-    $ref: './seat/seat-controller.yaml#/rowById'
+    $ref: './seat/seat-controller.yaml#/seatRowById'
   /rows/{rowId}/seats:
-    $ref: './seat/seat-controller.yaml#/seatsByRow'
+    $ref: './seat/seat-controller.yaml#/seatsBySeatRow'
   /seats/{seatId}:
     $ref: './seat/seat-controller.yaml#/seatById'

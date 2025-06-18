@@ -2,13 +2,13 @@
 -- Created: June 17, 2025
 
 -- Drop tables if they exist (in reverse order to avoid foreign key constraints)
-DROP TABLE IF EXISTS Seat;
-DROP TABLE IF EXISTS `Row`; -- Using backticks to escape the reserved keyword
-DROP TABLE IF EXISTS Sector;
-DROP TABLE IF EXISTS Venue;
+DROP TABLE IF EXISTS seat;
+DROP TABLE IF EXISTS seat_row;
+DROP TABLE IF EXISTS sector;
+DROP TABLE IF EXISTS venue;
 
--- Create Venue table
-CREATE TABLE Venue (
+-- Create venue table
+CREATE TABLE venue (
     venue_id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     country VARCHAR(100) NOT NULL,
@@ -20,50 +20,50 @@ CREATE TABLE Venue (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Create Sector table
-CREATE TABLE Sector (
+-- Create sector table
+CREATE TABLE sector (
     sector_id INT AUTO_INCREMENT PRIMARY KEY,
     venue_id INT NOT NULL,
     name VARCHAR(100) NOT NULL,
     position_x FLOAT,
     position_y FLOAT,
     price_category VARCHAR(50),
-    status ENUM('ACTIVE', 'INACTIVE', 'UNDER_MAINTENANCE') DEFAULT 'ACTIVE',
+    status ENUM('active', 'inactive', 'under_maintenance') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (venue_id) REFERENCES Venue(venue_id) ON DELETE CASCADE
+    FOREIGN KEY (venue_id) REFERENCES venue(venue_id) ON DELETE CASCADE
 );
 
--- Create Row table (using backticks to escape reserved word)
-CREATE TABLE `Row` (
-    row_id INT AUTO_INCREMENT PRIMARY KEY,
+-- Create seat_row table
+CREATE TABLE seat_row (
+    seat_row_id INT AUTO_INCREMENT PRIMARY KEY,
     sector_id INT NOT NULL,
     name VARCHAR(50) NOT NULL,
     order_number INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (sector_id) REFERENCES Sector(sector_id) ON DELETE CASCADE,
-    UNIQUE KEY unique_row_in_sector (sector_id, order_number)
+    FOREIGN KEY (sector_id) REFERENCES sector(sector_id) ON DELETE CASCADE,
+    UNIQUE KEY unique_seat_row_in_sector (sector_id, order_number)
 );
 
--- Create Seat table
-CREATE TABLE Seat (
+-- Create seat table
+CREATE TABLE seat (
     seat_id INT AUTO_INCREMENT PRIMARY KEY,
-    row_id INT NOT NULL,
+    seat_row_id INT NOT NULL,
     order_number INT NOT NULL,
     position_x FLOAT,
     position_y FLOAT,
     price_category VARCHAR(50),
-    status ENUM('AVAILABLE', 'UNAVAILABLE', 'BROKEN', 'RESERVED') DEFAULT 'AVAILABLE',
+    status ENUM('available', 'unavailable', 'broken', 'reserved') DEFAULT 'available',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (row_id) REFERENCES `Row`(row_id) ON DELETE CASCADE,
-    UNIQUE KEY unique_seat_in_row (row_id, order_number)
+    FOREIGN KEY (seat_row_id) REFERENCES seat_row(seat_row_id) ON DELETE CASCADE,
+    UNIQUE KEY unique_seat_in_seat_row (seat_row_id, order_number)
 );
 
 -- Create indexes for better performance
-CREATE INDEX idx_venue_country_city ON Venue(country, city);
-CREATE INDEX idx_sector_venue ON Sector(venue_id);
-CREATE INDEX idx_row_sector ON `Row`(sector_id);
-CREATE INDEX idx_seat_row ON Seat(row_id);
-CREATE INDEX idx_seat_status ON Seat(status);
+CREATE INDEX idx_venue_country_city ON venue(country, city);
+CREATE INDEX idx_sector_venue ON sector(venue_id);
+CREATE INDEX idx_seat_row_sector ON seat_row(sector_id);
+CREATE INDEX idx_seat_seat_row ON seat(seat_row_id);
+CREATE INDEX idx_seat_status ON seat(status);

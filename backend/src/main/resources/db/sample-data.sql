@@ -4,11 +4,11 @@
 SET NAMES utf8mb4;
 
 -- Sample Venues
-insert into venue (name, country, city, address, thumbnail, description)
+insert into venue (name, country, city, address, thumbnail, thumbnail_content_type, description)
 values 
-('Teatr Wielki - Opera Narodowa', 'Poland', 'Warszawa', 'pl. Teatralny 1', 'teatr_wielki.jpg', 'Główna polska scena operowa, gmach z 1833 roku zaprojektowany przez Antonio Corazziego'),
-('ICE Kraków Congress Centre', 'Poland', 'Kraków', 'ul. Marii Konopnickiej 17', 'ice_krakow.jpg', 'Nowoczesne centrum kongresowe z salą koncertową o doskonałej akustyce'),
-('Opera Nova', 'Poland', 'Bydgoszcz', 'ul. Focha 5', 'opera_nova.jpg', 'Imponujący gmach opery zlokalizowany na brzegu rzeki Brdy');
+('Teatr Wielki - Opera Narodowa', 'Poland', 'Warszawa', 'pl. Teatralny 1', NULL, NULL, 'Główna polska scena operowa, gmach z 1833 roku zaprojektowany przez Antonio Corazziego'),
+('ICE Kraków Congress Centre', 'Poland', 'Kraków', 'ul. Marii Konopnickiej 17', NULL, NULL, 'Nowoczesne centrum kongresowe z salą koncertową o doskonałej akustyce'),
+('Opera Nova', 'Poland', 'Bydgoszcz', 'ul. Focha 5', NULL, NULL, 'Imponujący gmach opery zlokalizowany na brzegu rzeki Brdy');
 
 -- Sample Sectors for Teatr Wielki - Opera Narodowa
 insert into sector (venue_id, name, position_x, position_y, price_category, status)
@@ -102,17 +102,17 @@ values
 (6, 6, 5.0, 0.0, 'Economy', 'available');
 
 -- Additional Polish Venues
-insert into venue (name, country, city, address, thumbnail, description)
+insert into venue (name, country, city, address, thumbnail, thumbnail_content_type, description)
 values 
-('Hala Stulecia', 'Poland', 'Wrocław', 'ul. Wystawowa 1', 'hala_stulecia.jpg', 'Zabytkowa hala widowiskowo-sportowa wpisana na listę UNESCO'),
-('Atlas Arena', 'Poland', 'Łódź', 'al. Bandurskiego 7', 'atlas_arena.jpg', 'Nowoczesna hala widowiskowo-sportowa w centrum Polski'),
-('Ergo Arena', 'Poland', 'Gdańsk/Sopot', 'pl. Dwóch Miast 1', 'ergo_arena.jpg', 'Wielofunkcyjna hala na granicy Gdańska i Sopotu'),
-('Spodek', 'Poland', 'Katowice', 'al. Korfantego 35', 'spodek.jpg', 'Ikoniczna hala widowiskowa o charakterystycznym kształcie spodka'),
-('Tauron Arena', 'Poland', 'Kraków', 'ul. Stanisława Lema 7', 'tauron_arena.jpg', 'Największa hala widowiskowo-sportowa w Polsce'),
-('Filharmonia Narodowa', 'Poland', 'Warszawa', 'ul. Jasna 5', 'filharmonia_narodowa.jpg', 'Główna sala koncertowa w Polsce, siedziba Filharmonii Narodowej'),
-('Teatr im. Juliusza Słowackiego', 'Poland', 'Kraków', 'pl. Świętego Ducha 1', 'teatr_slowackiego.jpg', 'Jeden z najważniejszych teatrów dramatycznych w Polsce'),
-('Teatr Polski', 'Poland', 'Wrocław', 'ul. Gabrieli Zapolskiej 3', 'teatr_polski_wroclaw.jpg', 'Znany teatr dramatyczny z bogatą tradycją'),
-('Teatr Muzyczny Roma', 'Poland', 'Warszawa', 'ul. Nowogrodzka 49', 'teatr_roma.jpg', 'Największy teatr muzyczny w Warszawie'),
+('Hala Stulecia', 'Poland', 'Wrocław', 'ul. Wystawowa 1', NULL, NULL, 'Zabytkowa hala widowiskowo-sportowa wpisana na listę UNESCO'),
+('Atlas Arena', 'Poland', 'Łódź', 'al. Bandurskiego 7', NULL, NULL, 'Nowoczesna hala widowiskowo-sportowa w centrum Polski'),
+('Ergo Arena', 'Poland', 'Gdańsk/Sopot', 'pl. Dwóch Miast 1', NULL, NULL, 'Wielofunkcyjna hala na granicy Gdańska i Sopotu'),
+('Spodek', 'Poland', 'Katowice', 'al. Korfantego 35', NULL, NULL, 'Ikoniczna hala widowiskowa o charakterystycznym kształcie spodka'),
+('Tauron Arena', 'Poland', 'Kraków', 'ul. Stanisława Lema 7', NULL, NULL, 'Największa hala widowiskowo-sportowa w Polsce'),
+('Filharmonia Narodowa', 'Poland', 'Warszawa', 'ul. Jasna 5', NULL, NULL, 'Główna sala koncertowa w Polsce, siedziba Filharmonii Narodowej'),
+('Teatr im. Juliusza Słowackiego', 'Poland', 'Kraków', 'pl. Świętego Ducha 1', NULL, NULL, 'Jeden z najważniejszych teatrów dramatycznych w Polsce'),
+('Teatr Polski', 'Poland', 'Wrocław', 'ul. Gabrieli Zapolskiej 3', NULL, NULL, 'Znany teatr dramatyczny z bogatą tradycją'),
+('Teatr Muzyczny Roma', 'Poland', 'Warszawa', 'ul. Nowogrodzka 49', NULL, NULL, 'Największy teatr muzyczny w Warszawie'),
 ('Teatr Wybrzeże', 'Poland', 'Gdańsk', 'ul. Św. Ducha 2', 'teatr_wybrzeze.jpg', 'Czołowy teatr dramatyczny Pomorza'),
 ('Teatr Wielki', 'Poland', 'Łódź', 'pl. Dąbrowskiego 1', 'teatr_wielki_lodz.jpg', 'Największy teatr operowy w Łodzi'),
 ('Teatr im. Stefana Jaracza', 'Poland', 'Olsztyn', 'ul. 1 Maja 4', 'teatr_jaracza_olsztyn.jpg', 'Najstarszy teatr w Olsztynie'),

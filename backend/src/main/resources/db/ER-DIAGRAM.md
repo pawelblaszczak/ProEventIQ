@@ -10,7 +10,8 @@
 | city       |          | position_x   |           | order_num|          | pos_x    |
 | address    |          | position_y   |           | created_at          | pos_y    |
 | thumbnail  |          | price_category           | updated_at          | price_cat|
-| description|          | status       |                       |          | status   |
+| thumb_type |          | status       |                       |          | status   |
+| description|          |              |                       |          |          |
 | created_at |          | created_at   |                       |          | created_at
 | updated_at |          | updated_at   |                       |          | updated_at
 +------------+          +--------------+           +----------+          +----------+

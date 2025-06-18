@@ -39,16 +39,35 @@ public class VenueService {
         VenueEntity entity = fromInput(input);
         VenueEntity saved = venueRepository.save(entity);
         return toDto(saved);
-    }
-
-    @Transactional
+    }    @Transactional
     public Optional<Venue> updateVenue(Long venueId, VenueInput input) {
         return venueRepository.findById(venueId).map(entity -> {
             entity.setName(input.getName());
             entity.setCountry(input.getCountry());
             entity.setCity(input.getCity());
             entity.setAddress(input.getAddress());
-            entity.setThumbnail(input.getThumbnail() != null ? input.getThumbnail().toString() : null);
+            
+            // For now, we temporarily keep using URI/String for thumbnails in API
+            // but store as binary in the database
+            if (input.getThumbnail() != null) {
+                try {
+                    // Assuming thumbnail is a data URL: "data:image/jpeg;base64,..."
+                    String uriString = input.getThumbnail().toString();
+                    if (uriString.startsWith("data:")) {
+                        String[] parts = uriString.split(",");
+                        if (parts.length == 2) {
+                            String contentType = parts[0].replace("data:", "").replace(";base64", "");
+                            byte[] decodedBytes = java.util.Base64.getDecoder().decode(parts[1]);
+                            entity.setThumbnail(decodedBytes);
+                            entity.setThumbnailContentType(contentType);
+                        }
+                    }
+                } catch (Exception e) {
+                    // Log error and continue without updating the thumbnail
+                    System.err.println("Error processing thumbnail: " + e.getMessage());
+                }
+            }
+            
             entity.setDescription(input.getDescription());
             return toDto(venueRepository.save(entity));
         });
@@ -61,15 +80,34 @@ public class VenueService {
             return true;
         }
         return false;
-    }
-
-    private VenueEntity fromInput(VenueInput input) {
+    }    private VenueEntity fromInput(VenueInput input) {
         VenueEntity entity = new VenueEntity();
         entity.setName(input.getName());
         entity.setCountry(input.getCountry());
         entity.setCity(input.getCity());
         entity.setAddress(input.getAddress());
-        entity.setThumbnail(input.getThumbnail() != null ? input.getThumbnail().toString() : null);
+        
+        // For now, we temporarily keep using URI/String for thumbnails in API
+        // but store as binary in the database
+        if (input.getThumbnail() != null) {
+            try {
+                // Assuming thumbnail is a data URL: "data:image/jpeg;base64,..."
+                String uriString = input.getThumbnail().toString();
+                if (uriString.startsWith("data:")) {
+                    String[] parts = uriString.split(",");
+                    if (parts.length == 2) {
+                        String contentType = parts[0].replace("data:", "").replace(";base64", "");
+                        byte[] decodedBytes = java.util.Base64.getDecoder().decode(parts[1]);
+                        entity.setThumbnail(decodedBytes);
+                        entity.setThumbnailContentType(contentType);
+                    }
+                }
+            } catch (Exception e) {
+                // Log error and continue without setting the thumbnail
+                System.err.println("Error processing thumbnail: " + e.getMessage());
+            }
+        }
+        
         entity.setDescription(input.getDescription());
         return entity;
     }
@@ -81,7 +119,19 @@ public class VenueService {
         dto.setCountry(entity.getCountry());
         dto.setCity(entity.getCity());
         dto.setAddress(entity.getAddress());
-        dto.setThumbnail(entity.getThumbnail() != null ? java.net.URI.create(entity.getThumbnail()) : null);
+        
+        // Convert binary thumbnail to data URL format
+        if (entity.getThumbnail() != null && entity.getThumbnailContentType() != null) {
+            try {
+                String base64 = java.util.Base64.getEncoder().encodeToString(entity.getThumbnail());
+                String dataUrl = "data:" + entity.getThumbnailContentType() + ";base64," + base64;
+                dto.setThumbnail(java.net.URI.create(dataUrl));
+            } catch (Exception e) {
+                // Log error and continue without setting the thumbnail
+                System.err.println("Error creating thumbnail data URL: " + e.getMessage());
+            }
+        }
+        
         dto.setDescription(entity.getDescription());
         // TODO: set numberOfSeats and sectors
         return dto;

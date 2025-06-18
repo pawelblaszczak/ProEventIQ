@@ -19,13 +19,24 @@
   display: flex;
   align-items: center;
   margin-left: 8px;
-  font-size: 1.2rem;
-  font-weight: 500;
 }
 
-.logo {
-  height: 32px;
+.logo-icon {
+  font-size: 32px;
   margin-right: 8px;
+  display: flex;
+  align-items: center;
+}
+
+.app-title {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  background: linear-gradient(45deg, #ffffff, #f0f0f0);
+  -webkit-background-clip: text;
+  background-clip: text;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .sidenav-container {
@@ -52,6 +63,8 @@ mat-nav-list {
 
 mat-list-item {
   height: 48px;
+  display: flex;
+  align-items: center;
 }
 
 .content-container {
@@ -75,15 +88,31 @@ mat-nav-list a {
 .sidenav mat-nav-list a {
   justify-content: flex-start;
   padding-left: 24px !important;
+  line-height: 24px;
   
   mat-icon {
     margin: 0;
     min-width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
-  
-  span {
+    span {
     margin-left: 16px;
     white-space: nowrap;
     overflow: hidden;
+    line-height: 24px;
+    display: flex;
+    align-items: center;
+    position: relative;
+    top: 2px;  /* Move the label slightly lower */
   }
+}
+
+.menu-item-content {
+  display: flex;
+  align-items: flex-start;  /* Changed from center to flex-start to allow for vertical positioning */
+  height: 24px;
+  width: 100%;
 }

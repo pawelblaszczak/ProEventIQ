@@ -8,13 +8,15 @@ import java.util.List;
 public class VenueEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long venueId;
-
-    private String name;
+    private Long venueId;    private String name;
     private String country;
     private String city;
     private String address;
-    private String thumbnail;
+    
+    @Lob
+    private byte[] thumbnail;
+    
+    private String thumbnailContentType;
     private String description;
 
     @OneToMany(mappedBy = "venue", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
@@ -28,11 +30,12 @@ public class VenueEntity {
     public String getCountry() { return country; }
     public void setCountry(String country) { this.country = country; }
     public String getCity() { return city; }
-    public void setCity(String city) { this.city = city; }
-    public String getAddress() { return address; }
+    public void setCity(String city) { this.city = city; }    public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }
-    public String getThumbnail() { return thumbnail; }
-    public void setThumbnail(String thumbnail) { this.thumbnail = thumbnail; }
+    public byte[] getThumbnail() { return thumbnail; }
+    public void setThumbnail(byte[] thumbnail) { this.thumbnail = thumbnail; }
+    public String getThumbnailContentType() { return thumbnailContentType; }
+    public void setThumbnailContentType(String thumbnailContentType) { this.thumbnailContentType = thumbnailContentType; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
     public List<SectorEntity> getSectors() { return sectors; }

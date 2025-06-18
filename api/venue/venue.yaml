@@ -13,7 +13,11 @@ Venue:
       type: string
     thumbnail:
       type: string
-      format: uri
+      format: byte
+      description: Base64 encoded image data
+    thumbnailContentType:
+      type: string
+      description: MIME type of the thumbnail image (e.g., image/jpeg, image/png)
     description:
       type: string
     numberOfSeats:

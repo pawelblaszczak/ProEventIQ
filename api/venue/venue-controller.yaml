@@ -1,0 +1,103 @@
+# Venue controller paths for OpenAPI modularization
+venues:
+  get:
+    tags: [ProEventIQ]
+    summary: List venues
+    description: Get a list of venues, optionally filtered by features
+    operationId: listVenues
+    parameters:
+      - in: query
+        name: name
+        schema:
+          type: string
+        description: Filter by venue name
+      - in: query
+        name: country
+        schema:
+          type: string
+        description: Filter by country
+      - in: query
+        name: city
+        schema:
+          type: string
+        description: Filter by city
+    responses:
+      '200':
+        description: List of venues
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: './venue.yaml#/Venue'
+  post:
+    tags: [ProEventIQ]
+    summary: Add a new venue
+    operationId: addVenue
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: './venue-input.yaml#/VenueInput'
+    responses:
+      '201':
+        description: Venue created
+        content:
+          application/json:
+            schema:
+              $ref: './venue.yaml#/Venue'
+venueById:
+  get:
+    tags: [ProEventIQ]
+    summary: Get venue details
+    operationId: getVenue
+    parameters:
+      - in: path
+        name: venueId
+        required: true
+        schema:
+          type: string
+    responses:
+      '200':
+        description: Venue details
+        content:
+          application/json:
+            schema:
+              $ref: './venue.yaml#/Venue'
+  put:
+    tags: [ProEventIQ]
+    summary: Update a venue
+    operationId: updateVenue
+    parameters:
+      - in: path
+        name: venueId
+        required: true
+        schema:
+          type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: './venue-input.yaml#/VenueInput'
+    responses:
+      '200':
+        description: Venue updated
+        content:
+          application/json:
+            schema:
+              $ref: './venue.yaml#/Venue'
+  delete:
+    tags: [ProEventIQ]
+    summary: Delete a venue
+    operationId: deleteVenue
+    parameters:
+      - in: path
+        name: venueId
+        required: true
+        schema:
+          type: string
+    responses:
+      '204':
+        description: Venue deleted

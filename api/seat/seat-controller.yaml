@@ -1,0 +1,133 @@
+# Seat controller paths for OpenAPI modularization
+rowById:
+  get:
+    tags: [ProEventIQ]
+    summary: Get row details
+    operationId: getRow
+    parameters:
+      - in: path
+        name: rowId
+        required: true
+        schema:
+          type: string
+    responses:
+      '200':
+        description: Row details
+        content:
+          application/json:
+            schema:
+              $ref: './row.yaml#/Row'
+  put:
+    tags: [ProEventIQ]
+    summary: Update a row
+    operationId: updateRow
+    parameters:
+      - in: path
+        name: rowId
+        required: true
+        schema:
+          type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: './row-input.yaml#/RowInput'
+    responses:
+      '200':
+        description: Row updated
+        content:
+          application/json:
+            schema:
+              $ref: './row.yaml#/Row'
+  delete:
+    tags: [ProEventIQ]
+    summary: Delete a row
+    operationId: deleteRow
+    parameters:
+      - in: path
+        name: rowId
+        required: true
+        schema:
+          type: string
+    responses:
+      '204':
+        description: Row deleted
+seatsByRow:
+  post:
+    tags: [ProEventIQ]
+    summary: Add a seat to a row
+    operationId: addSeat
+    parameters:
+      - in: path
+        name: rowId
+        required: true
+        schema:
+          type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: './seat-input.yaml#/SeatInput'
+    responses:
+      '201':
+        description: Seat created
+        content:
+          application/json:
+            schema:
+              $ref: './seat.yaml#/Seat'
+seatById:
+  get:
+    tags: [ProEventIQ]
+    summary: Get seat details
+    operationId: getSeat
+    parameters:
+      - in: path
+        name: seatId
+        required: true
+        schema:
+          type: string
+    responses:
+      '200':
+        description: Seat details
+        content:
+          application/json:
+            schema:
+              $ref: './seat.yaml#/Seat'
+  put:
+    tags: [ProEventIQ]
+    summary: Update a seat
+    operationId: updateSeat
+    parameters:
+      - in: path
+        name: seatId
+        required: true
+        schema:
+          type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: './seat-input.yaml#/SeatInput'
+    responses:
+      '200':
+        description: Seat updated
+        content:
+          application/json:
+            schema:
+              $ref: './seat.yaml#/Seat'
+  delete:
+    tags: [ProEventIQ]
+    summary: Delete a seat
+    operationId: deleteSeat
+    parameters:
+      - in: path
+        name: seatId
+        required: true
+        schema:
+          type: string
+    responses:
+      '204':
+        description: Seat deleted

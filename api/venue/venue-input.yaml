@@ -1,0 +1,16 @@
+VenueInput:
+  type: object
+  properties:
+    name:
+      type: string
+    country:
+      type: string
+    city:
+      type: string
+    address:
+      type: string
+    thumbnail:
+      type: string
+      format: uri
+    description:
+      type: string

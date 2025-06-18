@@ -2,8 +2,8 @@ openapi: 3.0.1
 info:
   title: ProEventIQ Rest API
   description: API for ProEventIQ
-  version: "0.2"
-servers: 
+  version: "0.3"
+servers:
   - url: http://{hostname}:{port}/api
     variables:
       hostname:
@@ -14,26 +14,23 @@ servers:
           - "443"
         default: "8080"
 tags:
-  - name: ProEventIQ 
+  - name: ProEventIQ
     description: ProEventIQ endpoints
 
 paths:
-
-  /test:
-    get:
-      tags:
-        - ProEventIQ
-      summary: Test endpoint
-      description: A simple test endpoint
-      operationId: testEndpoint
-      responses:
-        '200':
-          description: Successful response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: "Test successful"
+  /venues:
+    $ref: './venue/venue-controller.yaml#/venues'
+  /venues/{venueId}:
+    $ref: './venue/venue-controller.yaml#/venueById'
+  /venues/{venueId}/sectors:
+    $ref: './sector/sector-controller.yaml#/sectorsByVenue'
+  /sectors/{sectorId}:
+    $ref: './sector/sector-controller.yaml#/sectorById'
+  /sectors/{sectorId}/rows:
+    $ref: './sector/sector-controller.yaml#/rowsBySector'
+  /rows/{rowId}:
+    $ref: './seat/seat-controller.yaml#/rowById'
+  /rows/{rowId}/seats:
+    $ref: './seat/seat-controller.yaml#/seatsByRow'
+  /seats/{seatId}:
+    $ref: './seat/seat-controller.yaml#/seatById'

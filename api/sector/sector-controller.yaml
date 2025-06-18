@@ -1,0 +1,103 @@
+# Sector controller paths for OpenAPI modularization
+sectorsByVenue:
+  post:
+    tags: [ProEventIQ]
+    summary: Add a sector to a venue
+    operationId: addSector
+    parameters:
+      - in: path
+        name: venueId
+        required: true
+        schema:
+          type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: './sector-input.yaml#/SectorInput'
+    responses:
+      '201':
+        description: Sector created
+        content:
+          application/json:
+            schema:
+              $ref: './sector.yaml#/Sector'
+sectorById:
+  get:
+    tags: [ProEventIQ]
+    summary: Get sector details
+    operationId: getSector
+    parameters:
+      - in: path
+        name: sectorId
+        required: true
+        schema:
+          type: string
+    responses:
+      '200':
+        description: Sector details
+        content:
+          application/json:
+            schema:
+              $ref: './sector.yaml#/Sector'
+  put:
+    tags: [ProEventIQ]
+    summary: Update a sector
+    operationId: updateSector
+    parameters:
+      - in: path
+        name: sectorId
+        required: true
+        schema:
+          type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: './sector-input.yaml#/SectorInput'
+    responses:
+      '200':
+        description: Sector updated
+        content:
+          application/json:
+            schema:
+              $ref: './sector.yaml#/Sector'
+  delete:
+    tags: [ProEventIQ]
+    summary: Delete a sector
+    operationId: deleteSector
+    parameters:
+      - in: path
+        name: sectorId
+        required: true
+        schema:
+          type: string
+    responses:
+      '204':
+        description: Sector deleted
+rowsBySector:
+  post:
+    tags: [ProEventIQ]
+    summary: Add a row to a sector
+    operationId: addRow
+    parameters:
+      - in: path
+        name: sectorId
+        required: true
+        schema:
+          type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../seat/row-input.yaml#/RowInput'
+    responses:
+      '201':
+        description: Row created
+        content:
+          application/json:
+            schema:
+              $ref: '../seat/row.yaml#/Row'

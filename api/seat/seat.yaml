@@ -1,0 +1,19 @@
+Seat:
+  type: object
+  properties:
+    seatId:
+      type: string
+    orderNumber:
+      type: integer
+    position:
+      type: object
+      properties:
+        x:
+          type: number
+        y:
+          type: number
+    priceCategory:
+      type: string
+    status:
+      type: string
+      enum: [ACCESSIBLE, INACCESSIBLE]

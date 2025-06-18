@@ -1,0 +1,24 @@
+Venue:
+  type: object
+  properties:
+    venueId:
+      type: string
+    name:
+      type: string
+    country:
+      type: string
+    city:
+      type: string
+    address:
+      type: string
+    thumbnail:
+      type: string
+      format: uri
+    description:
+      type: string
+    numberOfSeats:
+      type: integer
+    sectors:
+      type: array
+      items:
+        $ref: '../sector/sector.yaml#/Sector'

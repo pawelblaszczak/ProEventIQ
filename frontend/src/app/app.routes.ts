@@ -1,13 +1,15 @@
 import { Routes } from '@angular/router';
 import { MainLayoutComponent } from './main-layout.component';
 import { VenuesListComponent } from './venues/venues-list.component';
+import { HomeComponent } from './home/home.component';
 
 export const routes: Routes = [
   {
     path: '',
     component: MainLayoutComponent,
     children: [
-      { path: '', redirectTo: 'venues', pathMatch: 'full' },
+      { path: '', redirectTo: 'home', pathMatch: 'full' },
+      { path: 'home', component: HomeComponent },
       { path: 'venues', component: VenuesListComponent },
       // Other routes will be added here as needed
     ]

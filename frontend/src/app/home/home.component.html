@@ -1,0 +1,119 @@
+<section class="home-container">  <!-- Hero Section -->
+  <div class="hero-section">
+    <div class="hero-features-list">
+      <div class="feature-item">
+        <mat-icon>check_circle</mat-icon>
+        <span>Smart venue management</span>
+      </div>
+      <div class="feature-item">
+        <mat-icon>check_circle</mat-icon>
+        <span>Real-time analytics</span>
+      </div>
+      <div class="feature-item">
+        <mat-icon>check_circle</mat-icon>
+        <span>Automated scheduling</span>
+      </div>
+    </div>
+    <div class="hero-content">
+      <h1 class="hero-title">
+        <span class="title-primary">Pro</span><span class="title-accent">Event</span><span class="title-secondary">IQ</span>
+      </h1>
+      <p class="hero-subtitle">Smart Event Management Solution</p>
+      <div class="action-buttons">
+        <button mat-raised-button color="primary" class="primary-cta" (click)="navigateToVenues()">
+          <mat-icon>explore</mat-icon>
+          Explore Venues
+        </button>
+      </div>
+    </div>
+    <div class="hero-app-icon">
+      <div class="app-icon-container">
+        <mat-icon class="app-icon">event_available</mat-icon>
+      </div>
+    </div>
+  </div>
+
+  <!-- Features Section -->
+  <div class="features-section">
+    <div class="section-header">
+      <h2>Why Choose ProEventIQ?</h2>
+      <p class="section-subtitle">Discover the power of intelligent event management</p>
+    </div>
+    
+    <div class="feature-cards">
+      <mat-card class="feature-card" [class]="'card-' + (i + 1)" *ngFor="let feature of features; let i = index">
+        <div class="card-icon">
+          <mat-icon>{{feature.icon}}</mat-icon>
+        </div>
+        <mat-card-content>
+          <h3 class="card-title">{{feature.title}}</h3>
+          <p class="card-description">{{feature.description}}</p>
+          <div class="card-benefits">
+            <div class="benefit-item" *ngFor="let benefit of feature.benefits">
+              <mat-icon class="benefit-icon">check_circle</mat-icon>
+              <span>{{benefit}}</span>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </div>
+
+  <!-- Stats Section -->
+  <div class="stats-section">
+    <div class="stats-container">
+      <div class="stat-card">
+        <div class="stat-icon">
+          <mat-icon>trending_up</mat-icon>
+        </div>
+        <div class="stat-content">
+          <span class="stat-number">98%</span>
+          <span class="stat-label">Customer Satisfaction</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">
+          <mat-icon>speed</mat-icon>
+        </div>
+        <div class="stat-content">
+          <span class="stat-number">75%</span>
+          <span class="stat-label">Time Saved</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">
+          <mat-icon>savings</mat-icon>
+        </div>
+        <div class="stat-content">
+          <span class="stat-number">40%</span>
+          <span class="stat-label">Cost Reduction</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">
+          <mat-icon>security</mat-icon>
+        </div>
+        <div class="stat-content">
+          <span class="stat-number">24/7</span>
+          <span class="stat-label">Security Monitoring</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA Section -->
+  <div class="cta-section">
+    <div class="cta-background"></div>
+    <div class="cta-content">
+      <mat-icon class="cta-icon">rocket_launch</mat-icon>
+      <h2>Ready to Elevate Your Event Management?</h2>
+      <p>Join thousands of event professionals who trust ProEventIQ for their venue management needs</p>
+      <div class="cta-buttons">
+        <button mat-raised-button color="accent" class="cta-primary" (click)="navigateToVenues()">
+          <mat-icon>arrow_forward</mat-icon>
+          Get Started Now
+        </button>
+      </div>
+    </div>
+  </div>
+</section>

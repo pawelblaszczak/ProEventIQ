@@ -1,11 +1,11 @@
 import { Component, signal, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MaterialModule } from '../material.module';
+import { MaterialModule } from '../../material.module';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { ProEventIQService } from '../api/api/pro-event-iq.service';
-import { Venue } from '../api/model/venue';
+import { ProEventIQService } from '../../api/api/pro-event-iq.service';
+import { Venue } from '../../api/model/venue';
 
 @Component({
   selector: 'app-venues-list',

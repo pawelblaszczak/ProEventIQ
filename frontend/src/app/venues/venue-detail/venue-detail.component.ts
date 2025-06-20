@@ -10,11 +10,11 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { NgxKonvaModule } from 'ngx-konva';
 import { RouterModule } from '@angular/router';
-import { Venue } from '../api/model/venue';
-import { Sector } from '../api/model/sector';
-import { SeatRow } from '../api/model/seat-row';
-import { Seat } from '../api/model/seat';
-import { ProEventIQService } from '../api/api/pro-event-iq.service';
+import { Venue } from '../../api/model/venue';
+import { Sector } from '../../api/model/sector';
+import { SeatRow } from '../../api/model/seat-row';
+import { Seat } from '../../api/model/seat';
+import { ProEventIQService } from '../../api/api/pro-event-iq.service';
 
 @Component({
   selector: 'app-venue-detail',
@@ -264,5 +264,14 @@ export class VenueDetailComponent {
       
       event.target.on('mouseout.tooltip', removeTooltip);
     }
+  }
+  /**
+   * Returns the full address string, combining address, city, and country, skipping missing parts.
+   */
+  getFullAddress(): string {
+    const venue = this.venue();
+    if (!venue) return 'Not provided';
+    const parts = [venue.address, venue.city, venue.country].filter(part => !!part);
+    return parts.length ? parts.join(', ') : 'Not provided';
   }
 }

@@ -82,7 +82,7 @@
           
           <div class="thumbnail-section">
             <div class="thumbnail-upload-area">
-              <mat-card appearance="outlined" class="upload-card">
+              <mat-card appearance="outlined" class="upload-card thumbnail-card-equal-height">
                 <mat-card-content>
                   <div class="upload-content">
                     <div class="upload-icon">
@@ -106,7 +106,7 @@
             
             <div class="thumbnail-preview">
               @if (thumbnailPreview()) {
-                <mat-card appearance="outlined" class="preview-card">
+                <mat-card appearance="outlined" class="preview-card thumbnail-card-equal-height">
                   <mat-card-content>
                     <div class="preview-header">
                       <h4>Preview</h4>
@@ -120,7 +120,7 @@
                   </mat-card-content>
                 </mat-card>
               } @else {
-                <mat-card appearance="outlined" class="no-preview-card">
+                <mat-card appearance="outlined" class="no-preview-card thumbnail-card-equal-height">
                   <mat-card-content>
                     <div class="no-preview-content">
                       <mat-icon>image_not_supported</mat-icon>

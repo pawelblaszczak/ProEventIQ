@@ -8,8 +8,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { ProEventIQService } from '../api/api/pro-event-iq.service';
-import { Venue } from '../api/model/venue';
+import { ProEventIQService } from '../../api/api/pro-event-iq.service';
+import { Venue } from '../../api/model/venue';
 
 @Component({
   selector: 'app-venue-edit',

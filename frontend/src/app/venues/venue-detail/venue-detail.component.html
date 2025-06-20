@@ -69,13 +69,8 @@
       
       <div class="venue-info-grid">
         <div class="info-item">
-          <div class="info-label">Venue ID</div>
-          <div class="info-value">{{ venue()?.venueId }}</div>
-        </div>
-        
-        <div class="info-item">
           <div class="info-label">Address</div>
-          <div class="info-value">{{ venue()?.address || 'Not provided' }}</div>
+          <div class="info-value">{{ getFullAddress() }}</div>
         </div>
         
         <div class="info-item full-width">

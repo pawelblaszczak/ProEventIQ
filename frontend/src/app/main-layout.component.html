@@ -9,12 +9,13 @@
   <!-- Add user profile and other top-right icons if needed -->
 </mat-toolbar>
 
-<mat-sidenav-container class="sidenav-container">  <mat-sidenav mode="side" [opened]="true" class="sidenav" [ngClass]="{'expanded': isExpanded()}">    
+<mat-sidenav-container class="sidenav-container">
+  <mat-sidenav mode="side" [opened]="true" class="sidenav" [ngClass]="{'expanded': isExpanded()}">
     <div class="menu-header" *ngIf="isExpanded()">
       <span>NAVIGATION</span>
     </div>
     
-    <mat-nav-list>      <a mat-list-item routerLink="/home" routerLinkActive="active"
+    <mat-nav-list><a mat-list-item routerLink="/home" routerLinkActive="active"
          [matTooltip]="!isExpanded() ? 'Home' : ''" 
          matTooltipPosition="right"
          [matTooltipDisabled]="isExpanded()">
@@ -59,10 +60,9 @@
         </div>
       </a>
       <!-- Add more menu items based on system requirements -->
-    </mat-nav-list>
-  </mat-sidenav>
+    </mat-nav-list>  </mat-sidenav>
 
-  <mat-sidenav-content>
+  <mat-sidenav-content [style.marginLeft.px]="isExpanded() ? 200 : 72">
     <div class="content-container">
       <router-outlet></router-outlet>
     </div>

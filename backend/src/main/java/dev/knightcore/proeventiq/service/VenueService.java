@@ -120,15 +120,14 @@ public class VenueService {
         dto.setCity(entity.getCity());
         dto.setAddress(entity.getAddress());
         
-        // Convert binary thumbnail to data URL format
+        // Use the thumbnail directly as byte[]
         if (entity.getThumbnail() != null && entity.getThumbnailContentType() != null) {
             try {
-                String base64 = java.util.Base64.getEncoder().encodeToString(entity.getThumbnail());
-                String dataUrl = "data:" + entity.getThumbnailContentType() + ";base64," + base64;
-                dto.setThumbnail(java.net.URI.create(dataUrl));
+                dto.setThumbnail(entity.getThumbnail());
+                // If you need to store content type separately, ensure Venue has a field for it
             } catch (Exception e) {
                 // Log error and continue without setting the thumbnail
-                System.err.println("Error creating thumbnail data URL: " + e.getMessage());
+                System.err.println("Error setting thumbnail: " + e.getMessage());
             }
         }
         

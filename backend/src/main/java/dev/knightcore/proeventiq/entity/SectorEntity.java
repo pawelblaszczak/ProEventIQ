@@ -11,8 +11,10 @@ public class SectorEntity {
     private Long sectorId;
 
     private String name;
-    private String position;
     private String status;
+
+    private Float positionX;
+    private Float positionY;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "venue_id")
@@ -26,10 +28,12 @@ public class SectorEntity {
     public void setSectorId(Long sectorId) { this.sectorId = sectorId; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
-    public String getPosition() { return position; }
-    public void setPosition(String position) { this.position = position; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public Float getPositionX() { return positionX; }
+    public void setPositionX(Float positionX) { this.positionX = positionX; }
+    public Float getPositionY() { return positionY; }
+    public void setPositionY(Float positionY) { this.positionY = positionY; }
     public VenueEntity getVenue() { return venue; }
     public void setVenue(VenueEntity venue) { this.venue = venue; }
     public List<SeatRowEntity> getSeatRows() { return seatRows; }

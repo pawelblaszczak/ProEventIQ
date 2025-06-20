@@ -35,7 +35,8 @@ public class SectorService {
                 .orElseThrow(() -> new IllegalArgumentException("Venue not found"));
         SectorEntity entity = new SectorEntity();
         entity.setName(input.name());
-        entity.setPosition(input.position());
+        entity.setPositionX(input.positionX());
+        entity.setPositionY(input.positionY());
         entity.setStatus(input.status());
         entity.setVenue(venue);
         return toDTO(sectorRepository.save(entity));
@@ -50,7 +51,8 @@ public class SectorService {
     public Optional<SectorDTO> updateSector(Long sectorId, SectorInputDTO input) {
         return sectorRepository.findById(sectorId).map(entity -> {
             entity.setName(input.name());
-            entity.setPosition(input.position());
+            entity.setPositionX(input.positionX());
+            entity.setPositionY(input.positionY());
             entity.setStatus(input.status());
             return toDTO(sectorRepository.save(entity));
         });
@@ -69,7 +71,8 @@ public class SectorService {
         return new SectorDTO(
                 entity.getSectorId(),
                 entity.getName(),
-                entity.getPosition(),
+                entity.getPositionX(),
+                entity.getPositionY(),
                 entity.getStatus(),
                 entity.getVenue() != null ? entity.getVenue().getVenueId() : null
         );

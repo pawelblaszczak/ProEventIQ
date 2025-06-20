@@ -17,11 +17,11 @@ Sector:
     rows:
       type: array
       items:
-        $ref: '../seat/row.yaml#/Row'
+        $ref: '../seat/seat-row.yaml#/SeatRow'
     priceCategory:
       type: string
     status:
       type: string
-      enum: [ACCESSIBLE, INACCESSIBLE]
+      enum: [active, inactive]
 SectorInput:
   $ref: './sector-input.yaml#/SectorInput'

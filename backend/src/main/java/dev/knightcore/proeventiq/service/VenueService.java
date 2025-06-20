@@ -4,15 +4,22 @@ import dev.knightcore.proeventiq.api.model.Venue;
 import dev.knightcore.proeventiq.api.model.VenueInput;
 import dev.knightcore.proeventiq.entity.VenueEntity;
 import dev.knightcore.proeventiq.repository.VenueRepository;
+import dev.knightcore.proeventiq.api.model.Sector;
+import dev.knightcore.proeventiq.api.model.SeatRow;
+import dev.knightcore.proeventiq.api.model.Seat;
+import java.util.ArrayList;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class VenueService {
+    private static final Logger log = LoggerFactory.getLogger(VenueService.class);
+    private static final String DATA_PREFIX = "data:";
     private final VenueRepository venueRepository;
 
     public VenueService(VenueRepository venueRepository) {
@@ -26,12 +33,13 @@ public class VenueService {
                 country != null ? country : "",
                 city != null ? city : ""
         );
-        return entities.stream().map(this::toDto).collect(Collectors.toList());
+        return entities.stream().map(this::toDto).toList();
     }
 
     @Transactional(readOnly = true)
     public Optional<Venue> getVenue(Long venueId) {
-        return venueRepository.findById(venueId).map(this::toDto);
+        // Use fetch join to get sectors eagerly
+        return venueRepository.findWithSectorsByVenueId(venueId).map(this::toDto);
     }
 
     @Transactional
@@ -46,28 +54,25 @@ public class VenueService {
             entity.setCountry(input.getCountry());
             entity.setCity(input.getCity());
             entity.setAddress(input.getAddress());
-            
             // For now, we temporarily keep using URI/String for thumbnails in API
             // but store as binary in the database
             if (input.getThumbnail() != null) {
                 try {
                     // Assuming thumbnail is a data URL: "data:image/jpeg;base64,..."
                     String uriString = input.getThumbnail().toString();
-                    if (uriString.startsWith("data:")) {
+                    if (uriString.startsWith(DATA_PREFIX)) {
                         String[] parts = uriString.split(",");
                         if (parts.length == 2) {
-                            String contentType = parts[0].replace("data:", "").replace(";base64", "");
+                            String contentType = parts[0].replace(DATA_PREFIX, "").replace(";base64", "");
                             byte[] decodedBytes = java.util.Base64.getDecoder().decode(parts[1]);
                             entity.setThumbnail(decodedBytes);
                             entity.setThumbnailContentType(contentType);
                         }
                     }
                 } catch (Exception e) {
-                    // Log error and continue without updating the thumbnail
-                    System.err.println("Error processing thumbnail: " + e.getMessage());
+                    log.error("Error processing thumbnail: {}", e.getMessage());
                 }
             }
-            
             entity.setDescription(input.getDescription());
             return toDto(venueRepository.save(entity));
         });
@@ -86,28 +91,25 @@ public class VenueService {
         entity.setCountry(input.getCountry());
         entity.setCity(input.getCity());
         entity.setAddress(input.getAddress());
-        
         // For now, we temporarily keep using URI/String for thumbnails in API
         // but store as binary in the database
         if (input.getThumbnail() != null) {
             try {
                 // Assuming thumbnail is a data URL: "data:image/jpeg;base64,..."
                 String uriString = input.getThumbnail().toString();
-                if (uriString.startsWith("data:")) {
+                if (uriString.startsWith(DATA_PREFIX)) {
                     String[] parts = uriString.split(",");
                     if (parts.length == 2) {
-                        String contentType = parts[0].replace("data:", "").replace(";base64", "");
+                        String contentType = parts[0].replace(DATA_PREFIX, "").replace(";base64", "");
                         byte[] decodedBytes = java.util.Base64.getDecoder().decode(parts[1]);
                         entity.setThumbnail(decodedBytes);
                         entity.setThumbnailContentType(contentType);
                     }
                 }
             } catch (Exception e) {
-                // Log error and continue without setting the thumbnail
-                System.err.println("Error processing thumbnail: " + e.getMessage());
+                log.error("Error processing thumbnail: {}", e.getMessage());
             }
         }
-        
         entity.setDescription(input.getDescription());
         return entity;
     }
@@ -119,20 +121,62 @@ public class VenueService {
         dto.setCountry(entity.getCountry());
         dto.setCity(entity.getCity());
         dto.setAddress(entity.getAddress());
-        
-        // Use the thumbnail directly as byte[]
         if (entity.getThumbnail() != null && entity.getThumbnailContentType() != null) {
             try {
                 dto.setThumbnail(entity.getThumbnail());
-                // If you need to store content type separately, ensure Venue has a field for it
             } catch (Exception e) {
-                // Log error and continue without setting the thumbnail
-                System.err.println("Error setting thumbnail: " + e.getMessage());
+                log.error("Error setting thumbnail: {}", e.getMessage());
             }
         }
-        
+        dto.setThumbnailContentType(entity.getThumbnailContentType());
         dto.setDescription(entity.getDescription());
-        // TODO: set numberOfSeats and sectors
+        // Map sectors
+        if (entity.getSectors() != null) {
+            List<Sector> sectorDtos = new ArrayList<>();
+            int totalSeats = 0;
+            for (var sectorEntity : entity.getSectors()) {
+                Sector sectorDto = new Sector();
+                sectorDto.setSectorId(sectorEntity.getSectorId() != null ? sectorEntity.getSectorId().toString() : null);
+                sectorDto.setName(sectorEntity.getName());
+                // Position mapping (if available)
+                // sectorDto.setPosition(...); // TODO: map if needed
+                sectorDto.setStatus(sectorEntity.getStatus() != null ?
+                    Sector.StatusEnum.fromValue(sectorEntity.getStatus()) : null);
+                // Rows and seat count
+                int sectorSeatCount = 0;
+                if (sectorEntity.getSeatRows() != null) {
+                    List<SeatRow> rowDtos = new ArrayList<>();
+                    for (var rowEntity : sectorEntity.getSeatRows()) {
+                        SeatRow rowDto = new SeatRow();
+                        rowDto.setSeatRowId(rowEntity.getSeatRowId() != null ? rowEntity.getSeatRowId().toString() : null);
+                        rowDto.setName(rowEntity.getOrderNumber() != null ? rowEntity.getOrderNumber().toString() : null);
+                        // Seats
+                        int rowSeatCount = 0;
+                        if (rowEntity.getSeats() != null) {
+                            List<Seat> seatDtos = new ArrayList<>();
+                            for (var seatEntity : rowEntity.getSeats()) {
+                                Seat seatDto = new Seat();
+                                seatDto.setSeatId(seatEntity.getSeatId() != null ? seatEntity.getSeatId().toString() : null);
+                                seatDto.setStatus(seatEntity.getStatus() != null ?
+                                    Seat.StatusEnum.fromValue(seatEntity.getStatus()) : null);
+                                seatDto.setPosition(null); // TODO: map position if needed
+                                seatDtos.add(seatDto);
+                                rowSeatCount++;
+                            }
+                            rowDto.setSeats(seatDtos);
+                        }
+                        rowDtos.add(rowDto);
+                        sectorSeatCount += rowSeatCount;
+                    }
+                    sectorDto.setRows(rowDtos);
+                }
+                sectorDto.setNumberOfSeats(sectorSeatCount);
+                sectorDtos.add(sectorDto);
+                totalSeats += sectorSeatCount;
+            }
+            dto.setSectors(sectorDtos);
+            dto.setNumberOfSeats(totalSeats);
+        }
         return dto;
     }
 }

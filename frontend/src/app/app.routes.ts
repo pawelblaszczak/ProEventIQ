@@ -11,6 +11,7 @@ export const routes: Routes = [
       { path: '', redirectTo: 'home', pathMatch: 'full' },
       { path: 'home', component: HomeComponent },
       { path: 'venues', component: VenuesListComponent },
+      { path: 'venues/:id', loadComponent: () => import('./venues/venue-detail.component').then(m => m.VenueDetailComponent) },
       // Other routes will be added here as needed
     ]
   }

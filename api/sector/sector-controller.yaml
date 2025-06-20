@@ -100,4 +100,4 @@ rowsBySector:
         content:
           application/json:
             schema:
-              $ref: '../seat/row.yaml#/Row'
+              $ref: '../seat/seat-row.yaml#/SeatRow'

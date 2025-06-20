@@ -29,7 +29,7 @@ CREATE TABLE sector (
     position_x FLOAT,
     position_y FLOAT,
     price_category VARCHAR(50),
-    status ENUM('active', 'inactive', 'under_maintenance') DEFAULT 'active',
+    status ENUM('active', 'inactive') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (venue_id) REFERENCES venue(venue_id) ON DELETE CASCADE
@@ -55,7 +55,7 @@ CREATE TABLE seat (
     position_x FLOAT,
     position_y FLOAT,
     price_category VARCHAR(50),
-    status ENUM('available', 'unavailable', 'broken', 'reserved') DEFAULT 'available',
+    status ENUM('active', 'inactive') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (seat_row_id) REFERENCES seat_row(seat_row_id) ON DELETE CASCADE,

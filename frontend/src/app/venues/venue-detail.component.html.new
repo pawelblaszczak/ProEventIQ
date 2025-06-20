@@ -1,0 +1,66 @@
+<ng-container *ngIf="loading()">Loading venue...</ng-container>
+<ng-container *ngIf="error()">{{ error() }}</ng-container>
+
+<mat-card *ngIf="venue() as v" class="venue-details-card">
+  <mat-card-header>
+    <mat-card-title>{{ v.name }}</mat-card-title>
+    <mat-card-subtitle>{{ v.city }}, {{ v.country }}</mat-card-subtitle>
+  </mat-card-header>
+  <img *ngIf="v.thumbnail" mat-card-image [src]="'data:' + v.thumbnailContentType + ';base64,' + v.thumbnail" [alt]="v.name + ' thumbnail'" style="max-height:200px;object-fit:contain;" />
+  <mat-card-content>
+    <section>
+      <strong>Venue ID:</strong> {{ v.venueId }}<br>
+      <strong>Address:</strong> {{ v.address }}<br>
+      <strong>Description:</strong> {{ v.description }}<br>
+      <strong>Seats:</strong> {{ v.numberOfSeats }}<br>
+    </section>
+  </mat-card-content>
+  <mat-card-actions>
+    <button mat-button routerLink="/venues">Back to list</button>
+  </mat-card-actions>
+</mat-card>
+
+<mat-card class="venue-map-card">
+  <mat-card-header>
+    <mat-card-title>Venue Map</mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
+      <button mat-mini-fab color="primary" (click)="zoomOut()" aria-label="Zoom out"><mat-icon>zoom_out</mat-icon></button>
+      <span>Zoom: {{ zoom() | number:'1.1-2' }}x</span>
+      <button mat-mini-fab color="primary" (click)="zoomIn()" aria-label="Zoom in"><mat-icon>zoom_in</mat-icon></button>
+    </div>
+    <div class="venue-canvas-container">
+      <ko-stage [config]="{ width: canvasWidth, height: canvasHeight, draggable: true, scaleX: zoom(), scaleY: zoom() }">
+        <ko-layer>
+          <ng-container *ngIf="venue() && venue()?.sectors">
+            <ko-group *ngFor="let sector of venue()?.sectors || []; let i = index" [config]="{ x: 60 + i*120, y: 100, draggable: false }">
+              <ko-rect [config]="{ width: 100, height: 60, fill: '#90caf9', stroke: '#1976d2', strokeWidth: 2, cornerRadius: 8 }"></ko-rect>
+              <ko-text [config]="{ text: sector.name, x: 10, y: 20, fontSize: 16, fill: '#0d47a1', fontStyle: 'bold' }"></ko-text>
+              <ko-text *ngIf="showSeats" [config]="{ text: 'Seats: ' + (sector.numberOfSeats || 0), x: 10, y: 40, fontSize: 12, fill: '#333' }"></ko-text>
+            </ko-group>
+          </ng-container>
+        </ko-layer>
+      </ko-stage>
+    </div>
+    <div style="font-size:0.9em; color:#666; margin-top:0.5rem;">
+      <span *ngIf="!showSeats">Zoom in to see seat details.</span>
+      <span *ngIf="showSeats">Showing seat counts per sector.</span>
+    </div>
+  </mat-card-content>
+</mat-card>
+
+<mat-card *ngIf="venue() as v" class="sectors-card">
+  <mat-card-header>
+    <mat-card-title>Sectors</mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    <mat-list *ngIf="v.sectors?.length">
+      <mat-list-item *ngFor="let sector of v.sectors">
+        <div mat-line><strong>{{ sector.name }}</strong></div>
+        <div mat-line>Seats: {{ sector.numberOfSeats }}</div>
+      </mat-list-item>
+    </mat-list>
+    <p *ngIf="!v.sectors?.length">No sectors available for this venue.</p>
+  </mat-card-content>
+</mat-card>

@@ -11,8 +11,7 @@ VenueInput:
       type: string
     thumbnail:
       type: string
-      format: byte
-      description: Base64 encoded image data
+      description: Base64 encoded image data prefixed with data URL (e.g., data:image/jpeg;base64,...)
     thumbnailContentType:
       type: string
       description: MIME type of the thumbnail image (e.g., image/jpeg, image/png)

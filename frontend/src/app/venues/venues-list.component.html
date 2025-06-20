@@ -60,7 +60,7 @@
     <div class="venues-grid">
       @for (venue of filteredVenues(); track venue.venueId) {
         <mat-card class="venue-card" [routerLink]="['/venues', venue.venueId]">
-          <img mat-card-image [src]="venue.thumbnail || 'assets/venue-placeholder.jpg'" [alt]="venue.name || 'Venue'">
+          <img mat-card-image [src]="venue.thumbnail ? ('data:' + venue.thumbnailContentType + ';base64,' + venue.thumbnail) : 'assets/venue-placeholder.jpg'" [alt]="venue.name || 'Venue'">
           <mat-card-content>
             <div class="venue-badges">
               <span class="venue-badge seats-badge">

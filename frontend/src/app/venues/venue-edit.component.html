@@ -1,42 +1,46 @@
-<mat-card *ngIf="!loading(); else loadingTpl">
-  <mat-card-header>
-    <mat-card-title>Edit Venue</mat-card-title>
-  </mat-card-header>
-  <mat-card-content>
-    <form [formGroup]="form" (ngSubmit)="onSubmit()">
-      <mat-form-field appearance="fill" class="full-width">
-        <mat-label>Name</mat-label>
-        <input matInput formControlName="name" required />
-      </mat-form-field>
-      <mat-form-field appearance="fill" class="full-width">
-        <mat-label>Address</mat-label>
-        <input matInput formControlName="address" required />
-      </mat-form-field>
-      <mat-form-field appearance="fill" class="full-width">
-        <mat-label>City</mat-label>
-        <input matInput formControlName="city" required />
-      </mat-form-field>
-      <mat-form-field appearance="fill" class="full-width">
-        <mat-label>Country</mat-label>
-        <input matInput formControlName="country" required />
-      </mat-form-field>
-      <mat-form-field appearance="fill" class="full-width">
+@if (!loading()) {
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>Edit Venue</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <form [formGroup]="form" (ngSubmit)="onSubmit()">
+        <mat-form-field appearance="fill" class="full-width">
+          <mat-label>Name</mat-label>
+          <input matInput formControlName="name" required />
+        </mat-form-field>
+        <mat-form-field appearance="fill" class="full-width">
+          <mat-label>Address</mat-label>
+          <input matInput formControlName="address" required />
+        </mat-form-field>
+        <mat-form-field appearance="fill" class="full-width">
+          <mat-label>City</mat-label>
+          <input matInput formControlName="city" required />
+        </mat-form-field>
+        <mat-form-field appearance="fill" class="full-width">
+          <mat-label>Country</mat-label>
+          <input matInput formControlName="country" required />
+        </mat-form-field>      <mat-form-field appearance="fill" class="full-width">
         <mat-label>Description</mat-label>
         <textarea matInput formControlName="description"></textarea>
       </mat-form-field>
       <mat-form-field appearance="fill" class="full-width">
         <mat-label>Number of Seats</mat-label>
         <input matInput type="number" formControlName="numberOfSeats" required min="0" />
-      </mat-form-field>
-      <div class="full-width" style="margin-bottom: 1rem;">
-        <label style="font-size: 0.95em; color: #666;">Thumbnail</label><br />
-        <input type="file" (change)="onThumbnailChange($event)" accept="image/*" />
+      </mat-form-field>      <div class="full-width" style="margin-bottom: 1rem;">
+        <mat-label id="thumbnail-label" style="font-size: 0.95em; color: #666; display: block; margin-bottom: 0.5rem;">Thumbnail</mat-label>
+        <input type="file" id="thumbnail-input" aria-labelledby="thumbnail-label" (change)="onThumbnailChange($event)" accept="image/*,.webp" />
       </div>
-      <div *ngIf="thumbnailPreview || (form.get('name')?.value && !thumbnailPreview)" style="margin-bottom: 1rem;">
-        <img *ngIf="thumbnailPreview" [src]="thumbnailPreview" alt="Venue thumbnail preview" style="max-width: 200px; max-height: 120px; object-fit: contain; border: 1px solid #ccc; border-radius: 4px;" />
-        <span *ngIf="!thumbnailPreview" style="color: #888; font-size: 0.95em;">No thumbnail uploaded</span>
+      <div style="margin-bottom: 1rem;">
+        @if (thumbnailPreview()) {
+          <img [src]="thumbnailPreview()" alt="Venue thumbnail preview" style="max-width: 200px; max-height: 120px; object-fit: contain; border: 1px solid #ccc; border-radius: 4px;" />
+        } @else {
+          <span style="color: #888; font-size: 0.95em;">No thumbnail uploaded</span>
+        }
       </div>
-      <div *ngIf="error()" class="error">{{ error() }}</div>
+      @if (error()) {
+        <div class="error">{{ error() }}</div>
+      }
       <div class="actions">
         <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid || loading()">Save</button>
         <button mat-button type="button" (click)="onCancel()">Cancel</button>
@@ -44,6 +48,6 @@
     </form>
   </mat-card-content>
 </mat-card>
-<ng-template #loadingTpl>
+} @else {
   <mat-card><mat-card-content>Loading...</mat-card-content></mat-card>
-</ng-template>
+}

@@ -20,7 +20,6 @@ import org.slf4j.LoggerFactory;
 @Service
 public class VenueService {
     private static final Logger log = LoggerFactory.getLogger(VenueService.class);
-    private static final String DATA_PREFIX = "data:";
     private final VenueRepository venueRepository;
 
     public VenueService(VenueRepository venueRepository) {
@@ -73,27 +72,16 @@ public class VenueService {
         VenueEntity saved = venueRepository.save(entity);
         return toDto(saved);
     }    @Transactional
-    public Optional<Venue> updateVenue(Long venueId, VenueInput input) {
-        return venueRepository.findById(venueId).map(entity -> {
+    public Optional<Venue> updateVenue(Long venueId, VenueInput input) {        return venueRepository.findById(venueId).map(entity -> {
             entity.setName(input.getName());
             entity.setCountry(input.getCountry());
             entity.setCity(input.getCity());
             entity.setAddress(input.getAddress());
-            // For now, we temporarily keep using URI/String for thumbnails in API
-            // but store as binary in the database
-            if (input.getThumbnail() != null) {
+            // Handle thumbnail data - now it comes as byte[] from JSON
+            if (input.getThumbnail() != null && input.getThumbnailContentType() != null) {
                 try {
-                    // Assuming thumbnail is a data URL: "data:image/jpeg;base64,..."
-                    String uriString = input.getThumbnail().toString();
-                    if (uriString.startsWith(DATA_PREFIX)) {
-                        String[] parts = uriString.split(",");
-                        if (parts.length == 2) {
-                            String contentType = parts[0].replace(DATA_PREFIX, "").replace(";base64", "");
-                            byte[] decodedBytes = java.util.Base64.getDecoder().decode(parts[1]);
-                            entity.setThumbnail(decodedBytes);
-                            entity.setThumbnailContentType(contentType);
-                        }
-                    }
+                    entity.setThumbnail(input.getThumbnail());
+                    entity.setThumbnailContentType(input.getThumbnailContentType());
                 } catch (Exception e) {
                     log.error("Error processing thumbnail: {}", e.getMessage());
                 }
@@ -116,21 +104,11 @@ public class VenueService {
         entity.setCountry(input.getCountry());
         entity.setCity(input.getCity());
         entity.setAddress(input.getAddress());
-        // For now, we temporarily keep using URI/String for thumbnails in API
-        // but store as binary in the database
-        if (input.getThumbnail() != null) {
+        // Handle thumbnail data - now it comes as byte[] from JSON
+        if (input.getThumbnail() != null && input.getThumbnailContentType() != null) {
             try {
-                // Assuming thumbnail is a data URL: "data:image/jpeg;base64,..."
-                String uriString = input.getThumbnail().toString();
-                if (uriString.startsWith(DATA_PREFIX)) {
-                    String[] parts = uriString.split(",");
-                    if (parts.length == 2) {
-                        String contentType = parts[0].replace(DATA_PREFIX, "").replace(";base64", "");
-                        byte[] decodedBytes = java.util.Base64.getDecoder().decode(parts[1]);
-                        entity.setThumbnail(decodedBytes);
-                        entity.setThumbnailContentType(contentType);
-                    }
-                }
+                entity.setThumbnail(input.getThumbnail());
+                entity.setThumbnailContentType(input.getThumbnailContentType());
             } catch (Exception e) {
                 log.error("Error processing thumbnail: {}", e.getMessage());
             }

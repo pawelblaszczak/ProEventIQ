@@ -7,6 +7,7 @@ import dev.knightcore.proeventiq.repository.VenueRepository;
 import dev.knightcore.proeventiq.api.model.Sector;
 import dev.knightcore.proeventiq.api.model.SeatRow;
 import dev.knightcore.proeventiq.api.model.Seat;
+import dev.knightcore.proeventiq.api.model.SectorInputPosition;
 import java.util.ArrayList;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,12 +35,36 @@ public class VenueService {
                 city != null ? city : ""
         );
         return entities.stream().map(this::toDto).toList();
-    }
-
-    @Transactional(readOnly = true)
+    }    @Transactional(readOnly = true)
     public Optional<Venue> getVenue(Long venueId) {
-        // Use fetch join to get sectors eagerly
-        return venueRepository.findWithSectorsByVenueId(venueId).map(this::toDto);
+        log.info("Fetching venue with ID: {}", venueId);
+        
+        return venueRepository.findWithSectorsByVenueId(venueId).map(entity -> {
+            if (entity.getSectors() != null) {
+                log.info("Found venue: {}, with {} sectors", entity.getName(), entity.getSectors().size());
+                
+                // Force initialization of lazy collections
+                for (var sector : entity.getSectors()) {
+                    // Access positions to ensure they are loaded
+                    log.info("Sector: {}, Position: ({}, {})", 
+                        sector.getName(), sector.getPositionX(), sector.getPositionY());
+                    
+                    if (sector.getSeatRows() != null) {
+                        for (var row : sector.getSeatRows()) {
+                            if (row.getSeats() != null) {
+                                // Access each seat to ensure it's loaded
+                                for (var seat : row.getSeats()) {
+                                    log.info("Seat in row {}: Position: ({}, {})", 
+                                        row.getOrderNumber(), seat.getPositionX(), seat.getPositionY());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            return toDto(entity);
+        });
     }
 
     @Transactional
@@ -135,11 +160,21 @@ public class VenueService {
             List<Sector> sectorDtos = new ArrayList<>();
             int totalSeats = 0;
             for (var sectorEntity : entity.getSectors()) {
-                Sector sectorDto = new Sector();
-                sectorDto.setSectorId(sectorEntity.getSectorId() != null ? sectorEntity.getSectorId().toString() : null);
-                sectorDto.setName(sectorEntity.getName());
-                // Position mapping (if available)
-                // sectorDto.setPosition(...); // TODO: map if needed
+                Sector sectorDto = new Sector();                sectorDto.setSectorId(sectorEntity.getSectorId() != null ? sectorEntity.getSectorId().toString() : null);
+                sectorDto.setName(sectorEntity.getName());                // Log detailed position information for debugging
+                log.info("In toDto - Sector: {}, Position from entity: ({}, {}), Position in DTO: {}", 
+                    sectorDto.getName(), 
+                    sectorEntity.getPositionX(), 
+                    sectorEntity.getPositionY(),
+                    sectorDto.getPosition() != null ? 
+                        "(" + sectorDto.getPosition().getX() + ", " + sectorDto.getPosition().getY() + ")" : 
+                        "null");
+                // Position mapping
+                if (sectorEntity.getPositionX() != null && sectorEntity.getPositionY() != null) {
+                    SectorInputPosition position = new SectorInputPosition();                    position.setX(java.math.BigDecimal.valueOf(sectorEntity.getPositionX()));
+                    position.setY(java.math.BigDecimal.valueOf(sectorEntity.getPositionY()));
+                    sectorDto.setPosition(position);
+                }
                 sectorDto.setStatus(sectorEntity.getStatus() != null ?
                     Sector.StatusEnum.fromValue(sectorEntity.getStatus()) : null);
                 // Rows and seat count
@@ -155,11 +190,15 @@ public class VenueService {
                         if (rowEntity.getSeats() != null) {
                             List<Seat> seatDtos = new ArrayList<>();
                             for (var seatEntity : rowEntity.getSeats()) {
-                                Seat seatDto = new Seat();
-                                seatDto.setSeatId(seatEntity.getSeatId() != null ? seatEntity.getSeatId().toString() : null);
+                                Seat seatDto = new Seat();                                seatDto.setSeatId(seatEntity.getSeatId() != null ? seatEntity.getSeatId().toString() : null);
                                 seatDto.setStatus(seatEntity.getStatus() != null ?
                                     Seat.StatusEnum.fromValue(seatEntity.getStatus()) : null);
-                                seatDto.setPosition(null); // TODO: map position if needed
+                                // Map seat position
+                                if (seatEntity.getPositionX() != null && seatEntity.getPositionY() != null) {
+                                    SectorInputPosition position = new SectorInputPosition();                                    position.setX(java.math.BigDecimal.valueOf(seatEntity.getPositionX()));
+                                    position.setY(java.math.BigDecimal.valueOf(seatEntity.getPositionY()));
+                                    seatDto.setPosition(position);
+                                }
                                 seatDtos.add(seatDto);
                                 rowSeatCount++;
                             }

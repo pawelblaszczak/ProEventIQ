@@ -27,11 +27,67 @@ export class VenueDetailComponent {
   private venueId = signal<string | null>(null);
   public venue = signal<Venue | null>(null);
   public loading = signal(true);
-  public error = signal<string | null>(null);  zoom = signal(1);
+  public error = signal<string | null>(null);  
+  zoom = signal(1);
   showSeats = signal(false);
   canvasWidth = window.innerWidth;
   canvasHeight = Math.max(400, window.innerHeight * 0.6);
-  sectorBaseWidth = 150; // Base width for sectors when displaying seats
+  sectorBaseWidth = 150; // Base width for sectors when displaying seats  // Helper methods to safely access position values
+  getSeatPositionValue(seat: Seat, property: 'x' | 'y'): number {
+    if (!seat.position) {
+      console.warn('Seat has no position data:', seat);
+      return 0;
+    }
+    return seat.position[property] ?? 0;
+  }
+  
+  getSectorPositionValue(sector: Sector, property: 'x' | 'y'): number {
+    if (!sector.position) {
+      console.warn('Sector has no position data:', sector);
+      return 0;
+    }
+    return sector.position[property] ?? 0;
+  }
+  
+  // Get row label position using the first seat with position data or default to a fixed value
+  getRowLabelPosition(row: SeatRow): number {
+    if (!row.seats || row.seats.length === 0) {
+      return 30; // Default Y position if no seats
+    }
+    
+    // Find the first seat with position data
+    for (const seat of row.seats) {
+      if (seat.position) {
+        return this.getSeatPositionValue(seat, 'y');
+      }
+    }
+    
+    return 30; // Default Y position if no seat has position data
+  }
+  
+  // Check if all data is complete (all sectors and seats have position data)
+  hasCompleteData(): boolean {
+    const venue = this.venue();
+    if (!venue || !venue.sectors) return false;
+    
+    // Check all sectors have positions
+    for (const sector of venue.sectors) {
+      if (!sector.position) return false;
+      
+      // Check all rows have seats with positions
+      if (sector.rows) {
+        for (const row of sector.rows) {
+          if (row.seats) {
+            for (const seat of row.seats) {
+              if (!seat.position) return false;
+            }
+          }
+        }
+      }
+    }
+    
+    return true;
+  }
 
   constructor() {
     this.route.paramMap.subscribe(params => {
@@ -65,71 +121,76 @@ export class VenueDetailComponent {
     this.canvasWidth = Math.max(window.innerWidth - 32, 800); // Account for margins/padding
     this.canvasHeight = Math.max(window.innerHeight * 0.6, 500);
   }
-
   private fetchVenue(id: string) {
     this.loading.set(true);
     this.venueApi.getVenue(id).subscribe({
       next: (venue: Venue) => {
+        // Check for missing position data in the response
+        let hasMissingPositions = false;
+        if (venue.sectors) {
+          venue.sectors.forEach(sector => {
+            if (!sector.position) {
+              hasMissingPositions = true;
+              console.warn(`Sector "${sector.name || 'unknown'}" is missing position data`);
+            }
+            
+            if (sector.rows) {
+              sector.rows.forEach(row => {
+                if (row.seats) {
+                  row.seats.forEach(seat => {
+                    if (!seat.position) {
+                      hasMissingPositions = true;
+                      console.warn(`Seat in row "${row.name || 'unknown'}" is missing position data`);
+                    }
+                  });
+                }
+              });
+            }
+          });
+        }
+        
+        // Set venue data
         this.venue.set(venue);
         this.loading.set(false);
+        
+        // Load sector details
         this.loadSectorDetails(venue);
+        
+        // Show warning if positions are missing
+        if (hasMissingPositions) {
+          console.warn('Some venue elements have missing position data. The visualization may not be complete.');
+        }
       },
       error: (err: any) => {
         this.error.set('Failed to load venue.');
         this.loading.set(false);
+        console.error('Error loading venue data:', err);
       }
     });
-  }
-  private loadSectorDetails(venue: Venue) {
+  }private loadSectorDetails(venue: Venue) {
     if (venue.sectors) {
-      // Track loaded sectors to know when all are loaded
-      const totalSectors = venue.sectors.length;
-      let loadedSectors = 0;
-      
-      // Load detailed seat information for each sector
-      venue.sectors.forEach((sector, index) => {
-        if (sector.sectorId) {
-          this.venueApi.getSector(sector.sectorId).subscribe({
-            next: (detailedSector: Sector) => {
-              // Update the sector in the venue with more detailed information
-              if (venue.sectors && venue.sectors[index]) {
-                // Preserve the original sector properties and add the detailed ones
-                venue.sectors[index] = { 
-                  ...venue.sectors[index], 
-                  ...detailedSector,
-                  // Ensure rows and seats are included
-                  rows: detailedSector.rows || [] 
-                };
-                
-                // Log for debugging
-                console.log(`Loaded sector ${sector.name} with ${detailedSector.rows?.length || 0} rows`);
-                if (detailedSector.rows) {
-                  detailedSector.rows.forEach(row => {
-                    console.log(`  Row ${row.name} has ${row.seats?.length || 0} seats`);
-                  });
+      // Log warning for any sectors without position data
+      venue.sectors.forEach(sector => {
+        if (!sector.position) {
+          console.warn(`Sector "${sector.name || 'unknown'}" is missing position data`);
+        }
+        
+        // Check if seats have position data
+        if (sector.rows) {
+          sector.rows.forEach(row => {
+            if (row.seats) {
+              row.seats.forEach(seat => {
+                if (!seat.position) {
+                  console.warn(`Seat in row "${row.name || 'unknown'}" is missing position data`);
                 }
-                
-                // Update venue reference when a sector is loaded
-                loadedSectors++;
-                if (loadedSectors === totalSectors) {
-                  console.log('All sectors loaded with details');
-                }
-                
-                // Update the venue reactive state with the fresh data
-                this.venue.set({ ...venue });
-              }
-            },
-            error: (err) => {
-              console.error(`Failed to load details for sector ${sector.name}:`, err);
-              loadedSectors++;
-              // Even on error, check if all sectors have been processed
-              if (loadedSectors === totalSectors) {
-                console.log('All sectors processed (some with errors)');
-              }
+              });
             }
           });
         }
       });
+      
+      // Use the venue data directly without any modification
+      console.log('Using venue data directly from backend without modifications');
     }
   }
   zoomIn() {
@@ -154,38 +215,28 @@ export class VenueDetailComponent {
       console.log(`Zoom threshold crossed: ${newShowSeats ? 'Showing seats' : 'Hiding seats'}`);
       this.showSeats.set(newShowSeats);
     }
-  }
-  // Calculate seat position within a sector
-  getSeatPosition(seat: Seat, rowIndex: number) {
-    const seatSize = 8;
-    const seatSpacing = 12; // Slightly increased spacing for better visibility
-    const rowHeight = 15;
-    
-    // Use the actual orderNumber to position seats (1-based to 0-based)
-    const seatIndex = seat.orderNumber ? seat.orderNumber - 1 : 0;
-    
-    return {
-      x: seatIndex * seatSpacing,
-      y: rowIndex * rowHeight,
-      width: seatSize,
-      height: seatSize
-    };
-  }
+  }  // No longer needed - using position directly from backend
   // Get color for seat based on status
   getSeatColor(seat: Seat): string {
     return seat.status === Seat.StatusEnum.Active ? '#4caf50' : 
            seat.status === Seat.StatusEnum.Inactive ? '#f44336' : 
            '#ff9800'; // default or other status
   }
-  
-  // Handle seat hover - will be used with event binding in future implementation
+    // Handle seat hover - will be used with event binding in future implementation
   onSeatHover(event: any, seat: Seat, rowName: string | undefined): void {
     const tooltip = document.createElement('div');
     tooltip.className = 'seat-tooltip';
+    
+    // Format status for display
+    const statusText = seat.status === Seat.StatusEnum.Active ? 'Active' : 
+                      seat.status === Seat.StatusEnum.Inactive ? 'Inactive' : 
+                      'Unknown';
+    
     tooltip.innerHTML = `
       <div>Seat: ${seat.orderNumber || 'N/A'}</div>
       <div>Row: ${rowName || 'N/A'}</div>
-      <div>Status: ${seat.status || 'N/A'}</div>
+      <div>Status: ${statusText}</div>
+      <div>Price: ${seat.priceCategory || 'Standard'}</div>
     `;
     
     const stage = event.target.getStage();

@@ -11,9 +11,10 @@ public class SectorEntity {
     private Long sectorId;
 
     private String name;
-    private String status;
-
+    private String status;    @Column(name = "position_x")
     private Float positionX;
+    
+    @Column(name = "position_y")
     private Float positionY;
 
     @ManyToOne(fetch = FetchType.LAZY)

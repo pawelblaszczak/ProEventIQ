@@ -5,13 +5,26 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatInputModule } from '@angular/material/input';
+import { MatIconModule } from '@angular/material/icon';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ProEventIQService } from '../api/api/pro-event-iq.service';
 import { Venue } from '../api/model/venue';
 
 @Component({
   selector: 'app-venue-edit',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, MatCardModule, MatButtonModule, MatInputModule],
+  imports: [
+    CommonModule, 
+    ReactiveFormsModule, 
+    RouterModule, 
+    MatCardModule, 
+    MatButtonModule, 
+    MatInputModule,
+    MatIconModule,
+    MatDividerModule,
+    MatProgressSpinnerModule
+  ],
   templateUrl: './venue-edit.component.html',
   styleUrls: ['./venue-edit.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

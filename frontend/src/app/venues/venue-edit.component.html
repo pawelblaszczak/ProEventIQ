@@ -1,53 +1,168 @@
+@if (loading()) {
+  <div class="loading-container animated-pulse">
+    <div class="loading-icon-wrapper">
+      <mat-progress-spinner color="primary" mode="indeterminate" diameter="50"></mat-progress-spinner>
+    </div>
+    <p class="loading-text">Loading venue data...</p>
+    <div class="loading-progress-dots">
+      <span class="dot"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+    </div>
+  </div>
+}
+
 @if (!loading()) {
-  <mat-card>
-    <mat-card-header>
-      <mat-card-title>Edit Venue</mat-card-title>
-    </mat-card-header>
-    <mat-card-content>
-      <form [formGroup]="form" (ngSubmit)="onSubmit()">
-        <mat-form-field appearance="fill" class="full-width">
-          <mat-label>Name</mat-label>
-          <input matInput formControlName="name" required />
-        </mat-form-field>
-        <mat-form-field appearance="fill" class="full-width">
-          <mat-label>Address</mat-label>
-          <input matInput formControlName="address" required />
-        </mat-form-field>
-        <mat-form-field appearance="fill" class="full-width">
-          <mat-label>City</mat-label>
-          <input matInput formControlName="city" required />
-        </mat-form-field>
-        <mat-form-field appearance="fill" class="full-width">
-          <mat-label>Country</mat-label>
-          <input matInput formControlName="country" required />
-        </mat-form-field>      <mat-form-field appearance="fill" class="full-width">
-        <mat-label>Description</mat-label>
-        <textarea matInput formControlName="description"></textarea>
-      </mat-form-field>
-      <mat-form-field appearance="fill" class="full-width">
-        <mat-label>Number of Seats</mat-label>
-        <input matInput type="number" formControlName="numberOfSeats" required min="0" />
-      </mat-form-field>      <div class="full-width" style="margin-bottom: 1rem;">
-        <mat-label id="thumbnail-label" style="font-size: 0.95em; color: #666; display: block; margin-bottom: 0.5rem;">Thumbnail</mat-label>
-        <input type="file" id="thumbnail-input" aria-labelledby="thumbnail-label" (change)="onThumbnailChange($event)" accept="image/*,.webp" />
+  <div class="venue-edit-section animate-fade-in">
+    <mat-card appearance="outlined" class="venue-edit-card mat-elevation-z3">
+      <div class="card-header-banner">
+        <div class="header-content">
+          <h1 class="banner-title">
+            <mat-icon>edit</mat-icon>
+            Edit Venue
+          </h1>
+          <p class="banner-subtitle">Update venue information and settings</p>
+        </div>
+        <div class="header-icon">
+          <mat-icon>stadium</mat-icon>
+        </div>
       </div>
-      <div style="margin-bottom: 1rem;">
-        @if (thumbnailPreview()) {
-          <img [src]="thumbnailPreview()" alt="Venue thumbnail preview" style="max-width: 200px; max-height: 120px; object-fit: contain; border: 1px solid #ccc; border-radius: 4px;" />
-        } @else {
-          <span style="color: #888; font-size: 0.95em;">No thumbnail uploaded</span>
-        }
-      </div>
-      @if (error()) {
-        <div class="error">{{ error() }}</div>
-      }
-      <div class="actions">
-        <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid || loading()">Save</button>
-        <button mat-button type="button" (click)="onCancel()">Cancel</button>
-      </div>
-    </form>
-  </mat-card-content>
-</mat-card>
-} @else {
-  <mat-card><mat-card-content>Loading...</mat-card-content></mat-card>
+      
+      <mat-divider></mat-divider>
+      
+      <mat-card-content class="venue-edit-content">
+        <form [formGroup]="form" (ngSubmit)="onSubmit()" class="venue-form">
+          <h3 class="section-title">
+            <mat-icon>info</mat-icon>
+            Basic Information
+          </h3>
+          
+          <div class="form-grid">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Venue Name</mat-label>
+              <input matInput formControlName="name" required placeholder="Enter venue name" />
+              <mat-icon matSuffix>business</mat-icon>
+            </mat-form-field>
+            
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Address</mat-label>
+              <input matInput formControlName="address" required placeholder="Enter venue address" />
+              <mat-icon matSuffix>home</mat-icon>
+            </mat-form-field>
+            
+            <div class="location-row">
+              <mat-form-field appearance="outline" class="half-width">
+                <mat-label>City</mat-label>
+                <input matInput formControlName="city" required placeholder="Enter city" />
+                <mat-icon matSuffix>location_city</mat-icon>
+              </mat-form-field>
+              
+              <mat-form-field appearance="outline" class="half-width">
+                <mat-label>Country</mat-label>
+                <input matInput formControlName="country" required placeholder="Enter country" />
+                <mat-icon matSuffix>public</mat-icon>
+              </mat-form-field>
+            </div>
+            
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Description</mat-label>
+              <textarea matInput formControlName="description" 
+                       placeholder="Enter venue description (optional)"
+                       rows="4"></textarea>
+              <mat-icon matSuffix>description</mat-icon>
+            </mat-form-field>
+          </div>
+          
+          <mat-divider class="section-divider"></mat-divider>
+          
+          <h3 class="section-title">
+            <mat-icon>image</mat-icon>
+            Venue Image
+          </h3>
+          
+          <div class="thumbnail-section">
+            <div class="thumbnail-upload-area">
+              <mat-card appearance="outlined" class="upload-card">
+                <mat-card-content>
+                  <div class="upload-content">
+                    <div class="upload-icon">
+                      <mat-icon>cloud_upload</mat-icon>
+                    </div>
+                    <h4>Upload Venue Thumbnail</h4>
+                    <p>Choose an image file to represent this venue</p>
+                    <input type="file" 
+                           id="thumbnail-input" 
+                           (change)="onThumbnailChange($event)" 
+                           accept="image/*,.webp" 
+                           class="file-input" />
+                    <label for="thumbnail-input" class="upload-button">
+                      <mat-icon>add_photo_alternate</mat-icon>
+                      Choose Image
+                    </label>
+                  </div>
+                </mat-card-content>
+              </mat-card>
+            </div>
+            
+            <div class="thumbnail-preview">
+              @if (thumbnailPreview()) {
+                <mat-card appearance="outlined" class="preview-card">
+                  <mat-card-content>
+                    <div class="preview-header">
+                      <h4>Preview</h4>
+                      <mat-icon color="primary">visibility</mat-icon>
+                    </div>
+                    <div class="preview-image-container">
+                      <img [src]="thumbnailPreview()" 
+                           alt="Venue thumbnail preview" 
+                           class="preview-image" />
+                    </div>
+                  </mat-card-content>
+                </mat-card>
+              } @else {
+                <mat-card appearance="outlined" class="no-preview-card">
+                  <mat-card-content>
+                    <div class="no-preview-content">
+                      <mat-icon>image_not_supported</mat-icon>
+                      <p>No image selected</p>
+                    </div>
+                  </mat-card-content>
+                </mat-card>
+              }
+            </div>
+          </div>
+          
+          @if (error()) {
+            <mat-card appearance="outlined" class="error-card">
+              <mat-card-content>
+                <div class="error-content">
+                  <mat-icon color="warn">error_outline</mat-icon>
+                  <div class="error-message">
+                    <h4>Error</h4>
+                    <p>{{ error() }}</p>
+                  </div>
+                </div>
+              </mat-card-content>
+            </mat-card>
+          }
+        </form>
+      </mat-card-content>
+      
+      <mat-card-actions class="venue-actions" align="end">
+        <button mat-stroked-button type="button" (click)="onCancel()" class="cancel-button">
+          <mat-icon>close</mat-icon>
+          CANCEL
+        </button>
+        <button mat-raised-button 
+                color="primary" 
+                type="submit" 
+                [disabled]="form.invalid || loading()"
+                (click)="onSubmit()"
+                class="save-button">
+          <mat-icon>save</mat-icon>
+          SAVE CHANGES
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
 }

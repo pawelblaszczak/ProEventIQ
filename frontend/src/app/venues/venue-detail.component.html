@@ -1,35 +1,139 @@
-<ng-container *ngIf="loading()">Loading venue...</ng-container>
-<ng-container *ngIf="error()">{{ error() }}</ng-container>
+<div *ngIf="loading()" class="loading-container animated-pulse">
+  <div class="loading-icon-wrapper">
+    <mat-progress-spinner color="primary" mode="indeterminate" diameter="50"></mat-progress-spinner>
+  </div>
+  <p class="loading-text">Loading venue details...</p>
+  <div class="loading-progress-dots">
+    <span class="dot"></span>
+    <span class="dot"></span>
+    <span class="dot"></span>
+  </div>
+</div>
 
-<mat-card *ngIf="venue() as v" class="venue-details-card">
-  <mat-card-header>
-    <mat-card-title>{{ v.name }}</mat-card-title>
-    <mat-card-subtitle>{{ v.city }}, {{ v.country }}</mat-card-subtitle>
-  </mat-card-header>
-  <img *ngIf="v.thumbnail" mat-card-image [src]="'data:' + v.thumbnailContentType + ';base64,' + v.thumbnail" [alt]="v.name + ' thumbnail'" style="max-height:200px;object-fit:contain;" />
-  <mat-card-content>
-    <section>
-      <strong>Venue ID:</strong> {{ v.venueId }}<br>
-      <strong>Address:</strong> {{ v.address }}<br>
-      <strong>Description:</strong> {{ v.description }}<br>
-      <strong>Seats:</strong> {{ v.numberOfSeats }}<br>
-    </section>
-  </mat-card-content>
-  <mat-card-actions>
-    <button mat-button routerLink="/venues">Back to list</button>
-  </mat-card-actions>
-</mat-card>
+<div *ngIf="error()" class="error-container animate-fade-in">
+  <mat-card appearance="outlined" class="error-card">
+    <mat-card-content>
+      <div class="error-icon-container">
+        <mat-icon color="warn">error_outline</mat-icon>
+      </div>
+      <div class="error-message">
+        <h3>Error Loading Venue</h3>
+        <p>{{ error() }}</p>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>
 
-<mat-card class="venue-map-card">
-  <mat-card-header>
-    <mat-card-title>Venue Map</mat-card-title>
-  </mat-card-header>
-  <mat-card-content>
-    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
-      <button mat-mini-fab color="primary" (click)="zoomOut()" aria-label="Zoom out"><mat-icon>zoom_out</mat-icon></button>
-      <span>Zoom: {{ zoom() | number:'1.1-2' }}x</span>
-      <button mat-mini-fab color="primary" (click)="zoomIn()" aria-label="Zoom in"><mat-icon>zoom_in</mat-icon></button>
-    </div>    <div class="venue-canvas-container" style="height: 600px;">
+<div *ngIf="venue()" class="venue-details-section animate-fade-in">
+  <mat-card appearance="outlined" class="venue-details-card mat-elevation-z3">
+    <div class="venue-hero" [ngClass]="{'has-image': venue()?.thumbnail}">
+      <div class="venue-header-content">
+        <h1 class="venue-name">{{ venue()?.name }}</h1>
+        <h2 class="venue-location">
+          <mat-icon class="location-icon">location_on</mat-icon>
+          {{ venue()?.city }}, {{ venue()?.country }}
+        </h2>        <div class="venue-stats">
+          <div class="stat-item">
+            <mat-icon>grid_view</mat-icon>
+            <div class="stat-content">
+              <span class="stat-inline">{{ venue()?.sectors?.length || 0 }} Sectors</span>
+            </div>
+          </div>
+          <div class="stat-item">
+            <mat-icon>event_seat</mat-icon>
+            <div class="stat-content">
+              <span class="stat-inline">{{ venue()?.numberOfSeats | number }} Seats</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div *ngIf="venue()?.thumbnail" class="venue-image-container">
+        <img class="venue-hero-image" 
+             [src]="'data:' + venue()?.thumbnailContentType + ';base64,' + venue()?.thumbnail" 
+             [alt]="venue()?.name + ' thumbnail'">
+      </div>
+      <div *ngIf="!venue()?.thumbnail" class="venue-image-placeholder">
+        <mat-icon class="placeholder-icon">stadium</mat-icon>
+        <p>No image available</p>
+      </div>
+    </div>
+    
+    <mat-divider></mat-divider>
+    
+    <mat-card-content class="venue-details-content">
+      <h3 class="section-title">
+        <mat-icon>info</mat-icon>
+        Venue Details
+      </h3>
+      
+      <div class="venue-info-grid">
+        <div class="info-item">
+          <div class="info-label">Venue ID</div>
+          <div class="info-value">{{ venue()?.venueId }}</div>
+        </div>
+        
+        <div class="info-item">
+          <div class="info-label">Address</div>
+          <div class="info-value">{{ venue()?.address || 'Not provided' }}</div>
+        </div>
+        
+        <div class="info-item full-width">
+          <div class="info-label">Description</div>
+          <div class="info-value description">{{ venue()?.description || 'No description available' }}</div>
+        </div>
+      </div>
+    </mat-card-content>
+    
+    <mat-card-actions class="venue-actions" align="end">
+      <button mat-stroked-button routerLink="/venues" class="back-button">
+        <mat-icon>arrow_back</mat-icon>
+        BACK TO LIST
+      </button>
+      <button mat-raised-button color="primary" [routerLink]="['/venues', venue()?.venueId, 'edit']" aria-label="Edit venue" class="edit-button">
+        <mat-icon>edit</mat-icon>
+        EDIT VENUE
+      </button>
+    </mat-card-actions>
+  </mat-card>
+</div>
+
+<mat-card appearance="outlined" class="venue-map-card mat-elevation-z3">
+  <div class="card-header-banner">
+    <div class="header-content">
+      <h2 class="banner-title">Venue Map</h2>
+      <p class="banner-subtitle">Interactive venue visualization</p>
+    </div>
+    <div class="header-icon">
+      <mat-icon>map</mat-icon>
+    </div>
+  </div>
+  
+  <mat-card-content class="map-content">
+    <div class="controls-container">
+      <div class="zoom-controls">
+        <button mat-mini-fab color="primary" (click)="zoomOut()" aria-label="Zoom out" class="zoom-button">
+          <mat-icon>zoom_out</mat-icon>
+        </button>
+        <div class="zoom-badge">
+          <span class="zoom-level">{{ zoom() | number:'1.1-2' }}x</span>
+        </div>
+        <button mat-mini-fab color="primary" (click)="zoomIn()" aria-label="Zoom in" class="zoom-button">
+          <mat-icon>zoom_in</mat-icon>
+        </button>
+      </div>
+        <div class="view-mode-indicator">
+        <div class="mode-badge sector-mode" *ngIf="!showSeats()">
+          <mat-icon>view_module</mat-icon> 
+          <span>Sector View</span>
+        </div>
+        <div class="mode-badge seat-mode" *ngIf="showSeats()">
+          <mat-icon>grid_on</mat-icon> 
+          <span>Seat View</span>
+        </div>
+      </div>
+    </div>
+    <div class="venue-canvas-container" style="height: 600px;">
       <ko-stage [config]="{ width: canvasWidth, height: canvasHeight, draggable: true, scaleX: zoom(), scaleY: zoom() }">
         <ko-layer>
           <ng-container *ngIf="venue() && venue()?.sectors">            <!-- Zoomed out view - show sectors as boxes -->            @if (!showSeats()) {
@@ -146,38 +250,51 @@
           </ng-container>
         </ko-layer>
       </ko-stage>
-    </div>    <div style="font-size:0.9em; color:#666; margin-top:0.5rem;">
-      <span *ngIf="!showSeats()">Zoom in (>1.5x) to see individual seats in each sector.</span>
-      <span *ngIf="showSeats()">Showing seat visualization. Zoom out (<1.5x) to see sector overview.</span>
-      <div style="color: #f57f17; margin-top: 4px; font-size: 0.85em;" *ngIf="venue()?.sectors?.length && !hasCompleteData()">
-        Note: Some sectors or seats may not be displayed due to missing position data.
+    </div>    <div class="map-instructions">
+      <div class="instruction-card" *ngIf="!showSeats()">
+        <div class="instruction-icon">
+          <mat-icon>touch_app</mat-icon>
+        </div>
+        <div class="instruction-content">
+          <h4>Tip: Zoom In for Details</h4>
+          <p>Zoom in (>1.5x) to see individual seats within each sector.</p>
+        </div>
+      </div>
+      
+      <div class="instruction-card" *ngIf="showSeats()">
+        <div class="instruction-icon">
+          <mat-icon>zoom_out_map</mat-icon>
+        </div>
+        <div class="instruction-content">
+          <h4>Detailed Seat View</h4>
+          <p>Currently showing all seats. Zoom out (<1.5x) to see sector overview.</p>
+        </div>
+      </div>
+      
+      <div *ngIf="venue()?.sectors?.length && !hasCompleteData()" class="warning-card">
+        <div class="warning-icon">
+          <mat-icon color="warn">warning</mat-icon>
+        </div>
+        <div class="warning-content">
+          <h4>Limited Data Available</h4>
+          <p>Some sectors or seats may not be displayed due to missing position data.</p>
+        </div>
       </div>
     </div>
-    
-    <div *ngIf="showSeats()" class="seat-legend">
-      <div class="legend-item">
-        <div class="color-box active"></div>
-        <span>Active seat</span>
+      <div *ngIf="showSeats()" class="legend-container">
+      <div class="legend-header">
+        <mat-icon>format_color_fill</mat-icon>
+        <h3>Seat Legend</h3>
       </div>
-      <div class="legend-item">
-        <div class="color-box inactive"></div>
-        <span>Inactive seat</span>
-      </div>
-    </div>
-  </mat-card-content>
-</mat-card>
-
-<mat-card *ngIf="venue() as v" class="sectors-card">
-  <mat-card-header>
-    <mat-card-title>Sectors</mat-card-title>
-  </mat-card-header>
-  <mat-card-content>
-    <mat-list *ngIf="v.sectors?.length">
-      <mat-list-item *ngFor="let sector of v.sectors">
-        <div mat-line><strong>{{ sector.name }}</strong></div>
-        <div mat-line>Seats: {{ sector.numberOfSeats }}</div>
-      </mat-list-item>
-    </mat-list>
-    <p *ngIf="!v.sectors?.length">No sectors available for this venue.</p>
+      <div class="seat-legend">
+        <div class="legend-item">
+          <div class="color-box active"></div>
+          <span>Active seat</span>
+        </div>
+        <div class="legend-item">
+          <div class="color-box inactive"></div>
+          <span>Inactive seat</span>
+        </div>
+      </div>    </div>
   </mat-card-content>
 </mat-card>

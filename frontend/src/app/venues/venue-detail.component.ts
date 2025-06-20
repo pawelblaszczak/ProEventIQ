@@ -5,7 +5,11 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { NgxKonvaModule } from 'ngx-konva';
+import { RouterModule } from '@angular/router';
 import { Venue } from '../api/model/venue';
 import { Sector } from '../api/model/sector';
 import { SeatRow } from '../api/model/seat-row';
@@ -15,7 +19,18 @@ import { ProEventIQService } from '../api/api/pro-event-iq.service';
 @Component({
   selector: 'app-venue-detail',
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatButtonModule, MatListModule, MatIconModule, NgxKonvaModule],
+  imports: [
+    CommonModule, 
+    MatCardModule, 
+    MatButtonModule, 
+    MatListModule, 
+    MatIconModule, 
+    MatProgressSpinnerModule,
+    MatDividerModule,
+    MatExpansionModule,
+    NgxKonvaModule, 
+    RouterModule
+  ],
   templateUrl: './venue-detail.component.html',
   styleUrls: ['./venue-detail.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -111,7 +126,9 @@ export class VenueDetailComponent {
     // Create an effect to update seat visibility based on zoom
     effect(() => {
       const currentZoom = this.zoom();
-      this.showSeats.set(currentZoom > 1.5);
+      // Only read signals here, do not write to them
+      // Instead, update showSeats in zoomIn/zoomOut methods
+      // this.showSeats.set(currentZoom > 1.5); // <-- REMOVE THIS LINE
       console.log(`Zoom changed to ${currentZoom}, showing seats: ${currentZoom > 1.5}`);
     });
   }
@@ -196,25 +213,13 @@ export class VenueDetailComponent {
   zoomIn() {
     const newZoom = this.zoom() * 1.2;
     this.zoom.set(newZoom);
-    
-    // Check if we crossed the threshold for showing seats
-    const newShowSeats = newZoom > 1.5;
-    if (newShowSeats !== this.showSeats()) {
-      console.log(`Zoom threshold crossed: ${newShowSeats ? 'Showing seats' : 'Hiding seats'}`);
-      this.showSeats.set(newShowSeats);
-    }
+    this.showSeats.set(newZoom > 1.5);
   }
 
   zoomOut() {
     const newZoom = this.zoom() / 1.2;
     this.zoom.set(newZoom);
-    
-    // Check if we crossed the threshold for showing seats
-    const newShowSeats = newZoom > 1.5;
-    if (newShowSeats !== this.showSeats()) {
-      console.log(`Zoom threshold crossed: ${newShowSeats ? 'Showing seats' : 'Hiding seats'}`);
-      this.showSeats.set(newShowSeats);
-    }
+    this.showSeats.set(newZoom > 1.5);
   }  // No longer needed - using position directly from backend
   // Get color for seat based on status
   getSeatColor(seat: Seat): string {

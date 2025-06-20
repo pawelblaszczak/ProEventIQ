@@ -12,6 +12,7 @@ export const routes: Routes = [
       { path: 'home', component: HomeComponent },
       { path: 'venues', component: VenuesListComponent },
       { path: 'venues/:id', loadComponent: () => import('./venues/venue-detail.component').then(m => m.VenueDetailComponent) },
+      { path: 'venues/:id/edit', loadComponent: () => import('./venues/venue-edit.component').then(m => m.VenueEditComponent) },
       // Other routes will be added here as needed
     ]
   }

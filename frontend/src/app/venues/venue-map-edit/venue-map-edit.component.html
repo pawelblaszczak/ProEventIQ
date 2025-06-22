@@ -1,0 +1,141 @@
+<div *ngIf="isLoading" class="loading-overlay">
+  <div class="spinner-container">
+    <mat-progress-spinner color="primary" mode="indeterminate" diameter="50"></mat-progress-spinner>
+    <p>Loading venue data...</p>
+  </div>
+</div>
+
+<mat-card appearance="outlined" class="venue-map-edit-card mat-elevation-z3">
+  <div class="card-header-banner">
+    <div class="header-content">
+      <div class="title-with-icon">
+        <mat-icon class="title-icon">edit_map</mat-icon>
+        <div>
+          <h2 class="banner-title">Edit Venue Map</h2>
+          <p class="banner-subtitle">Arrange sectors and seats interactively</p>
+        </div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button mat-stroked-button color="warn" (click)="discardChanges()" aria-label="Discard changes" class="action-btn">
+        <mat-icon>close</mat-icon>
+        Discard
+      </button>
+      <button mat-raised-button color="primary" (click)="saveChanges()" [disabled]="!hasChanges()" aria-label="Save changes" class="action-btn">
+        <mat-icon>save</mat-icon>
+        Save Map
+      </button>
+    </div>
+  </div>
+  
+  <mat-card-content class="map-content">
+    <div class="editing-tools-panel">
+      <mat-button-toggle-group [(ngModel)]="selectedTool" aria-label="Map editing tools" vertical>        <mat-button-toggle value="select" aria-label="Select tool">
+          <mat-icon>touch_app</mat-icon>
+          <span class="tool-label">Select</span>
+        </mat-button-toggle>
+        <mat-button-toggle value="move" aria-label="Move tool">
+          <mat-icon>open_with</mat-icon>
+          <span class="tool-label">Move</span>
+        </mat-button-toggle>
+        <mat-button-toggle value="rotate" aria-label="Rotate tool">
+          <mat-icon>rotate_right</mat-icon>
+          <span class="tool-label">Rotate</span>
+        </mat-button-toggle>
+      </mat-button-toggle-group>
+    </div>
+    
+    <div class="controls-container">
+      <div class="zoom-controls">
+        <button mat-mini-fab color="primary" (click)="zoomOut()" aria-label="Zoom out" class="zoom-button">
+          <mat-icon>zoom_out</mat-icon>
+        </button>
+        <div class="zoom-badge">
+          <span class="zoom-level">1.0x</span>
+        </div>
+        <button mat-mini-fab color="primary" (click)="zoomIn()" aria-label="Zoom in" class="zoom-button">
+          <mat-icon>zoom_in</mat-icon>
+        </button>
+      </div>
+    </div>
+    
+    <div class="venue-canvas-container" style="height: 600px;">
+      <div class="map-placeholder">
+        <div class="placeholder-message">
+          <mat-icon>map</mat-icon>
+          <h3>Interactive Venue Map</h3>
+          <p>Select tools from the left panel to arrange sectors and seats</p>
+          
+          <!-- Sample sectors for visualization -->
+          <div class="sample-sectors">
+            <div class="sample-sector" [class.selected]="selectedTool === 'select'">
+              <div class="sector-label">Main Hall</div>
+              <div class="sector-seats">250 seats</div>
+            </div>
+            <div class="sample-sector">
+              <div class="sector-label">Balcony</div>
+              <div class="sector-seats">120 seats</div>
+            </div>
+            <div class="sample-sector">
+              <div class="sector-label">VIP Area</div>
+              <div class="sector-seats">30 seats</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+      <div class="edit-controls">
+      <mat-expansion-panel expanded>
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            <mat-icon>tune</mat-icon>
+            Properties
+          </mat-panel-title>
+        </mat-expansion-panel-header>
+        
+        <div class="property-form">
+          <h3>Selected Sector Properties</h3>
+          
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Position X</mat-label>
+            <input matInput type="number" [(ngModel)]="sectorPositionX" (change)="updateSectorPosition()">
+          </mat-form-field>
+          
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Position Y</mat-label>
+            <input matInput type="number" [(ngModel)]="sectorPositionY" (change)="updateSectorPosition()">
+          </mat-form-field>
+          
+          <button mat-stroked-button color="primary" (click)="editRows()" class="edit-rows-btn">
+            <mat-icon>table_rows</mat-icon>
+            Edit Rows & Seats
+          </button>
+        </div>
+      </mat-expansion-panel>
+    </div>
+    
+    <div class="editor-instructions">
+      <div class="instruction-card">
+        <div class="instruction-icon">
+          <mat-icon>help_outline</mat-icon>
+        </div>
+        <div class="instruction-content">
+          <h4>Editing Instructions</h4>
+          <ul>
+            <li>Use <strong>Select</strong> tool to choose a sector</li>
+            <li>Use <strong>Move</strong> tool to drag sectors to new positions</li>
+            <li>Use <strong>Properties</strong> panel to fine-tune positions</li>
+            <li>Click <strong>Save Map</strong> when finished</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </mat-card-content>
+  
+  <mat-card-actions align="end">
+    <button mat-stroked-button (click)="goBack()" type="button" class="back-button">
+      <mat-icon>arrow_back</mat-icon>
+      Return to Venue
+    </button>
+  </mat-card-actions>
+</mat-card>

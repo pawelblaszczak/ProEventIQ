@@ -100,14 +100,21 @@
   </mat-card>
 </div>
 
-<mat-card appearance="outlined" class="venue-map-card mat-elevation-z3">
-  <div class="card-header-banner">
+<mat-card appearance="outlined" class="venue-map-card mat-elevation-z3">  <div class="card-header-banner">
     <div class="header-content">
-      <h2 class="banner-title">Venue Map</h2>
-      <p class="banner-subtitle">Interactive venue visualization</p>
+      <div class="title-with-icon">
+        <mat-icon class="title-icon">map</mat-icon>
+        <div>
+          <h2 class="banner-title">Venue Map</h2>
+          <p class="banner-subtitle">Interactive venue visualization</p>
+        </div>
+      </div>
     </div>
-    <div class="header-icon">
-      <mat-icon>map</mat-icon>
+    <div class="header-actions">
+      <button mat-stroked-button color="primary" class="edit-map-btn" [routerLink]="['/venues', venue()?.venueId, 'map-edit']" aria-label="Edit venue map">
+        <mat-icon>edit</mat-icon>
+        Edit Map
+      </button>
     </div>
   </div>
   

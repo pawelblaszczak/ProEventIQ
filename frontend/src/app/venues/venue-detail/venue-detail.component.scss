@@ -417,6 +417,26 @@ mat-card {
     align-items: center;
     
     .header-content {
+      flex: 1;
+      
+      .title-with-icon {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+      
+      .title-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 24px;
+        border-radius: 50%;
+        background-color: rgba(255, 255, 255, 0.2);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 8px;
+      }
+
       .banner-title {
         margin: 0;
         font-size: 1.5rem;
@@ -430,6 +450,16 @@ mat-card {
       }
     }
     
+    .header-actions {
+      .edit-map-btn {
+        background-color: rgba(255, 255, 255, 0.15);
+        color: white;
+        &:hover {
+          background-color: rgba(255, 255, 255, 0.25);
+        }
+      }
+    }
+    
     .header-icon {
       width: 50px;
       height: 50px;
@@ -438,12 +468,7 @@ mat-card {
       display: flex;
       justify-content: center;
       align-items: center;
-      
-      mat-icon {
-        font-size: 30px;
-        height: 30px;
-        width: 30px;
-      }
+      // This style is kept for backward compatibility but no longer used
     }
   }
   

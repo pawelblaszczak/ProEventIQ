@@ -41,6 +41,7 @@ export class VenueEditComponent {
   thumbnailPreview = signal<string | null>(null);
   private thumbnailBase64: string | null = null;
   private thumbnailContentType: string | null = null;
+  dragOver = signal(false);
 
   constructor() {
     const fb = inject(FormBuilder);    this.form = fb.group({
@@ -194,6 +195,50 @@ export class VenueEditComponent {
       this.router.navigate(['/venues', this.venueId]);
     } else {
       this.router.navigate(['/venues']);
+    }
+  }
+  // Debounce timer to prevent flickering
+  private dragLeaveTimeout: number | null = null;
+
+  onDragOver(event: DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    // Clear any pending leave timeout
+    if (this.dragLeaveTimeout) {
+      window.clearTimeout(this.dragLeaveTimeout);
+      this.dragLeaveTimeout = null;
+    }
+    
+    this.dragOver.set(true);
+  }
+
+  onDragLeave(event: DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    // Use a short timeout to prevent flickering when moving between child elements
+    this.dragLeaveTimeout = window.setTimeout(() => {
+      this.dragOver.set(false);
+    }, 50);
+  }
+
+  onDrop(event: DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    // Clear any pending leave timeout
+    if (this.dragLeaveTimeout) {
+      window.clearTimeout(this.dragLeaveTimeout);
+      this.dragLeaveTimeout = null;
+    }
+    
+    this.dragOver.set(false);
+    if (event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files.length > 0) {
+      const file = event.dataTransfer.files[0];
+      // Create a fake event to reuse onThumbnailChange logic
+      const fakeEvent = { target: { files: [file] } } as unknown as Event;
+      this.onThumbnailChange(fakeEvent);
     }
   }
 }

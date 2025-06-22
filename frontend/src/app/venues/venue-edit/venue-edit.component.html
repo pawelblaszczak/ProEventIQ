@@ -94,9 +94,12 @@
             Venue Image
           </h3>
             <div class="thumbnail-section" style="display: flex; gap: 16px;">
-            <div class="thumbnail-upload-area" style="flex: 1;">
+            <div class="thumbnail-upload-area" style="flex: 1;" 
+                 (dragover)="onDragOver($event)" 
+                 (dragleave)="onDragLeave($event)"                 (drop)="onDrop($event)" 
+                 [class.drag-over]="dragOver()">
               <mat-card appearance="outlined" class="upload-card thumbnail-card-equal-height" style="height: 180px; display: flex;">
-                <mat-card-content style="width: 100%; display: flex; align-items: center; justify-content: center;">
+                <mat-card-content style="width: 100%; display: flex; align-items: center; justify-content: center; position: relative;">
                   <div class="upload-content" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%;">
                     <div class="upload-icon">
                       <mat-icon>cloud_upload</mat-icon>
@@ -112,6 +115,11 @@
                       <mat-icon>add_photo_alternate</mat-icon>
                       Choose Image
                     </label>
+                  </div>
+                  <!-- Drag overlay is always present but only visible when dragging -->
+                  <div class="drag-overlay" [style.display]="dragOver() ? 'flex' : 'none'">
+                    <mat-icon>file_upload</mat-icon>
+                    <span>Drop image here</span>
                   </div>
                 </mat-card-content>
               </mat-card>

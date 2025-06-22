@@ -259,15 +259,53 @@ mat-form-field {
     border-radius: $border-radius;
     transition: $transition-standard;
     @extend .thumbnail-card-equal-height;
+    position: relative; // Add position relative
     
-    &:hover {
+    &:hover, &.drag-over {
       border-color: $primary-color;
       transform: none;
       box-shadow: 0 2px 10px rgba(25, 118, 210, 0.1);
     }
     
+    &.drag-over {
+      background-color: rgba(25, 118, 210, 0.05);
+    }
+    
+    .drag-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-color: rgba(255, 255, 255, 0.9);
+      z-index: 10;
+      border-radius: $border-radius;
+      pointer-events: none;
+      animation: fadeIn 0.2s ease-in-out;
+      
+      mat-icon {
+        color: $primary-color;
+        font-size: 3rem !important;
+        height: 3rem !important;
+        width: 3rem !important;
+        margin-bottom: 1rem;
+      }
+      
+      span {
+        font-size: 1.2rem;
+        color: $primary-color;
+        font-weight: 500;
+      }
+    }
+    
     mat-card-content {
       padding: 2rem;
+      position: relative; // Ensure stable positioning
+      z-index: 2; // Place content above the overlay
     }
     
     .upload-content {
@@ -312,6 +350,8 @@ mat-form-field {
         cursor: pointer;
         transition: $transition-standard;
         font-weight: 500;
+        position: relative; // Ensure stable positioning
+        z-index: 3; // Keep button on top
         
         &:hover {
           background-color: darken($primary-color, 10%);
@@ -332,7 +372,7 @@ mat-form-field {
   .preview-card, .no-preview-card {
     @extend .thumbnail-card-equal-height;
     
-    mat-card-content {
+    mat-card_content {
       padding: 1.5rem;
       height: 100%;
       display: flex;

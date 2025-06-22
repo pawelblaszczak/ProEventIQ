@@ -124,16 +124,6 @@
           <mat-icon>zoom_in</mat-icon>
         </button>
       </div>
-        <div class="view-mode-indicator">
-        <div class="mode-badge sector-mode" *ngIf="!showSeats()">
-          <mat-icon>view_module</mat-icon> 
-          <span>Sector View</span>
-        </div>
-        <div class="mode-badge seat-mode" *ngIf="showSeats()">
-          <mat-icon>grid_on</mat-icon> 
-          <span>Seat View</span>
-        </div>
-      </div>
     </div>
     <div class="venue-canvas-container" style="height: 600px;">
       <ko-stage [config]="{ width: canvasWidth, height: canvasHeight, draggable: true, scaleX: zoom(), scaleY: zoom() }">

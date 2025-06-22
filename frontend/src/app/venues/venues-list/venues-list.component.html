@@ -59,7 +59,15 @@
     <div class="venues-grid">
       @for (venue of filteredVenues(); track venue.venueId) {
         <mat-card class="venue-card" [routerLink]="['/venues', venue.venueId]">
-          <img mat-card-image [src]="venue.thumbnail ? ('data:' + venue.thumbnailContentType + ';base64,' + venue.thumbnail) : 'assets/venue-placeholder.jpg'" [alt]="venue.name || 'Venue'">
+          <ng-container *ngIf="venue.thumbnail; else noImage">
+            <img mat-card-image [src]="'data:' + venue.thumbnailContentType + ';base64,' + venue.thumbnail" [alt]="venue.name || 'Venue'">
+          </ng-container>
+          <ng-template #noImage>
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; background: #f5f5f5; width: 100%;">
+              <mat-icon style="font-size: 96px; color: #bdbdbd; width: 96px; height: 96px; display: flex; align-items: center; justify-content: center;">image_not_supported</mat-icon>
+              <span style="margin-top: 8px; color: #888; font-size: 16px; text-align: center;">No image available</span>
+            </div>
+          </ng-template>
           <mat-card-content>
             <div class="venue-badges">
               <span class="venue-badge seats-badge">

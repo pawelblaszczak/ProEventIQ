@@ -3,7 +3,13 @@
     <div class="loading-icon-wrapper">
       <mat-progress-spinner color="primary" mode="indeterminate" diameter="50"></mat-progress-spinner>
     </div>
-    <p class="loading-text">Loading venue data...</p>
+    <p class="loading-text">
+      @if (isAddMode()) {
+        Preparing venue form...
+      } @else {
+        Loading venue data...
+      }
+    </p>
     <div class="loading-progress-dots">
       <span class="dot"></span>
       <span class="dot"></span>
@@ -15,13 +21,23 @@
 @if (!loading()) {
   <div class="venue-edit-section animate-fade-in">
     <mat-card appearance="outlined" class="venue-edit-card mat-elevation-z3">
-      <div class="card-header-banner">
-        <div class="header-content">
+      <div class="card-header-banner">        <div class="header-content">
           <h1 class="banner-title">
-            <mat-icon>edit</mat-icon>
-            Edit Venue
+            @if (isAddMode()) {
+              <mat-icon>add</mat-icon>
+              Add New Venue
+            } @else {
+              <mat-icon>edit</mat-icon>
+              Edit Venue
+            }
           </h1>
-          <p class="banner-subtitle">Update venue information and settings</p>
+          <p class="banner-subtitle">
+            @if (isAddMode()) {
+              Create a new venue with detailed information
+            } @else {
+              Update venue information and settings
+            }
+          </p>
         </div>
         <div class="header-icon">
           <mat-icon>stadium</mat-icon>
@@ -62,9 +78,7 @@
                 <input matInput formControlName="country" required placeholder="Enter country" />
                 <mat-icon matSuffix>public</mat-icon>
               </mat-form-field>
-            </div>
-            
-            <mat-form-field appearance="outline" class="full-width">
+            </div>            <mat-form-field appearance="outline" class="full-width">
               <mat-label>Description</mat-label>
               <textarea matInput formControlName="description" 
                        placeholder="Enter venue description (optional)"
@@ -79,12 +93,11 @@
             <mat-icon>image</mat-icon>
             Venue Image
           </h3>
-          
-          <div class="thumbnail-section">
-            <div class="thumbnail-upload-area">
-              <mat-card appearance="outlined" class="upload-card thumbnail-card-equal-height">
-                <mat-card-content>
-                  <div class="upload-content">
+            <div class="thumbnail-section" style="display: flex; gap: 16px;">
+            <div class="thumbnail-upload-area" style="flex: 1;">
+              <mat-card appearance="outlined" class="upload-card thumbnail-card-equal-height" style="height: 180px; display: flex;">
+                <mat-card-content style="width: 100%; display: flex; align-items: center; justify-content: center;">
+                  <div class="upload-content" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%;">
                     <div class="upload-icon">
                       <mat-icon>cloud_upload</mat-icon>
                     </div>
@@ -104,15 +117,15 @@
               </mat-card>
             </div>
             
-            <div class="thumbnail-preview">
+            <div class="thumbnail-preview" style="flex: 1;">
               @if (thumbnailPreview()) {
-                <mat-card appearance="outlined" class="preview-card thumbnail-card-equal-height">
-                  <mat-card-content>
+                <mat-card appearance="outlined" class="preview-card thumbnail-card-equal-height" style="height: 180px; display: flex;">
+                  <mat-card-content style="width: 100%; display: flex; flex-direction: column; justify-content: space-between;">
                     <div class="preview-header">
                       <h4>Preview</h4>
                       <mat-icon color="primary">visibility</mat-icon>
                     </div>
-                    <div class="preview-image-container">
+                    <div class="preview-image-container" style="flex-grow: 1; display: flex; align-items: center; justify-content: center;">
                       <img [src]="thumbnailPreview()" 
                            alt="Venue thumbnail preview" 
                            class="preview-image" />
@@ -120,11 +133,11 @@
                   </mat-card-content>
                 </mat-card>
               } @else {
-                <mat-card appearance="outlined" class="no-preview-card thumbnail-card-equal-height">
-                  <mat-card-content>
-                    <div class="no-preview-content">
-                      <mat-icon>image_not_supported</mat-icon>
-                      <p>No image selected</p>
+                <mat-card appearance="outlined" class="no-preview-card thumbnail-card-equal-height" style="height: 180px; display: flex;">
+                  <mat-card-content style="width: 100%; display: flex; align-items: center; justify-content: center;">
+                    <div class="no-preview-content" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%;">
+                      <mat-icon style="font-size: 72px; height: 72px; width: 72px; margin-bottom: 12px; color: #bdbdbd;">image_not_supported</mat-icon>
+                      <p style="text-align: center;">No image selected</p>
                     </div>
                   </mat-card-content>
                 </mat-card>
@@ -146,21 +159,22 @@
             </mat-card>
           }
         </form>
-      </mat-card-content>
-      
-      <mat-card-actions class="venue-actions" align="end">
+      </mat-card-content>      <mat-card-actions class="venue-actions" align="end">
         <button mat-stroked-button type="button" (click)="onCancel()" class="cancel-button">
           <mat-icon>close</mat-icon>
           CANCEL
-        </button>
-        <button mat-raised-button 
+        </button>        <button mat-raised-button 
                 color="primary" 
                 type="submit" 
                 [disabled]="form.invalid || loading()"
                 (click)="onSubmit()"
                 class="save-button">
           <mat-icon>save</mat-icon>
-          SAVE CHANGES
+          @if (isAddMode()) {
+            CREATE VENUE
+          } @else {
+            SAVE CHANGES
+          }
         </button>
       </mat-card-actions>
     </mat-card>

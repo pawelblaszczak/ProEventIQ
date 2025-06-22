@@ -338,15 +338,66 @@ mat-card {
     }
   }
   
+  // Actions section
   .venue-actions {
-    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.5rem 2rem;
+    background-color: rgba(0, 0, 0, 0.02);
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
     
-    .back-button {
-      margin-right: 1rem;
-    }
-    
-    .edit-button {
+    button {
       min-width: 120px;
+      height: 48px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      border-radius: 8px;
+      transition: $transition-standard;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      
+      mat-icon {
+        font-size: 1.2rem;
+        height: 1.2rem;
+        width: 1.2rem;
+      }
+      
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      
+      &.delete-button {
+        border-color: $warn-color;
+        color: $warn-color;
+        margin-right: auto; // Push to the left
+        
+        &:hover:not(:disabled) {
+          background-color: rgba($warn-color, 0.1);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba($warn-color, 0.3);
+        }
+      }
+      
+      &.back-button {
+        &:hover:not(:disabled) {
+          background-color: rgba(0, 0, 0, 0.04);
+          transform: translateY(-1px);
+        }
+      }
+      
+      &.edit-button {
+        background-color: $primary-color;
+        
+        &:hover:not(:disabled) {
+          background-color: darken($primary-color, 10%);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba($primary-color, 0.3);
+        }
+      }
     }
   }
 }

@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { MaterialModule } from '../../material.module';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { ProEventIQService } from '../../api/api/pro-event-iq.service';
 import { Venue } from '../../api/model/venue';
 
@@ -16,6 +16,7 @@ import { Venue } from '../../api/model/venue';
 })
 export class VenuesListComponent implements OnInit {
   private readonly apiService = inject(ProEventIQService);
+  private readonly router = inject(Router);
   
   venues = signal<Venue[]>([]);
   filteredVenues = signal<Venue[]>([]);
@@ -137,9 +138,7 @@ export class VenuesListComponent implements OnInit {
   resetFilters(): void {
     this.filteredVenues.set(this.venues());
   }
-
   addVenue(): void {
-    // Navigate to add venue form
-    console.log('Navigate to add venue form');
+    this.router.navigate(['/venues/add']);
   }
 }

@@ -1,0 +1,124 @@
+// Global variables
+$primary-color: #1976d2;
+$warn-color: #f44336;
+$transition-standard: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+.confirmation-dialog {
+  min-width: 400px;
+  max-width: 500px;
+  
+  .dialog-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.5rem 1.5rem 1rem 1.5rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    background: linear-gradient(90deg, lighten($primary-color, 25%) 0%, lighten($primary-color, 15%) 100%);
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    
+    .dialog-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      
+      mat-icon {
+        font-size: 2rem;
+        height: 2rem;
+        width: 2rem;
+      }
+    }
+    
+    .dialog-title {
+      margin: 0;
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #333;
+    }
+  }
+  
+  .dialog-content {
+    padding: 1.5rem;
+    
+    .dialog-message {
+      margin: 0;
+      font-size: 1rem;
+      line-height: 1.5;
+      color: #666;
+    }
+  }
+  
+  .dialog-actions {
+    padding: 1rem 1.5rem 1.5rem 1.5rem;
+    gap: 1rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    background-color: rgba(0, 0, 0, 0.02);
+    
+    button {
+      min-width: 100px;
+      height: 40px;
+      font-weight: 600;
+      border-radius: 6px;
+      transition: $transition-standard;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      
+      mat-icon {
+        font-size: 1.1rem;
+        height: 1.1rem;
+        width: 1.1rem;
+      }
+      
+      &.cancel-button {
+        &:hover {
+          background-color: rgba(0, 0, 0, 0.04);
+          transform: translateY(-1px);
+        }
+      }
+      
+      &.confirm-button {
+        &:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+      }
+    }
+  }
+}
+
+// Mobile responsive
+@media (max-width: 768px) {
+  .confirmation-dialog {
+    min-width: 280px;
+    max-width: 90vw;
+    
+    .dialog-header {
+      padding: 1rem;
+      flex-direction: column;
+      text-align: center;
+      gap: 0.5rem;
+      
+      .dialog-title {
+        font-size: 1.25rem;
+      }
+    }
+    
+    .dialog-content {
+      padding: 1rem;
+      
+      .dialog-message {
+        text-align: center;
+      }
+    }
+    
+    .dialog-actions {
+      padding: 1rem;
+      flex-direction: column;
+      
+      button {
+        width: 100%;
+      }
+    }
+  }
+}

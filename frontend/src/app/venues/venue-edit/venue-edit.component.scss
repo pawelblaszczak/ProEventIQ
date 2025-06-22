@@ -409,24 +409,31 @@ mat-form-field {
 
 // Actions
 .venue-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   padding: 1.5rem 2rem;
-  background-color: #f8f9fa;
+  background-color: rgba(0, 0, 0, 0.02);
   border-top: 1px solid rgba(0, 0, 0, 0.1);
-  gap: 1rem;
   
-  .cancel-button {
+  .action-buttons-left {
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    
-    mat-icon {
-      font-size: 1.2rem;
-      height: 1.2rem;
-      width: 1.2rem;
-    }
+    gap: 1rem;
   }
   
-  .save-button {
+  .action-buttons-right {
+    display: flex;
+    gap: 1rem;
+    margin-left: auto;
+  }
+  
+  button {
+    min-width: 120px;
+    height: 48px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    border-radius: 8px;
+    transition: $transition-standard;
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -440,6 +447,34 @@ mat-form-field {
     &:disabled {
       opacity: 0.6;
       cursor: not-allowed;
+    }
+    
+    &.delete-button {
+      border-color: $warn-color;
+      color: $warn-color;
+      
+      &:hover:not(:disabled) {
+        background-color: rgba($warn-color, 0.1);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba($warn-color, 0.3);
+      }
+    }
+    
+    &.cancel-button {
+      &:hover:not(:disabled) {
+        background-color: rgba(0, 0, 0, 0.04);
+        transform: translateY(-1px);
+      }
+    }
+    
+    &.save-button {
+      background-color: $primary-color;
+      
+      &:hover:not(:disabled) {
+        background-color: darken($primary-color, 10%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba($primary-color, 0.3);
+      }
     }
   }
 }
@@ -466,13 +501,24 @@ mat-form-field {
   .venue-edit-content {
     padding: 1.5rem;
   }
-  
-  .venue-actions {
+    .venue-actions {
     padding: 1rem;
     flex-direction: column;
+    gap: 1rem;
+    
+    .action-buttons-left,
+    .action-buttons-right {
+      width: 100%;
+      justify-content: center;
+    }
+    
+    .action-buttons-right {
+      margin-left: 0;
+    }
     
     button {
       width: 100%;
+      min-width: unset;
     }
   }
 }

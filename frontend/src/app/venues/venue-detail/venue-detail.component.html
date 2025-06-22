@@ -54,7 +54,7 @@
              [alt]="venue()?.name + ' thumbnail'">
       </div>
       <div *ngIf="!venue()?.thumbnail" class="venue-image-placeholder">
-        <mat-icon class="placeholder-icon">stadium</mat-icon>
+        <mat-icon class="placeholder-icon" style="font-size: 72px; color: #bdbdbd;">image_not_supported</mat-icon>
         <p>No image available</p>
       </div>
     </div>
@@ -79,8 +79,15 @@
         </div>
       </div>
     </mat-card-content>
-    
-    <mat-card-actions class="venue-actions" align="end">
+      <mat-card-actions class="venue-actions" align="end">
+      <button mat-stroked-button 
+              color="warn" 
+              (click)="onDelete()" 
+              class="delete-button"
+              [disabled]="loading()">
+        <mat-icon>delete</mat-icon>
+        DELETE VENUE
+      </button>
       <button mat-stroked-button routerLink="/venues" class="back-button">
         <mat-icon>arrow_back</mat-icon>
         BACK TO LIST

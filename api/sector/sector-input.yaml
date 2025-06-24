@@ -14,4 +14,4 @@ SectorInput:
       type: string
     status:
       type: string
-      enum: [ACCESSIBLE, INACCESSIBLE]
+      enum: [active, inactive]

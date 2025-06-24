@@ -2,19 +2,19 @@ import { Routes } from '@angular/router';
 import { MainLayoutComponent } from './main-layout.component';
 import { VenuesListComponent } from './venues/venues-list/venues-list.component';
 import { HomeComponent } from './home/home.component';
-import { VenueMapEditComponent } from './venues/venue-map-edit/venue-map-edit.component';
 
 export const routes: Routes = [
   {
     path: '',
     component: MainLayoutComponent,
     children: [
-      { path: '', redirectTo: 'home', pathMatch: 'full' },      { path: 'home', component: HomeComponent },
+      { path: '', redirectTo: 'home', pathMatch: 'full' },
+      { path: 'home', component: HomeComponent },
       { path: 'venues', component: VenuesListComponent },
       { path: 'venues/add', loadComponent: () => import('./venues/venue-edit/venue-edit.component').then(m => m.VenueEditComponent) },
       { path: 'venues/:id', loadComponent: () => import('./venues/venue-detail/venue-detail.component').then(m => m.VenueDetailComponent) },
       { path: 'venues/:id/edit', loadComponent: () => import('./venues/venue-edit/venue-edit.component').then(m => m.VenueEditComponent) },
-      { path: 'venues/:venueId/map-edit', component: VenueMapEditComponent },
+      { path: 'venues/:venueId/map-edit', loadComponent: () => import('./venues/venue-map-edit').then(m => m.VenueMapEditComponent) },
       // Other routes will be added here as needed
     ]
   }

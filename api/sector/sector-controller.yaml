@@ -30,6 +30,11 @@ sectorById:
     operationId: getSector
     parameters:
       - in: path
+        name: venueId
+        required: true
+        schema:
+          type: string
+      - in: path
         name: sectorId
         required: true
         schema:
@@ -46,6 +51,11 @@ sectorById:
     summary: Update a sector
     operationId: updateSector
     parameters:
+      - in: path
+        name: venueId
+        required: true
+        schema:
+          type: string
       - in: path
         name: sectorId
         required: true
@@ -69,6 +79,11 @@ sectorById:
     summary: Delete a sector
     operationId: deleteSector
     parameters:
+      - in: path
+        name: venueId
+        required: true
+        schema:
+          type: string
       - in: path
         name: sectorId
         required: true

@@ -186,6 +186,9 @@ public class VenueService {
         Sector sectorDto = new Sector();
         sectorDto.setSectorId(sectorEntity.getSectorId() != null ? sectorEntity.getSectorId().toString() : null);
         sectorDto.setName(sectorEntity.getName());
+        sectorDto.setOrder(sectorEntity.getOrder());
+        sectorDto.setRotation(sectorEntity.getRotation());
+        sectorDto.setPriceCategory(sectorEntity.getPriceCategory());
         
         mapSectorPosition(sectorEntity, sectorDto);
         mapSectorStatus(sectorEntity, sectorDto);

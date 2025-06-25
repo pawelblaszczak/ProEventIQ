@@ -71,6 +71,10 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
   zoom = signal(1);
   canvasWidth = 1200;
   canvasHeight = 800;
+  private resizeObserver: ResizeObserver | null = null;
+  private readonly resizeHandler = () => {
+    this.resizeCanvas();
+  };
   
   // Edit state
   editableSectors = signal<EditableSector[]>([]);
@@ -91,9 +95,7 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
     
     // Resize canvas initially and on window resize
     this.resizeCanvas();
-    window.addEventListener('resize', () => {
-      this.resizeCanvas();
-    });
+    window.addEventListener('resize', this.resizeHandler);
 
     // Track changes for unsaved work warning
     effect(() => {
@@ -147,7 +149,23 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
     window.addEventListener('keyup', this.handleKeyUp);
   }  ngAfterViewInit() {
     // Konva initialization will be handled by the effect when venue loads
-    this.resizeCanvas();
+    // Use multiple timeouts to ensure proper layout
+    setTimeout(() => {
+      this.resizeCanvas();
+      
+      // Set up ResizeObserver for the canvas container
+      if (this.canvasContainer?.nativeElement) {
+        this.resizeObserver = new ResizeObserver(() => {
+          this.resizeCanvas();
+        });
+        this.resizeObserver.observe(this.canvasContainer.nativeElement);
+      }
+    }, 100);
+    
+    // Additional resize after a longer delay to catch any layout changes
+    setTimeout(() => {
+      this.resizeCanvas();
+    }, 500);
   }
 
   private initializeKonva() {
@@ -161,6 +179,9 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
       console.log('Konva already initialized');
       return;
     }
+
+    // Ensure we have the latest container dimensions
+    this.resizeCanvas();
 
     console.log('Initializing Konva stage with dimensions:', this.canvasWidth, 'x', this.canvasHeight);
 
@@ -213,6 +234,11 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
 
     this.konvaInitialized = true;
     console.log('Konva stage initialized successfully');
+    
+    // Force another resize after initialization to ensure perfect fit
+    setTimeout(() => {
+      this.resizeCanvas();
+    }, 100);
 
     // Trigger initial rendering if we already have sectors
     if (this.editableSectors().length > 0) {
@@ -229,12 +255,25 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
     }
   }
   private resizeCanvas() {
-    // Set canvas to responsive size
-    const newWidth = Math.max(window.innerWidth - 400, 800); // Account for sidebar
-    const newHeight = Math.max(window.innerHeight * 0.7, 600);
-    
-    this.canvasWidth = newWidth;
-    this.canvasHeight = newHeight;
+    // Get actual container dimensions if available
+    if (this.canvasContainer?.nativeElement) {
+      const containerElement = this.canvasContainer.nativeElement;
+      
+      // Use clientWidth/clientHeight which gives the interior dimensions
+      // (excluding borders, scrollbars, but including padding)
+      this.canvasWidth = Math.max(containerElement.clientWidth || 800, 800);
+      this.canvasHeight = Math.max(containerElement.clientHeight || 600, 600);
+      
+      console.log('Container clientWidth:', containerElement.clientWidth, 'clientHeight:', containerElement.clientHeight);
+      console.log('Container getBoundingClientRect:', containerElement.getBoundingClientRect());
+    } else {
+      // Fallback to window-based calculation
+      const newWidth = Math.max(window.innerWidth - 400, 800); // Account for sidebar
+      const newHeight = Math.max(window.innerHeight * 0.7, 600);
+      
+      this.canvasWidth = newWidth;
+      this.canvasHeight = newHeight;
+    }
     
     // Update stage size if it exists
     if (this.stage) {
@@ -287,13 +326,13 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
           y: 100 + (Math.random() * 200) 
         };
         
-        console.log(`Initializing sector ${sector.name} at position:`, defaultPosition);
+        console.log(`Initializing sector ${sector.name} at position:`, defaultPosition, 'rotation:', sector.rotation);
         
         return {
           ...sector,
           isSelected: false,
           isDragging: false,
-          rotation: 0,
+          rotation: sector.rotation ?? 0,
           position: defaultPosition
         };
       });
@@ -912,7 +951,9 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
       const sectorsToSave = this.editableSectors().map(sector => {
             return {
           name: sector.name ?? '',
+          order: sector.order,
           position: sector.position,
+          rotation: sector.rotation,
           priceCategory: sector.priceCategory,
           status: sector.status
         };
@@ -989,6 +1030,12 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
     window.removeEventListener('beforeunload', this.handleBeforeUnload);
     window.removeEventListener('keydown', this.handleKeyDown);
     window.removeEventListener('keyup', this.handleKeyUp);
+    window.removeEventListener('resize', this.resizeHandler);
+    
+    // Clean up ResizeObserver
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+    }
     
     // Clean up Konva objects
     if (this.stage) {
@@ -1017,11 +1064,12 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
   getTotalSelectedSeats(): number {
     return this.selectedSectors().reduce((sum, s) => sum + (s.numberOfSeats ?? 0), 0);
   }
+
   // Keyboard state
-  ctrlPressed = signal(false);
+  private ctrlPressed = signal(false);
 
   private readonly handleKeyDown = (event: KeyboardEvent) => {
-    if (event.ctrlKey ?? event.metaKey) {
+    if (event.ctrlKey || event.metaKey) {
       this.ctrlPressed.set(true);
     }
   };
@@ -1031,4 +1079,9 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
       this.ctrlPressed.set(false);
     }
   };
+
+  // Expose ctrlPressed signal as a method for template usage
+  isCtrlPressed() {
+    return this.ctrlPressed();
+  }
 }

@@ -3,6 +3,8 @@ SectorInput:
   properties:
     name:
       type: string
+    order:
+      type: integer  
     position:
       type: object
       properties:
@@ -10,8 +12,10 @@ SectorInput:
           type: number
         y:
           type: number
+    rotation:
+      type: integer          
     priceCategory:
       type: string
     status:
       type: string
-      enum: [active, inactive]
+      enum: [active, inactive]        

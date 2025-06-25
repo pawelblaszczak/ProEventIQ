@@ -35,8 +35,11 @@ public class SectorService {
                 .orElseThrow(() -> new IllegalArgumentException("Venue not found"));
         SectorEntity entity = new SectorEntity();
         entity.setName(input.name());
+        entity.setOrder(input.order());
         entity.setPositionX(input.positionX());
         entity.setPositionY(input.positionY());
+        entity.setRotation(input.rotation());
+        entity.setPriceCategory(input.priceCategory());
         entity.setStatus(input.status());
         entity.setVenue(venue);
         return toDTO(sectorRepository.save(entity));
@@ -51,8 +54,11 @@ public class SectorService {
     public Optional<SectorDTO> updateSector(Long sectorId, SectorInputDTO input) {
         return sectorRepository.findById(sectorId).map(entity -> {
             entity.setName(input.name());
+            entity.setOrder(input.order());
             entity.setPositionX(input.positionX());
             entity.setPositionY(input.positionY());
+            entity.setRotation(input.rotation());
+            entity.setPriceCategory(input.priceCategory());
             entity.setStatus(input.status());
             return toDTO(sectorRepository.save(entity));
         });
@@ -71,8 +77,11 @@ public class SectorService {
         return new SectorDTO(
                 entity.getSectorId(),
                 entity.getName(),
+                entity.getOrder() != null ? entity.getOrder().intValue() : null,
                 entity.getPositionX(),
                 entity.getPositionY(),
+                entity.getRotation() != null ? entity.getRotation().intValue() : null,
+                entity.getPriceCategory(),
                 entity.getStatus(),
                 entity.getVenue() != null ? entity.getVenue().getVenueId() : null
         );

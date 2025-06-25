@@ -1,3 +1,3 @@
 package dev.knightcore.proeventiq.dto;
 
-public record SectorInputDTO(String name, Float positionX, Float positionY, String status) {}
+public record SectorInputDTO(String name, Integer order, Float positionX, Float positionY, Integer rotation, String priceCategory, String status) {}

@@ -160,7 +160,17 @@
     <!-- Canvas Area -->
     <mat-card class="canvas-card">
       <mat-card-content class="canvas-content">
-        <!-- Selection Info Panel -->
+        <!-- Canvas -->
+        <div class="venue-canvas-container" 
+             (keydown)="$event.key === 'Escape' && deselectAll()"
+             role="application"
+             aria-label="Venue map editor canvas">
+          <div #canvasContainer 
+               class="konva-canvas">
+          </div>
+        </div>
+
+        <!-- Selection Info Panel - Moved to bottom -->
         <div class="selection-panel" *ngIf="selectedSectors().length > 0">
           <div class="selection-info">
             @if (selectedSectors().length === 1) {
@@ -170,6 +180,10 @@
               </h4>
               <div class="sector-details">
                 <div class="detail-item">
+                  <span class="detail-label">Order:</span>
+                  <span class="detail-value">{{ selectedSectors()[0].order ?? '-' }}</span>
+                </div>
+                <div class="detail-item">
                   <span class="detail-label">Position:</span>
                   <span class="detail-value">                  
                     X: {{ selectedSectors()[0].position?.x ?? 0 }}, 
@@ -178,7 +192,7 @@
                 </div>
                 <div class="detail-item">
                   <span class="detail-label">Rotation:</span>
-                  <span class="detail-value">{{ selectedSectors()[0].rotation || 0 }}°</span>
+                  <span class="detail-value">{{ selectedSectors()[0].rotation }}°</span>
                 </div>
                 <div class="detail-item">
                   <span class="detail-label">Seats:</span>
@@ -219,18 +233,6 @@
           </button>
         </div>
 
-        <!-- Canvas -->
-        <div class="venue-canvas-container" 
-             (keydown)="$event.key === 'Escape' && deselectAll()"
-             role="application"
-             aria-label="Venue map editor canvas">
-          <div #canvasContainer 
-               class="konva-canvas" 
-               [style.width.px]="canvasWidth" 
-               [style.height.px]="canvasHeight">
-          </div>
-        </div>
-
         <!-- Instructions -->
         <div class="instructions-panel">
           <div class="instruction-card">
@@ -241,7 +243,7 @@
             </div>
           </div>
 
-          @if (ctrlPressed()) {
+          @if (isCtrlPressed()) {
             <div class="ctrl-indicator">
               <mat-icon color="primary">keyboard</mat-icon>
               <span>Multi-select mode active</span>

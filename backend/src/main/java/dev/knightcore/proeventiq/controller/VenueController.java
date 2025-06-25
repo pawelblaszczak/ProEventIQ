@@ -134,6 +134,12 @@ public class VenueController implements VenuesApi {
     // Mapping utility methods
     private SectorInputDTO toSectorInputDTO(SectorInput input) {
         String name = input.getName();
+
+        Integer order = null;
+        if (input.getOrder() != null) {
+            order = input.getOrder().intValue();
+        }
+
         Float positionX = null;
         Float positionY = null;
         
@@ -142,15 +148,22 @@ public class VenueController implements VenuesApi {
             positionY = input.getPosition().getY() != null ? input.getPosition().getY().floatValue() : null;
         }
         
+        Integer rotation = null;
+        if (input.getRotation() != null) {
+            rotation = input.getRotation().intValue();
+        }
+
+        String priceCategory = input.getPriceCategory();
         String status = input.getStatus() != null ? input.getStatus().getValue() : null;
         
-        return new SectorInputDTO(name, positionX, positionY, status);
+        return new SectorInputDTO(name, order, positionX, positionY, rotation, priceCategory, status);
     }
 
     private Sector toSector(SectorDTO dto) {
         Sector sector = new Sector();
         sector.setSectorId(dto.sectorId() != null ? dto.sectorId().toString() : null);
         sector.setName(dto.name());
+        sector.setOrder(dto.order());
         
         if (dto.positionX() != null && dto.positionY() != null) {
             SectorInputPosition position = new SectorInputPosition();
@@ -158,6 +171,9 @@ public class VenueController implements VenuesApi {
             position.setY(BigDecimal.valueOf(dto.positionY()));
             sector.setPosition(position);
         }
+        
+        sector.setRotation(dto.rotation());
+        sector.setPriceCategory(dto.priceCategory());
         
         if (dto.status() != null) {
             sector.setStatus(Sector.StatusEnum.fromValue(dto.status()));

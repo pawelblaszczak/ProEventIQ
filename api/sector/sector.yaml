@@ -5,6 +5,8 @@ Sector:
       type: string
     name:
       type: string
+    order:
+      type: integer      
     position:
       type: object
       properties:
@@ -12,6 +14,8 @@ Sector:
           type: number
         y:
           type: number
+    rotation:
+      type: integer          
     numberOfSeats:
       type: integer
     rows:

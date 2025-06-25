@@ -63,36 +63,6 @@
     <!-- Toolbar -->
     <mat-card class="toolbar-card">
       <mat-card-content class="toolbar-content">
-        <!-- Edit Mode Selection -->
-        <div class="tool-group">
-          <h3 class="tool-group-title">
-            <mat-icon>build</mat-icon>
-            Tools
-          </h3>
-          <div class="tool-buttons">
-            <button mat-icon-button 
-                    [class.active]="editMode() === 'select'"
-                    (click)="setEditMode('select')"
-                    matTooltip="Select Mode">
-              <mat-icon>mouse</mat-icon>
-            </button>
-            <button mat-icon-button 
-                    [class.active]="editMode() === 'move'"
-                    (click)="setEditMode('move')"
-                    matTooltip="Move Mode">
-              <mat-icon>open_with</mat-icon>
-            </button>
-            <button mat-icon-button 
-                    [class.active]="editMode() === 'rotate'"
-                    (click)="setEditMode('rotate')"
-                    matTooltip="Rotate Mode">
-              <mat-icon>rotate_right</mat-icon>
-            </button>
-          </div>
-        </div>
-
-        <mat-divider vertical></mat-divider>
-
         <!-- Sector Actions -->
         <div class="tool-group">
           <h3 class="tool-group-title">
@@ -107,13 +77,13 @@
             </button>
             <button mat-icon-button 
                     (click)="duplicateSector()"
-                    [disabled]="!selectedSector()"
+                    [disabled]="selectedSectors().length === 0"
                     matTooltip="Duplicate Sector">
               <mat-icon>content_copy</mat-icon>
             </button>
             <button mat-icon-button 
                     (click)="deleteSector()"
-                    [disabled]="!selectedSector()"
+                    [disabled]="selectedSectors().length === 0"
                     matTooltip="Delete Sector"
                     color="warn">
               <mat-icon>delete</mat-icon>
@@ -121,10 +91,8 @@
           </div>
         </div>
 
-        <mat-divider vertical></mat-divider>
-
         <!-- Rotation Controls -->
-        <div class="tool-group" *ngIf="selectedSector()">
+        <div class="tool-group" *ngIf="selectedSectors().length > 0">
           <h3 class="tool-group-title">
             <mat-icon>rotate_right</mat-icon>
             Rotate
@@ -193,50 +161,65 @@
     <mat-card class="canvas-card">
       <mat-card-content class="canvas-content">
         <!-- Selection Info Panel -->
-        <div class="selection-panel" *ngIf="selectedSector()">
+        <div class="selection-panel" *ngIf="selectedSectors().length > 0">
           <div class="selection-info">
-            <h4>
-              <mat-icon>info</mat-icon>
-              Selected: {{ selectedSector()?.name }}
-            </h4>
-            <div class="sector-details">
-              <div class="detail-item">
-                <span class="detail-label">Position:</span>
-                <span class="detail-value">                  X: {{ selectedSector()!.position?.x ?? 0 }}, 
-                  Y: {{ selectedSector()!.position?.y ?? 0 }}
-                </span>
+            @if (selectedSectors().length === 1) {
+              <h4>
+                <mat-icon>info</mat-icon>
+                Selected: {{ selectedSectors()[0].name }}
+              </h4>
+              <div class="sector-details">
+                <div class="detail-item">
+                  <span class="detail-label">Position:</span>
+                  <span class="detail-value">                  
+                    X: {{ selectedSectors()[0].position?.x ?? 0 }}, 
+                    Y: {{ selectedSectors()[0].position?.y ?? 0 }}
+                  </span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Rotation:</span>
+                  <span class="detail-value">{{ selectedSectors()[0].rotation || 0 }}°</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Seats:</span>
+                  <span class="detail-value">{{ selectedSectors()[0].numberOfSeats ?? 0 }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Status:</span>
+                  <span class="detail-value status" 
+                        [class.active]="selectedSectors()[0].status === 'active'"
+                        [class.inactive]="selectedSectors()[0].status === 'inactive'">
+                    {{ selectedSectors()[0].status }}
+                  </span>
+                </div>
               </div>
-              <div class="detail-item">
-                <span class="detail-label">Rotation:</span>
-                <span class="detail-value">{{ selectedSector()?.rotation || 0 }}°</span>
+            } @else {
+              <h4>
+                <mat-icon>info</mat-icon>
+                Multiple Selected ({{ selectedSectors().length }})
+              </h4>
+              <div class="sector-details">
+                <div class="detail-item">
+                  <span class="detail-label">Sectors:</span>
+                  <span class="detail-value">
+                    {{ getSelectedSectorNames() }}
+                  </span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Total Seats:</span>
+                  <span class="detail-value">
+                    {{ getTotalSelectedSeats() }}
+                  </span>
+                </div>
               </div>
-              <div class="detail-item">
-                <span class="detail-label">Seats:</span>
-                <span class="detail-value">{{ selectedSector()?.numberOfSeats || 0 }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Status:</span>
-                <span class="detail-value status" 
-                      [class.active]="selectedSector()?.status === 'active'"
-                      [class.inactive]="selectedSector()?.status === 'inactive'">
-                  {{ selectedSector()?.status }}
-                </span>
-              </div>
-            </div>
-          </div>          <button mat-icon-button (click)="deselectAll()" matTooltip="Deselect">
+            }
+          </div>
+          <button mat-icon-button (click)="deselectAll()" matTooltip="Deselect">
             <mat-icon>close</mat-icon>
           </button>
         </div>
 
-        <!-- Test Button for debugging -->
-        <div style="margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 4px;" *ngIf="editableSectors().length > 0">
-          <h4>Debug Test:</h4>
-          <button mat-stroked-button 
-                  (click)="selectSector(editableSectors()[0])"
-                  color="primary">
-            Test Select First Sector: {{ editableSectors()[0].name }}
-          </button>
-        </div>        <!-- Canvas -->
+        <!-- Canvas -->
         <div class="venue-canvas-container" 
              (keydown)="$event.key === 'Escape' && deselectAll()"
              role="application"
@@ -253,26 +236,17 @@
           <div class="instruction-card">
             <mat-icon>info</mat-icon>
             <div class="instruction-content">
-              @switch (editMode()) {
-                @case ('select') {
-                  <h4>Select Mode</h4>
-                  <p>Click on sectors to select them. Drag to move selected sectors.</p>
-                }
-                @case ('move') {
-                  <h4>Move Mode</h4>
-                  <p>Drag sectors to reposition them on the venue map.</p>
-                }
-                @case ('rotate') {
-                  <h4>Rotate Mode</h4>
-                  <p>Select a sector and use the rotation controls to rotate it.</p>
-                }
-                @default {
-                  <h4>Edit Mode</h4>
-                  <p>Select a tool from the toolbar to start editing.</p>
-                }
-              }
+              <h4>How to Edit</h4>
+              <p>Click sectors to select them. Hold <strong>Ctrl</strong> to select multiple sectors. Drag to move selected sectors together. Use rotation controls to rotate all selected sectors. Click on empty canvas to deselect all.</p>
             </div>
           </div>
+
+          @if (ctrlPressed()) {
+            <div class="ctrl-indicator">
+              <mat-icon color="primary">keyboard</mat-icon>
+              <span>Multi-select mode active</span>
+            </div>
+          }
 
           @if (hasChanges()) {
             <div class="changes-indicator">

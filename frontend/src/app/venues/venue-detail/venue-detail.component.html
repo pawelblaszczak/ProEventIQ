@@ -62,11 +62,15 @@
     <mat-divider></mat-divider>
     
     <mat-card-content class="venue-details-content">
-      <h3 class="section-title">
-        <mat-icon>info</mat-icon>
-        Venue Details
-      </h3>
-      
+      <div class="venue-details-header-row">
+        <h3 class="section-title">
+          <mat-icon>info</mat-icon>
+          Venue Details
+        </h3>
+        <button mat-icon-button color="warn" (click)="onDelete()" class="delete-icon-btn" [disabled]="loading()" aria-label="Delete venue">
+          <mat-icon>delete</mat-icon>
+        </button>
+      </div>
       <div class="venue-info-grid">
         <div class="info-item">
           <div class="info-label">Address</div>
@@ -79,15 +83,7 @@
         </div>
       </div>
     </mat-card-content>
-      <mat-card-actions class="venue-actions" align="end">
-      <button mat-stroked-button 
-              color="warn" 
-              (click)="onDelete()" 
-              class="delete-button"
-              [disabled]="loading()">
-        <mat-icon>delete</mat-icon>
-        DELETE VENUE
-      </button>
+    <mat-card-actions class="venue-actions" align="end">
       <button mat-stroked-button routerLink="/venues" class="back-button">
         <mat-icon>arrow_back</mat-icon>
         BACK TO LIST

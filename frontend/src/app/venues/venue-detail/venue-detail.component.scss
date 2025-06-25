@@ -786,3 +786,28 @@ mat-card-content p {
 }
 
 // Removed sectors card reference
+
+.venue-details-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.delete-icon-btn {
+  margin-left: 1rem;
+  color: #f44336;
+  transition: background 0.2s;
+}
+
+.delete-icon-btn[disabled] {
+  opacity: 0.5;
+  pointer-events: none;
+}

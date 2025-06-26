@@ -147,10 +147,11 @@
           </h3>
           <div class="view-toggles">            <button mat-stroked-button 
                     [class.active]="showGrid()"
-                    (click)="showGrid.set(!showGrid())"
+                    [color]="showGrid() ? 'primary' : 'basic'"
+                    (click)="toggleGridDebug()"
                     matTooltip="Toggle Grid">
               <mat-icon>grid_on</mat-icon>
-              Grid
+              Grid {{ showGrid() ? 'ON' : 'OFF' }}
             </button>
           </div>
         </div>

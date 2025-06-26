@@ -126,6 +126,7 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
 
     effect(() => {
       if (this.layer) {
+        console.log('Grid visibility changed:', this.showGrid());
         if (this.showGrid()) {
           this.renderGrid();
         } else {
@@ -351,47 +352,37 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
     for (let i = 0; i <= Math.ceil(this.canvasWidth / this.gridSize); i++) {
       const line = new Konva.Line({
         points: [i * this.gridSize, 0, i * this.gridSize, this.canvasHeight],
-        stroke: '#e0e0e0',
+        stroke: '#ddd',
         strokeWidth: 1,
-        opacity: 0.5,
+        opacity: 0.7,
         listening: false,
         name: 'grid-line'
       });
       this.layer.add(line);
-      
-      // Move grid lines above background but below sectors
-      const background = this.layer.findOne('.canvas-background');
-      if (background) {
-        line.moveUp(); // Move above background
-      }
     }
 
     // Create horizontal lines
     for (let i = 0; i <= Math.ceil(this.canvasHeight / this.gridSize); i++) {
       const line = new Konva.Line({
         points: [0, i * this.gridSize, this.canvasWidth, i * this.gridSize],
-        stroke: '#e0e0e0',
+        stroke: '#ddd',
         strokeWidth: 1,
-        opacity: 0.5,
+        opacity: 0.7,
         listening: false,
         name: 'grid-line'
       });
       this.layer.add(line);
-      
-      // Move grid lines above background but below sectors
-      const background = this.layer.findOne('.canvas-background');
-      if (background) {
-        line.moveUp(); // Move above background
-      }
     }
 
     this.layer.batchDraw();
+    console.log('Grid rendered with', this.layer.find('.grid-line').length, 'lines');
   }
 
   private clearGrid() {
     if (!this.layer) return;
     
     const gridLines = this.layer.find('.grid-line');
+    console.log('Clearing', gridLines.length, 'grid lines');
     gridLines.forEach(line => line.destroy());
     this.layer.batchDraw();
   }
@@ -405,13 +396,34 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
 
     // Clear existing sectors
     this.sectorGroups.forEach(group => group.destroy());
-    this.sectorGroups.clear();    // Render each sector
+    this.sectorGroups.clear();
+
+    // Render each sector
     this.editableSectors().forEach(sector => {
       console.log('Creating sector group for:', sector.name, 'at position:', sector.position);
       const group = this.createSectorGroup(sector);
       if (group) {
         this.sectorGroups.set(sector.sectorId!, group);
       }
+    });
+
+    // Ensure proper z-index ordering: background -> grid -> sectors
+    const background = this.layer.findOne('.canvas-background');
+    if (background) {
+      background.moveToBottom();
+    }
+    
+    // Move grid lines above background
+    const gridLines = this.layer.find('.grid-line');
+    gridLines.forEach(line => {
+      if (background) {
+        line.moveUp();
+      }
+    });
+    
+    // Move all sector groups to top (above grid)
+    this.sectorGroups.forEach(group => {
+      group.moveToTop();
     });
 
     this.layer.batchDraw();
@@ -1083,5 +1095,21 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
   // Expose ctrlPressed signal as a method for template usage
   isCtrlPressed() {
     return this.ctrlPressed();
+  }
+
+  // Debug method to test grid functionality
+  toggleGridDebug() {
+    console.log('Grid toggle debug - current state:', this.showGrid());
+    this.showGrid.set(!this.showGrid());
+    console.log('Grid toggle debug - new state:', this.showGrid());
+    
+    // Force refresh
+    if (this.layer) {
+      if (this.showGrid()) {
+        this.renderGrid();
+      } else {
+        this.clearGrid();
+      }
+    }
   }
 }

@@ -1,0 +1,48 @@
+<div class="edit-row-dialog">
+  <div class="dialog-header">
+    <div class="dialog-icon">
+      <mat-icon color="primary">edit</mat-icon>
+    </div>
+    <h2 mat-dialog-title class="dialog-title">Edit Row Name</h2>
+  </div>
+  
+  <mat-dialog-content class="dialog-content">
+    <form [formGroup]="editRowForm" class="edit-row-form">
+      <mat-form-field appearance="outline" class="form-field">
+        <mat-label>Row Name</mat-label>
+        <input matInput formControlName="rowName" maxlength="32" required autocomplete="off">
+        @if (editRowForm.get('rowName')?.hasError('required')) {
+          <mat-error>Row name is required</mat-error>
+        }
+        <mat-hint align="end">{{ editRowForm.get('rowName')?.value?.length || 0 }}/32</mat-hint>
+      </mat-form-field>
+      
+      @if (data.orderNumber) {
+        <div class="row-info">
+          <mat-icon>info</mat-icon>
+          <span>Row Order: {{ data.orderNumber }}</span>
+        </div>
+      }
+    </form>
+  </mat-dialog-content>
+  
+  <mat-dialog-actions class="dialog-actions" align="end">
+    <button mat-stroked-button 
+            type="button" 
+            (click)="onCancel()" 
+            class="cancel-button">
+      <mat-icon>close</mat-icon>
+      Cancel
+    </button>
+    
+    <button mat-raised-button 
+            color="primary" 
+            type="button" 
+            (click)="onConfirm()" 
+            [disabled]="editRowForm.invalid"
+            class="confirm-button">
+      <mat-icon>check</mat-icon>
+      Update Row
+    </button>
+  </mat-dialog-actions>
+</div>

@@ -1,0 +1,46 @@
+<div class="add-row-dialog">
+  <div class="dialog-header">
+    <div class="dialog-icon">
+      <mat-icon color="primary">view_stream</mat-icon>
+    </div>
+    <h2 mat-dialog-title class="dialog-title">Add New Row</h2>
+  </div>
+  
+  <mat-dialog-content class="dialog-content">
+    <form [formGroup]="addRowForm" class="add-row-form">
+      <mat-form-field appearance="outline" class="form-field">
+        <mat-label>Row Name</mat-label>
+        <input matInput formControlName="rowName" maxlength="32" required autocomplete="off">
+        <mat-error *ngIf="addRowForm.get('rowName')?.hasError('required')">Row name is required</mat-error>
+        <mat-hint align="end">{{ addRowForm.get('rowName')?.value?.length || 0 }}/32</mat-hint>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="form-field">
+        <mat-label>Number of Seats</mat-label>
+        <input matInput type="number" formControlName="seatCount" min="1" max="50" required>
+        <mat-error *ngIf="addRowForm.get('seatCount')?.hasError('required')">Seat count is required</mat-error>
+        <mat-error *ngIf="addRowForm.get('seatCount')?.hasError('min')">Minimum 1 seat</mat-error>
+        <mat-error *ngIf="addRowForm.get('seatCount')?.hasError('max')">Maximum 50 seats</mat-error>
+      </mat-form-field>
+    </form>
+  </mat-dialog-content>
+  
+  <mat-dialog-actions class="dialog-actions" align="end">
+    <button mat-stroked-button 
+            type="button" 
+            (click)="onCancel()" 
+            class="cancel-button">
+      <mat-icon>close</mat-icon>
+      Cancel
+    </button>
+    
+    <button mat-raised-button 
+            color="primary" 
+            type="button" 
+            (click)="onConfirm()" 
+            [disabled]="addRowForm.invalid"
+            class="confirm-button">
+      <mat-icon>check</mat-icon>
+      Add Row
+    </button>
+  </mat-dialog-actions>
+</div>

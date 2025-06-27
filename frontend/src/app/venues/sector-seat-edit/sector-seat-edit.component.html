@@ -104,6 +104,12 @@
               <mat-icon>add</mat-icon>
             </button>
             <button mat-icon-button 
+                    (click)="editSelectedRowName()"
+                    [disabled]="selectedRows().length !== 1"
+                    matTooltip="Edit Row Name">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button 
                     (click)="deleteSelectedRows()"
                     matTooltip="Delete Empty Rows"
                     color="warn">

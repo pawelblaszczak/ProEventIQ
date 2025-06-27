@@ -14,8 +14,12 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatDialog } from '@angular/material/dialog';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ProEventIQService } from '../../api/api/pro-event-iq.service';
+import { AddSeatDialogComponent, AddSeatDialogData, AddSeatDialogResult } from './add-seat-dialog/add-seat-dialog.component';
+import { AddRowDialogComponent, AddRowDialogResult } from './add-row-dialog/add-row-dialog.component';
+import { EditRowDialogComponent, EditRowDialogData, EditRowDialogResult } from './edit-row-dialog/edit-row-dialog.component';
 import { Venue } from '../../api/model/venue';
 import { Sector } from '../../api/model/sector';
 import { SectorInput } from '../../api/model/sector-input';
@@ -70,6 +74,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
   private readonly proEventIQService = inject(ProEventIQService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
+  private readonly dialog = inject(MatDialog);
   private readonly destroy$ = new Subject<void>();
 
   // State signals
@@ -164,18 +169,17 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
           this.stage.scaleX(scale);
           this.stage.scaleY(scale);
           
-          // Update the canvas element size to match the scaled dimensions
-          if (this.canvasContainer) {
-            const canvasElement = this.canvasContainer.nativeElement.querySelector('canvas');
-            if (canvasElement) {
-              const newWidth = this.canvasWidth * scale;
-              const newHeight = this.canvasHeight * scale;
-              
-              canvasElement.style.width = `${newWidth}px`;
-              canvasElement.style.height = `${newHeight}px`;
-              canvasElement.style.transformOrigin = 'top left';
-            }
-          }
+          // Remove manual CSS scaling of the canvas element. Let Konva handle zoom.
+          // if (this.canvasContainer) {
+          //   const canvasElement = this.canvasContainer.nativeElement.querySelector('canvas');
+          //   if (canvasElement) {
+          //     const newWidth = this.canvasWidth * scale;
+          //     const newHeight = this.canvasHeight * scale;
+          //     canvasElement.style.width = `${newWidth}px`;
+          //     canvasElement.style.height = `${newHeight}px`;
+          //     canvasElement.style.transformOrigin = 'top left';
+          //   }
+          // }
           
           // Force redraw with a slight delay to ensure everything is updated
           requestAnimationFrame(() => {
@@ -464,19 +468,70 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
         name: 'row-group',
         x: 50,
         y: currentY,
-        draggable: false
+        draggable: false,
+        listening: true
       });
 
       // Row label
+      // Row label - align with first seat if available and offset by label width
+      let labelX = -40;
+      let labelY = 0;
+      let labelText = row.name ?? `Row ${rowIndex + 1}`;
+      let labelWidth = 0;
+      if (row.seats && row.seats.length > 0) {
+        // Find the seat with the lowest x (leftmost seat)
+        const firstSeat = row.seats.reduce((min, seat) => {
+          if (seat.position && min.position && typeof seat.position.x === 'number' && typeof min.position.x === 'number') {
+            return seat.position.x < min.position.x ? seat : min;
+          }
+          return min;
+        }, row.seats[0]);
+        if (firstSeat.position && typeof firstSeat.position.x === 'number' && typeof firstSeat.position.y === 'number') {
+          // Estimate label width using font size and text length (Konva.Text not yet created)
+          // Font is bold 14px, so approx 8px per char as a rough estimate
+          labelWidth = Math.max(50, labelText.length * 8);
+          labelX = firstSeat.position.x - labelWidth - 12; // 12px padding from seat
+          labelY = firstSeat.position.y + this.seatSize / 2 - 7; // Vertically center label (fontSize/2)
+        }
+      }
       const rowLabel = new Konva.Text({
-        text: row.name ?? `Row ${rowIndex + 1}`,
-        x: -40,
-        y: 0,
+        text: labelText,
+        x: labelX,
+        y: labelY,
         fontSize: 14,
         fill: '#333',
         fontStyle: 'bold',
-        listening: false
+        listening: true,
+        name: 'row-label'
       });
+      
+      // Add hover effects to make it clear it's clickable
+      rowLabel.on('mouseenter', () => {
+        rowLabel.fill('#1976d2');
+        document.body.style.cursor = 'pointer';
+        this.layer?.batchDraw();
+      });
+      
+      rowLabel.on('mouseleave', () => {
+        const selectedRowIds = this.selectedRows().map(r => r.seatRowId);
+        const isSelected = selectedRowIds.includes(row.seatRowId);
+        rowLabel.fill(isSelected ? '#1976d2' : '#333');
+        document.body.style.cursor = 'default';
+        this.layer?.batchDraw();
+      });
+      
+      // Add click events to the row label specifically
+      rowLabel.on('click', (e) => {
+        e.cancelBubble = true;
+        this.onRowClick(row, e);
+      });
+
+      rowLabel.on('contextmenu', (e) => {
+        e.evt.preventDefault();
+        e.cancelBubble = true;
+        this.onRowRightClick(row, e);
+      });
+
       rowGroup.add(rowLabel);
 
       // Render seats in this row
@@ -631,6 +686,21 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     // Handle seat clicks
     seatGroup.on('click', (e) => {
       e.cancelBubble = true;
+      // --- Fix: Adjust pointer position for zoom ---
+      const stage = this.stage;
+      const zoom = this.zoom();
+      let pointerPos = null;
+      if (stage) {
+        pointerPos = stage.getPointerPosition();
+        if (pointerPos && zoom !== 1) {
+          pointerPos = {
+            x: pointerPos.x / zoom,
+            y: pointerPos.y / zoom
+          };
+        }
+      }
+      // If you use pointerPos for custom selection, use the adjusted value
+      // For now, pass seat as before (Konva already knows which seat was clicked)
       this.handleSeatClick(seat);
     });
 
@@ -841,33 +911,77 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   // Toolbar actions
-  addNewRow() {
-    // Generate a temporary ID for the new row
-    const tempId = `temp-row-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
-    
-    // Calculate the next order number based on existing rows
-    const currentRows = this.sector()?.rows ?? [];
-    const maxOrderNumber = currentRows.length > 0 
-      ? Math.max(...currentRows.map(row => row.orderNumber ?? 0)) 
-      : 0;
-    
-    const newRow: EditableRow = {
-      seatRowId: tempId,
-      name: `Row ${currentRows.length + 1}`,
-      orderNumber: maxOrderNumber + 1,
-      seats: []
-    };
+  async addNewRow() {
+    const dialogRef = this.dialog.open(AddRowDialogComponent, {
+      width: '400px',
+      disableClose: true
+    });
+    const result = await dialogRef.afterClosed().toPromise() as AddRowDialogResult | null;
+    if (result && result.rowName && result.seatCount > 0) {
+      // Generate a temporary ID for the new row
+      const tempId = `temp-row-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+      // Calculate the next order number based on existing rows
+      const currentRows = this.sector()?.rows ?? [];
+      const maxOrderNumber = currentRows.length > 0 
+        ? Math.max(...currentRows.map(row => row.orderNumber ?? 0)) 
+        : 0;
 
-    const sector = this.sector();
-    if (sector) {
-      sector.rows.push(newRow);
-      this.sector.set({ ...sector });
+      // --- Calculate seat positions based on previous rows ---
+      let baseX = 0;
+      let baseY = 0;
+      let seatSpacing = this.gridSize;
+      if (currentRows.length > 0) {
+        const prevRow = currentRows[currentRows.length - 1];
+        if (prevRow.seats && prevRow.seats.length > 0) {
+          // Use x of first seat in previous row
+          baseX = prevRow.seats[0].position?.x ?? 0;
+          // Calculate spacing between seats in previous row
+          if (prevRow.seats.length > 1) {
+            const dx = prevRow.seats[1].position?.x ?? 0;
+            const sx = prevRow.seats[0].position?.x ?? 0;
+            const calcSpacing = dx - sx;
+            if (calcSpacing > 0) seatSpacing = calcSpacing;
+          }
+        }
+      }
+      // Calculate Y based on space between previous two rows
+      if (currentRows.length > 1) {
+        const prevRow = currentRows[currentRows.length - 1];
+        const prevPrevRow = currentRows[currentRows.length - 2];
+        const prevY = prevRow.seats[0]?.position?.y ?? 0;
+        const prevPrevY = prevPrevRow.seats[0]?.position?.y ?? 0;
+        const ySpacing = prevY - prevPrevY;
+        if (ySpacing > 0) {
+          baseY = prevY + ySpacing;
+        } else {
+          baseY = prevY + this.gridSize * 2;
+        }
+      } else if (currentRows.length === 1) {
+        // Only one previous row
+        const prevRow = currentRows[0];
+        baseY = (prevRow.seats[0]?.position?.y ?? 0) + this.gridSize * 2;
+      } else {
+        baseY = 0;
+      }
+      const newRow: EditableRow = {
+        seatRowId: tempId,
+        name: result.rowName,
+        orderNumber: maxOrderNumber + 1,
+        seats: Array.from({ length: result.seatCount }, (_, i) => ({
+          seatId: `temp-seat-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 8)}`,
+          orderNumber: i + 1,
+          position: { x: baseX + i * seatSpacing, y: baseY },
+          status: 'active',
+          selected: false
+        }))
+      };
+      const sector = this.sector();
+      if (sector) {
+        sector.rows.push(newRow);
+        this.sector.update((prev) => prev ? { ...prev, rows: [...prev.rows] } : prev);
+      }
       this.renderSector();
       this.hasChanges.set(true);
-      
-      this.snackBar.open(`Row "${newRow.name}" added`, 'Close', { duration: 2000 });
-    } else {
-      this.snackBar.open('Error: No sector loaded', 'Close', { duration: 3000 });
     }
   }
 
@@ -893,6 +1007,66 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     this.hasChanges.set(true);
     
     this.snackBar.open(`Seat ${newSeat.orderNumber} added to ${row.name}`, 'Close', { duration: 2000 });
+  }
+
+  addSeatsToRow(rowId: string, seatCount: number) {
+    const sector = this.sector();
+    if (!sector) {
+      this.snackBar.open('No sector loaded', 'Close', { duration: 3000 });
+      return;
+    }
+    
+    // Find the target row by ID
+    const targetRow = sector.rows.find(row => row.seatRowId === rowId);
+    if (!targetRow) {
+      this.snackBar.open('Selected row not found', 'Close', { duration: 3000 });
+      return;
+    }
+    
+    // Add the specified number of seats
+    const startingOrderNumber = (targetRow.seats?.length ?? 0) + 1;
+    if (!targetRow.seats) {
+      targetRow.seats = [];
+    }
+    let lastSeat = targetRow.seats.length > 0 ? targetRow.seats[targetRow.seats.length - 1] : null;
+    let penultimateSeat = targetRow.seats.length > 1 ? targetRow.seats[targetRow.seats.length - 2] : null;
+    let baseX = lastSeat && lastSeat.position && typeof lastSeat.position.x === 'number' ? lastSeat.position.x : 0;
+    let baseY = lastSeat && lastSeat.position && typeof lastSeat.position.y === 'number' ? lastSeat.position.y : 0;
+    // Calculate spacing
+    let seatSpacing = this.gridSize;
+    if (lastSeat && penultimateSeat && lastSeat.position && penultimateSeat.position && typeof lastSeat.position.x === 'number' && typeof penultimateSeat.position.x === 'number') {
+      seatSpacing = lastSeat.position.x - penultimateSeat.position.x;
+      if (seatSpacing <= 0) seatSpacing = this.gridSize;
+    }
+    for (let i = 0; i < seatCount; i++) {
+      const tempId = `temp-seat-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+      let x = baseX;
+      let y = baseY;
+      if (lastSeat && lastSeat.position && typeof lastSeat.position.x === 'number' && typeof lastSeat.position.y === 'number') {
+        x = lastSeat.position.x + seatSpacing;
+        y = lastSeat.position.y;
+      }
+      const newSeat: EditableSeat = {
+        seatId: tempId,
+        orderNumber: startingOrderNumber + i,
+        position: { x, y },
+        status: 'active' as const,
+        selected: false,
+        originalPosition: { x, y }
+      };
+      targetRow.seats.push(newSeat);
+      penultimateSeat = lastSeat;
+      lastSeat = newSeat;
+      baseX = x;
+      baseY = y;
+    }
+    this.renderSector();
+    this.hasChanges.set(true);
+    const rowName = targetRow.name || `Row ${targetRow.orderNumber}`;
+    const message = seatCount === 1 
+      ? `1 seat added to ${rowName}` 
+      : `${seatCount} seats added to ${rowName}`;
+    this.snackBar.open(message, 'Close', { duration: 2000 });
   }
 
   deleteSelectedSeats() {
@@ -954,9 +1128,11 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     });
 
     this.selectedSeats.set([]);
+    this.selectedRows.set([]);
+    this.updateRowVisualSelection();
   }
 
-  // Add seat in toolbar mode - add to first available row or create new row
+  // Add seat in toolbar mode - show dialog to select row and quantity
   addSeatInToolbarMode() {
     const sector = this.sector();
     if (!sector) {
@@ -964,18 +1140,35 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
       return;
     }
     
-    // Find the first row or create one if none exist
-    let targetRow = sector.rows.length > 0 ? sector.rows[0] : null;
-    
-    if (!targetRow) {
-      // Create a new row first
-      this.addNewRow();
-      targetRow = sector.rows[0];
+    // Check if there are any rows available
+    if (!sector.rows || sector.rows.length === 0) {
+      this.snackBar.open('Please add a row first before adding seats', 'Close', { duration: 3000 });
+      return;
     }
     
-    if (targetRow) {
-      this.addSeatToRow(targetRow);
-    }
+    // Prepare dialog data
+    const dialogData: AddSeatDialogData = {
+      rows: sector.rows.map(row => ({
+        seatRowId: row.seatRowId!,
+        name: row.name,
+        orderNumber: row.orderNumber
+      }))
+    };
+    
+    // Open the dialog
+    const dialogRef = this.dialog.open(AddSeatDialogComponent, {
+      width: '450px',
+      data: dialogData,
+      disableClose: false,
+      autoFocus: true
+    });
+    
+    // Handle dialog result
+    dialogRef.afterClosed().subscribe((result: AddSeatDialogResult | null) => {
+      if (result) {
+        this.addSeatsToRow(result.selectedRowId, result.seatCount);
+      }
+    });
   }
 
   // Zoom controls
@@ -1097,66 +1290,167 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     this.router.navigate(['/venues', this.venueId(), 'map-edit']);
   }
 
-  // Helper methods
-  getRowNameForSeat(seat: EditableSeat): string {
-    const sector = this.sector();
-    if (!sector) return 'Unknown Row';
+  // Row selection handlers
+  onRowClick(row: EditableRow, e: Konva.KonvaEventObject<MouseEvent>) {
+    const isCtrlPressed = this.isCtrlPressed();
     
-    for (const row of sector.rows) {
-      if (row.seats && row.seats.some(s => s.seatId === seat.seatId)) {
-        return row.name || 'Unnamed Row';
-      }
+    if (!isCtrlPressed) {
+      // Clear all selections if not holding Ctrl
+      this.deselectAll();
     }
-    return 'Unknown Row';
+    
+    // Toggle row selection
+    const currentSelectedRows = this.selectedRows();
+    const isRowSelected = currentSelectedRows.some(r => r.seatRowId === row.seatRowId);
+    
+    if (isRowSelected) {
+      // Deselect row
+      this.selectedRows.set(currentSelectedRows.filter(r => r.seatRowId !== row.seatRowId));
+    } else {
+      // Select row
+      this.selectedRows.set([...currentSelectedRows, row]);
+    }
+    
+    this.updateRowVisualSelection();
   }
 
-  getSelectedSeatInfo(): string {
-    const selected = this.selectedSeats();
-    if (selected.length === 0) return '';
-    if (selected.length === 1) {
-      const rowName = this.getRowNameForSeat(selected[0]);
-      return `Seat ${selected[0].orderNumber ?? 'Unknown'} in ${rowName}`;
+  onRowRightClick(row: EditableRow, e: Konva.KonvaEventObject<MouseEvent>) {
+    // Select the row if not already selected
+    const currentSelectedRows = this.selectedRows();
+    const isRowSelected = currentSelectedRows.some(r => r.seatRowId === row.seatRowId);
+    
+    if (!isRowSelected) {
+      this.selectedRows.set([row]);
+      this.updateRowVisualSelection();
     }
-    return `${selected.length} seats selected`;
+    
+    // Open edit dialog
+    this.editRowName(row);
+  }
+
+  private updateRowVisualSelection() {
+    const selectedRowIds = this.selectedRows().map(r => r.seatRowId);
+    
+    // Update visual selection for all rows
+    this.rowGroups.forEach((group, rowId) => {
+      const isSelected = selectedRowIds.includes(rowId);
+      
+      // Find row label and update its appearance
+      const rowLabel = group.findOne('.row-label') as Konva.Text;
+      if (rowLabel) {
+        rowLabel.fill(isSelected ? '#1976d2' : '#333');
+        rowLabel.fontStyle(isSelected ? 'bold' : 'bold');
+        
+        // Add selection background if selected
+        let selectionBg = group.findOne('#selection-bg') as Konva.Rect;
+        if (isSelected && !selectionBg) {
+          selectionBg = new Konva.Rect({
+            id: 'selection-bg',
+            x: rowLabel.x() - 4,
+            y: rowLabel.y() - 2,
+            width: rowLabel.width() + 8,
+            height: rowLabel.height() + 4,
+            fill: 'rgba(25, 118, 210, 0.1)',
+            stroke: '#1976d2',
+            strokeWidth: 1,
+            cornerRadius: 4
+          });
+          group.add(selectionBg);
+          selectionBg.moveToBottom();
+        } else if (!isSelected && selectionBg) {
+          selectionBg.destroy();
+        }
+      }
+    });
+    
+    this.layer?.batchDraw();
+  }
+
+  // ...existing code...
+  async editRowName(row: EditableRow) {
+    const dialogRef = this.dialog.open(EditRowDialogComponent, {
+      width: '400px',
+      disableClose: true,
+      data: {
+        rowId: row.seatRowId,
+        currentName: row.name,
+        orderNumber: row.orderNumber
+      } as EditRowDialogData
+    });
+
+    const result = await dialogRef.afterClosed().toPromise() as EditRowDialogResult | null;
+    if (result && result.rowName && result.rowName !== row.name) {
+      // Update the row name
+      row.name = result.rowName;
+      
+      // Update the sector signal to trigger re-rendering
+      this.sector.update((prev) => prev ? { ...prev, rows: [...prev.rows] } : prev);
+      
+      // Re-render the canvas
+      this.renderSector();
+      this.hasChanges.set(true);
+      
+      // Show success message
+      this.snackBar.open(`Row renamed to "${result.rowName}"`, 'Close', {
+        duration: 3000,
+        horizontalPosition: 'right',
+        verticalPosition: 'top'
+      });
+    }
+  }
+
+  editSelectedRowName() {
+    const selectedRows = this.selectedRows();
+    if (selectedRows.length === 1) {
+      this.editRowName(selectedRows[0]);
+    }
+  }
+
+  getRowNameForSeat(seat: EditableSeat): string {
+    const sector = this.sector();
+    if (!sector) return 'Unknown';
+    
+    const row = sector.rows.find(r => 
+      r.seats.some(s => s.seatId === seat.seatId)
+    );
+    return row?.name || 'Unknown';
+  }
+
+  private normalizeSeatOrderNumbers() {
+    const sector = this.sector();
+    if (!sector) return;
+    
+    sector.rows.forEach(row => {
+      row.seats.forEach((seat, index) => {
+        seat.orderNumber = index + 1;
+      });
+    });
+  }
+
+  private normalizeRowOrderNumbers() {
+    const sector = this.sector();
+    if (!sector) return;
+    
+    sector.rows.forEach((row, index) => {
+      row.orderNumber = index + 1;
+    });
   }
 
   getTotalSeats(): number {
     const sector = this.sector();
     if (!sector) return 0;
-    return sector.rows.reduce((total, row) => total + (row.seats?.length ?? 0), 0);
+    
+    return sector.rows.reduce((total, row) => total + (row.seats?.length || 0), 0);
   }
 
-  // Helper method to normalize row order numbers
-  private normalizeRowOrderNumbers() {
-    const sector = this.sector();
-    if (!sector) return;
-
-    // Sort rows by current order number (or fallback to index)
-    sector.rows.sort((a, b) => (a.orderNumber ?? 0) - (b.orderNumber ?? 0));
-    
-    // Reassign order numbers sequentially
-    sector.rows.forEach((row, index) => {
-      row.orderNumber = index + 1;
-    });
-    
-    this.sector.set({ ...sector });
-  }
-
-  // Helper method to normalize seat order numbers within each row
-  private normalizeSeatOrderNumbers() {
-    const sector = this.sector();
-    if (!sector) return;
-
-    sector.rows.forEach(row => {
-      // Sort seats by current order number (or fallback to index)
-      row.seats.sort((a, b) => (a.orderNumber ?? 0) - (b.orderNumber ?? 0));
-      
-      // Reassign order numbers sequentially within each row
-      row.seats.forEach((seat, index) => {
-        seat.orderNumber = index + 1;
-      });
-    });
-    
-    this.sector.set({ ...sector });
+  getSelectedSeatInfo(): string {
+    const selected = this.selectedSeats();
+    if (selected.length === 0) return 'No seats selected';
+    if (selected.length === 1) {
+      const seat = selected[0];
+      const rowName = this.getRowNameForSeat(seat);
+      return `Seat ${seat.orderNumber || 'Unknown'} in ${rowName}`;
+    }
+    return `${selected.length} seats selected`;
   }
 }

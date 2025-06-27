@@ -1,0 +1,64 @@
+<!-- Moved to sector-seat-edit/add-seat-dialog/add-seat-dialog.component.html -->
+<div class="add-seat-dialog">
+  <div class="dialog-header">
+    <div class="dialog-icon">
+      <mat-icon color="primary">event_seat</mat-icon>
+    </div>
+    <h2 mat-dialog-title class="dialog-title">Add Seats</h2>
+  </div>
+  
+  <mat-dialog-content class="dialog-content">
+    <form [formGroup]="addSeatForm" class="add-seat-form">
+      <mat-form-field appearance="outline" class="form-field">
+        <mat-label>Select Row</mat-label>
+        <mat-select formControlName="selectedRowId" required>
+          <mat-option *ngFor="let row of data.rows" [value]="row.seatRowId">
+            {{ row.name || 'Row ' + row.orderNumber }}
+          </mat-option>
+        </mat-select>
+        <mat-error *ngIf="addSeatForm.get('selectedRowId')?.hasError('required')">
+          Please select a row
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="form-field">
+        <mat-label>Number of Seats</mat-label>
+        <input matInput 
+               type="number" 
+               formControlName="seatCount" 
+               min="1" 
+               max="50" 
+               required>
+        <mat-error *ngIf="addSeatForm.get('seatCount')?.hasError('required')">
+          Please enter number of seats
+        </mat-error>
+        <mat-error *ngIf="addSeatForm.get('seatCount')?.hasError('min')">
+          Must add at least 1 seat
+        </mat-error>
+        <mat-error *ngIf="addSeatForm.get('seatCount')?.hasError('max')">
+          Cannot add more than 50 seats at once
+        </mat-error>
+      </mat-form-field>
+    </form>
+  </mat-dialog-content>
+  
+  <mat-dialog-actions class="dialog-actions" align="end">
+    <button mat-stroked-button 
+            type="button" 
+            (click)="onCancel()" 
+            class="cancel-button">
+      <mat-icon>close</mat-icon>
+      Cancel
+    </button>
+    
+    <button mat-raised-button 
+            color="primary" 
+            type="button" 
+            (click)="onConfirm()" 
+            [disabled]="addSeatForm.invalid"
+            class="confirm-button">
+      <mat-icon>add</mat-icon>
+      Add Seats
+    </button>
+  </mat-dialog-actions>
+</div>

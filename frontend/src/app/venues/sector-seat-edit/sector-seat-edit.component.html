@@ -156,6 +156,13 @@
               <mat-icon>grid_on</mat-icon>
               Grid {{ showGrid() ? 'ON' : 'OFF' }}
             </button>
+            <button mat-stroked-button
+                    [color]="snapToGrid() ? 'primary' : 'basic'"
+                    (click)="toggleSnapToGrid()"
+                    matTooltip="Toggle Snap to Grid">
+              <mat-icon>grid_4x4</mat-icon>
+              Snap {{ snapToGrid() ? 'ON' : 'OFF' }}
+            </button>
           </div>
         </div>
       </mat-card-content>

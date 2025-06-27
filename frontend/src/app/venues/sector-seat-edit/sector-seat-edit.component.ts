@@ -119,6 +119,9 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
 
   private seatTooltip: Konva.Label | null = null;
 
+  // Snap to grid state
+  snapToGrid = signal(true);
+
   constructor() {
     // Handle keyboard events for multi-select
     effect(() => {
@@ -631,18 +634,81 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
       this.handleSeatClick(seat);
     });
 
-    // Handle seat dragging
-    seatGroup.on('dragend', () => {
-      const newPos = seatGroup.position();
-      this.updateSeatPosition(seat, newPos.x, newPos.y);
+    // --- Multi-seat drag logic ---
+    let dragOrigin: { [seatId: string]: { x: number; y: number } } = {};
+    let dragStartPos: { x: number; y: number } | null = null;
+    seatGroup.on('dragstart', () => {
+      const selected = this.selectedSeats();
+      dragOrigin = {};
+      selected.forEach(sel => {
+        dragOrigin[sel.seatId!] = {
+          x: sel.position?.x ?? 0,
+          y: sel.position?.y ?? 0
+        };
+      });
+      dragStartPos = seatGroup.position();
     });
+    seatGroup.on('dragmove', () => {
+      const selected = this.selectedSeats();
+      if (selected.length > 1 && seat.selected) {
+        // Calculate delta from drag start
+        if (!dragStartPos) return;
+        const newPos = seatGroup.position();
+        const dx = newPos.x - dragStartPos.x;
+        const dy = newPos.y - dragStartPos.y;
+        // Move all selected seats except the one being dragged (which Konva already moved)
+        selected.forEach(sel => {
+          if (sel.seatId !== seat.seatId) {
+            const group = this.seatGroups.get(sel.seatId!);
+            if (group && dragOrigin[sel.seatId!]) {
+              const orig = dragOrigin[sel.seatId!];
+              let nx = orig.x + dx;
+              let ny = orig.y + dy;
+              if (this.snapToGrid()) {
+                nx = Math.round(nx / this.gridSize) * this.gridSize;
+                ny = Math.round(ny / this.gridSize) * this.gridSize;
+              }
+              group.position({ x: nx, y: ny });
+            }
+          }
+        });
+        this.layer?.batchDraw();
+      }
+    });
+    seatGroup.on('dragend', () => {
+      const selected = this.selectedSeats();
+      if (selected.length > 1 && seat.selected) {
+        // Calculate delta from drag start
+        if (!dragStartPos) return;
+        const newPos = seatGroup.position();
+        const dx = newPos.x - dragStartPos.x;
+        const dy = newPos.y - dragStartPos.y;
+        // Update all selected seats' positions
+        selected.forEach(sel => {
+          if (dragOrigin[sel.seatId!]) {
+            const orig = dragOrigin[sel.seatId!];
+            const nx = orig.x + dx;
+            const ny = orig.y + dy;
+            this.updateSeatPosition(sel, nx, ny);
+          }
+        });
+      } else {
+        // Single seat drag
+        const newPos = seatGroup.position();
+        this.updateSeatPosition(seat, newPos.x, newPos.y);
+      }
+      dragOrigin = {};
+      dragStartPos = null;
+    });
+    // --- End multi-seat drag logic ---
 
     return seatGroup;
   }
 
   private getSeatColor(seat: EditableSeat): string {
-    if (seat.selected) return '#bbdefb';
-    return seat.status === 'active' ? '#4caf50' : '#f44336';
+    // Use a neutral gray for unselected, and a strong accent for selected
+    if (seat.selected) return '#1976d2'; // prominent blue for selected
+    return seat.status === 'active' ? '#bdbdbd' : '#e57373'; // neutral gray for active, soft red for inactive
   }
 
   private handleSeatClick(seat: EditableSeat) {
@@ -749,9 +815,13 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   private updateSeatPosition(seat: EditableSeat, x: number, y: number) {
-    // Snap to grid
-    const gridX = Math.round(x / this.gridSize) * this.gridSize;
-    const gridY = Math.round(y / this.gridSize) * this.gridSize;
+    // Snap to grid if enabled
+    let gridX = x;
+    let gridY = y;
+    if (this.snapToGrid()) {
+      gridX = Math.round(x / this.gridSize) * this.gridSize;
+      gridY = Math.round(y / this.gridSize) * this.gridSize;
+    }
 
     if (!seat.position) {
       seat.position = { x: gridX, y: gridY };
@@ -934,6 +1004,10 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
   toggleGrid() {
     this.showGrid.set(!this.showGrid());
     this.renderGrid();
+  }
+
+  toggleSnapToGrid() {
+    this.snapToGrid.set(!this.snapToGrid());
   }
 
   // Save changes

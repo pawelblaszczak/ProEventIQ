@@ -369,12 +369,20 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
       this.editableSectors.set(editableSectors);
     }
   }
+
+  // Ensure proper z-index ordering: background -> grid -> sectors
+  private fixLayerZOrder() {
+    if (!this.layer) return;
+    const background = this.layer.findOne('.canvas-background');
+    if (background) background.moveToBottom();
+    const gridLines = this.layer.find('.grid-line');
+    gridLines.forEach(line => { if (background) line.moveUp(); });
+    this.sectorGroups.forEach(group => { group.moveToTop(); });
+  }
+
   private renderGrid() {
     if (!this.layer) return;
-
-    // Remove existing grid
     this.clearGrid();
-
     if (!this.showGrid()) return;
 
     // Create vertical lines
@@ -405,6 +413,7 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
 
     this.layer.batchDraw();
     console.log('Grid rendered with', this.layer.find('.grid-line').length, 'lines');
+    this.fixLayerZOrder();
   }
 
   private clearGrid() {
@@ -437,24 +446,8 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
     });
 
     // Ensure proper z-index ordering: background -> grid -> sectors
-    const background = this.layer.findOne('.canvas-background');
-    if (background) {
-      background.moveToBottom();
-    }
+    this.fixLayerZOrder();
     
-    // Move grid lines above background
-    const gridLines = this.layer.find('.grid-line');
-    gridLines.forEach(line => {
-      if (background) {
-        line.moveUp();
-      }
-    });
-    
-    // Move all sector groups to top (above grid)
-    this.sectorGroups.forEach(group => {
-      group.moveToTop();
-    });
-
     this.layer.batchDraw();
     console.log('Finished rendering sectors');
   }  private createSectorGroup(sector: EditableSector): Konva.Group | null {
@@ -470,111 +463,204 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
       y: sector.position?.y ?? 100,
       rotation: sector.rotation || 0,
       draggable: this.editMode() === 'move' || this.editMode() === 'select'
-    });    // Create sector rectangle
-    const rect = new Konva.Rect({
-      name: 'sector-rect', // Add name for easier finding
-      width: 120,
-      height: 80,
-      fill: this.getSectorColor(sector),
-      stroke: this.getSectorStrokeColor(sector),
-      strokeWidth: sector.isSelected ? 3 : 2,
-      cornerRadius: 8,
-      shadowColor: sector.isSelected ? 'rgba(33, 150, 243, 0.5)' : 'rgba(0, 0, 0, 0.3)',
-      shadowBlur: sector.isSelected ? 20 : 10,
-      shadowOffsetX: 5,
-      shadowOffsetY: 5
     });
 
-    console.log('Created rectangle with color:', this.getSectorColor(sector));
+    // --- Dynamic sector shape based on seats layout ---
+    const seatRadius = 8;
+    const seatSpacing = 6;
+    let seatPositions: {x: number, y: number}[] = [];
+    let maxRowLength = 0;
+    let totalRows = 0;
+    if (sector.rows && Array.isArray(sector.rows)) {
+      totalRows = sector.rows.length;
+      sector.rows.forEach((row, rowIdx) => {
+        if (row.seats && Array.isArray(row.seats)) {
+          maxRowLength = Math.max(maxRowLength, row.seats.length);
+          const rowY = rowIdx * (seatRadius * 2 + seatSpacing);
+          const rowOffset = (maxRowLength - row.seats.length) * (seatRadius + seatSpacing/2);
+          row.seats.forEach((seat, seatIdx) => {
+            const x = seatIdx * (seatRadius * 2 + seatSpacing) + rowOffset;
+            const y = rowY;
+            seatPositions.push({x, y});
+          });
+        }
+      });
+    }
 
-    // Create sector name text
-    const nameText = new Konva.Text({
-      text: sector.name ?? 'Unnamed Sector',
-      x: 10,
-      y: 20,
-      fontSize: 14,
-      fill: '#fff',
-      fontStyle: 'bold',
-      listening: false
-    });
+    // Draw sector outline (convex hull of seat positions) - must be listening for clicks
+    let outline: Konva.Line | null = null;
+    if (seatPositions.length > 2) {
+      const hull = this.getConvexHull(seatPositions);
+      if (hull.length > 2) {
+        const points = hull.flatMap(p => [p.x, p.y]);
+        outline = new Konva.Line({
+          points,
+          closed: true,
+          stroke: this.getSectorStrokeColor(sector),
+          strokeWidth: sector.isSelected ? 3 : 2,
+          fill: this.getSectorColor(sector) + '33', // semi-transparent fill
+          shadowColor: sector.isSelected ? 'rgba(33, 150, 243, 0.5)' : 'rgba(0, 0, 0, 0.3)',
+          shadowBlur: sector.isSelected ? 20 : 10,
+          shadowOffsetX: 5,
+          shadowOffsetY: 5,
+          name: 'sector-outline',
+          listening: true // allow pointer events
+        });
+        // Attach click handler to outline
+        outline.on('click', (e) => {
+          e.cancelBubble = true;
+          this.onSectorRectClick(sector, e);
+        });
+        outline.on('mouseenter', () => {
+          if (this.editMode() === 'move' || this.editMode() === 'select') {
+            this.stage!.container().style.cursor = 'grab';
+          }
+        });
+        outline.on('mouseleave', () => {
+          this.stage!.container().style.cursor = 'default';
+        });
+        group.add(outline);
+        outline.moveToBottom();
+      }
+    }
 
-    // Create sector details text
-    const seatsText = new Konva.Text({
-      text: `Seats: ${sector.numberOfSeats ?? 0}`,
-      x: 10,
-      y: 40,
-      fontSize: 11,
-      fill: '#fff',
-      listening: false
-    });
-
-    const categoryText = new Konva.Text({
-      text: sector.priceCategory ?? 'Standard',
-      x: 10,
-      y: 55,
-      fontSize: 10,
-      fill: '#fff',
-      opacity: 0.8,
-      listening: false
-    });
-
-    // Add components to group
-    group.add(rect, nameText, seatsText, categoryText);
+    // Only show seat circles if zoom > 2.0
+    if (this.zoom() > 2.0) {
+      seatPositions.forEach(pos => {
+        const seatCircle = new Konva.Circle({
+          x: pos.x,
+          y: pos.y,
+          radius: seatRadius,
+          fill: '#fff',
+          stroke: this.getSectorColor(sector),
+          strokeWidth: 2,
+          opacity: 0.9,
+          listening: false
+        });
+        group.add(seatCircle);
+      });
+    }
 
     // Add selection indicators if selected
     if (sector.isSelected) {
       this.addSelectionIndicators(group);
     }
 
-    // Add event handlers
-    rect.on('click', (e) => {
+    // Calculate bounding box width for label centering
+    let labelWidth = 120; // fallback
+    let minX = 0, maxX = 0, minY = 0;
+    if (seatPositions.length > 0) {
+      minX = Math.min(...seatPositions.map(p => p.x));
+      maxX = Math.max(...seatPositions.map(p => p.x));
+      minY = Math.min(...seatPositions.map(p => p.y));
+      labelWidth = Math.max(80, maxX - minX + seatRadius * 2);
+    }
+
+    // Calculate centroid for label placement inside the sector
+    let centroidX = 0, centroidY = 0;
+    if (seatPositions.length > 0) {
+      // Use convex hull if available for more accurate center
+      let hull = seatPositions;
+      if (seatPositions.length > 2) {
+        hull = this.getConvexHull(seatPositions);
+      }
+      const n = hull.length;
+      let area = 0, cx = 0, cy = 0;
+      for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n;
+        const cross = hull[i].x * hull[j].y - hull[j].x * hull[i].y;
+        area += cross;
+        cx += (hull[i].x + hull[j].x) * cross;
+        cy += (hull[i].y + hull[j].y) * cross;
+      }
+      area = area / 2;
+      if (Math.abs(area) > 1e-7) {
+        centroidX = cx / (6 * area);
+        centroidY = cy / (6 * area);
+      } else {
+        // Fallback to average
+        centroidX = hull.reduce((sum, p) => sum + p.x, 0) / n;
+        centroidY = hull.reduce((sum, p) => sum + p.y, 0) / n;
+      }
+    }
+
+    // Add sector name and seat count labels inside the sector
+    const nameText = new Konva.Text({
+      text: sector.name ?? 'Unnamed Sector',
+      x: centroidX - 60, // Center label horizontally (width 120)
+      y: centroidY - 18, // Slightly above center
+      width: 120,
+      align: 'center',
+      fontSize: 14,
+      fill: '#000', // Pure black font color
+      fontStyle: 'bold',
+      listening: false
+    });
+    group.add(nameText);
+
+    const seatsText = new Konva.Text({
+      text: `Seats: ${sector.numberOfSeats ?? 0}`,
+      x: centroidX - 60,
+      y: centroidY + 2, // Slightly below center
+      width: 120,
+      align: 'center',
+      fontSize: 12,
+      fill: '#000', // Pure black font color
+      opacity: 0.85,
+      listening: false
+    });
+    group.add(seatsText);
+
+    // Add event handlers to group (for fallback if outline is missing)
+    group.on('click', (e) => {
       e.cancelBubble = true;
       this.onSectorRectClick(sector, e);
     });
-
-    rect.on('mouseenter', () => {
+    group.on('mouseenter', () => {
       if (this.editMode() === 'move' || this.editMode() === 'select') {
         this.stage!.container().style.cursor = 'grab';
       }
     });
-
-    rect.on('mouseleave', () => {
+    group.on('mouseleave', () => {
       this.stage!.container().style.cursor = 'default';
-    });    group.on('dragstart', () => {
+    });
+    group.on('dragstart', () => {
       this.onSectorDragStart(sector);
-    });    group.on('dragmove', () => {
+    });
+    group.on('dragmove', () => {
       this.onSectorDragMove(sector, group);
     });
-
     group.on('dragend', () => {
       this.onSectorDragEnd(sector, group);
-    });    // Add to layer
+    });
+
+    // Add to layer
     this.layer.add(group);
-    
     console.log('Added sector group to layer');
     return group;
   }
 
-  private addSelectionIndicators(group: Konva.Group) {
-    const corners = [
-      { x: -5, y: -5 },
-      { x: 125, y: -5 },
-      { x: -5, y: 85 },
-      { x: 125, y: 85 }
-    ];
-
-    corners.forEach(corner => {
-      const circle = new Konva.Circle({
-        x: corner.x,
-        y: corner.y,
-        radius: 4,
-        fill: '#2196f3',
-        stroke: '#fff',
-        strokeWidth: 2,
-        listening: false
-      });
-      group.add(circle);
-    });
+  // --- Convex hull algorithm for sector outline ---
+  private getConvexHull(points: {x: number, y: number}[]): {x: number, y: number}[] {
+    // Andrew's monotone chain algorithm
+    const sorted = [...points].sort((a, b) => a.x - b.x || a.y - b.y);
+    const lower: {x: number, y: number}[] = [];
+    for (const p of sorted) {
+      while (lower.length >= 2 && this.cross(lower[lower.length-2], lower[lower.length-1], p) <= 0) lower.pop();
+      lower.push(p);
+    }
+    const upper: {x: number, y: number}[] = [];
+    for (let i = sorted.length - 1; i >= 0; i--) {
+      const p = sorted[i];
+      while (upper.length >= 2 && this.cross(upper[upper.length-2], upper[upper.length-1], p) <= 0) upper.pop();
+      upper.push(p);
+    }
+    upper.pop();
+    lower.pop();
+    return lower.concat(upper);
+  }
+  private cross(o: {x: number, y: number}, a: {x: number, y: number}, b: {x: number, y: number}) {
+    return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
   }
 
   // Zoom controls
@@ -1162,5 +1248,42 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
         this.clearGrid();
       }
     }
+  }
+
+  private addSelectionIndicators(group: Konva.Group) {
+    // Find all seat circles in the group
+    const seatNodes = group.getChildren(node => node.className === 'Circle') as Konva.Circle[];
+    if (!seatNodes || seatNodes.length === 0) return;
+
+    // Calculate bounding box of all seats
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    seatNodes.forEach(seat => {
+      const x = seat.x();
+      const y = seat.y();
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    });
+
+    // Add indicator circles at the four corners
+    const corners = [
+      { x: minX - 5, y: minY - 5 },
+      { x: maxX + 5, y: minY - 5 },
+      { x: minX - 5, y: maxY + 5 },
+      { x: maxX + 5, y: maxY + 5 }
+    ];
+    corners.forEach(corner => {
+      const indicator = new Konva.Circle({
+        x: corner.x,
+        y: corner.y,
+        radius: 4,
+        fill: '#2196f3',
+        stroke: '#fff',
+        strokeWidth: 2,
+        listening: false
+      });
+      group.add(indicator);
+    });
   }
 }

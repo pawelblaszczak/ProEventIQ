@@ -28,6 +28,7 @@ import { SeatRow } from '../../api/model/seat-row';
 import { Seat } from '../../api/model/seat';
 import { Subject, takeUntil, finalize, firstValueFrom } from 'rxjs';
 import Konva from 'konva';
+import { ConfirmationDialogService } from '../../shared/components/confirmation-dialog/confirmation-dialog.service';
 
 interface EditableSeat extends Seat {
   selected?: boolean;
@@ -75,6 +76,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
   private readonly snackBar = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
   private readonly dialog = inject(MatDialog);
+  private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly destroy$ = new Subject<void>();
 
   // State signals
@@ -1114,6 +1116,28 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     } else {
       this.snackBar.open('No empty rows to delete', 'Close', { duration: 2000 });
     }
+  }
+
+  /**
+   * Delete the selected row (only if one row is selected, with confirmation)
+   */
+  deleteSelectedRow() {
+    const selectedRows = this.selectedRows();
+    if (selectedRows.length !== 1) return;
+    const row = selectedRows[0];
+    const rowName = row.name ?? `Row`;
+    this.confirmationDialogService.confirmDelete(rowName, 'row').subscribe(confirmed => {
+      if (confirmed) {
+        const sector = this.sector();
+        if (!sector) return;
+        sector.rows = sector.rows.filter(r => r.seatRowId !== row.seatRowId);
+        this.selectedRows.set([]);
+        this.sector.set({ ...sector });
+        this.renderSector();
+        this.hasChanges.set(true);
+        this.snackBar.open(`Row "${rowName}" deleted`, 'Close', { duration: 2000 });
+      }
+    });
   }
 
   deselectAll() {

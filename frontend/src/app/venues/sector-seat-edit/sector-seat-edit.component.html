@@ -110,6 +110,13 @@
               <mat-icon>edit</mat-icon>
             </button>
             <button mat-icon-button 
+                    (click)="deleteSelectedRow()"
+                    [disabled]="selectedRows().length !== 1"
+                    matTooltip="Delete Row"
+                    color="warn">
+              <mat-icon>delete_forever</mat-icon>
+            </button>
+            <button mat-icon-button 
                     (click)="deleteSelectedRows()"
                     matTooltip="Delete Empty Rows"
                     color="warn">

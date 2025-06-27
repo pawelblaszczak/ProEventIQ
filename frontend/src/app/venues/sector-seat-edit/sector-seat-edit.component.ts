@@ -260,6 +260,8 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
               ...row,
               // Ensure row has an ID
               seatRowId: row.seatRowId || `temp-row-${Date.now()}-${rowIndex}`,
+              // Ensure row has an orderNumber - use existing or assign based on index
+              orderNumber: row.orderNumber ?? (rowIndex + 1),
               seats: (row.seats || []).map((seat, seatIndex) => ({
                 ...seat,
                 // Ensure seat has an ID
@@ -773,9 +775,16 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     // Generate a temporary ID for the new row
     const tempId = `temp-row-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
     
+    // Calculate the next order number based on existing rows
+    const currentRows = this.sector()?.rows ?? [];
+    const maxOrderNumber = currentRows.length > 0 
+      ? Math.max(...currentRows.map(row => row.orderNumber ?? 0)) 
+      : 0;
+    
     const newRow: EditableRow = {
       seatRowId: tempId,
-      name: `Row ${(this.sector()?.rows.length ?? 0) + 1}`,
+      name: `Row ${currentRows.length + 1}`,
+      orderNumber: maxOrderNumber + 1,
       seats: []
     };
 
@@ -828,6 +837,9 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
       row.seats = row.seats.filter(seat => !selectedSeats.includes(seat));
     });
 
+    // Normalize seat order numbers after deletion to prevent gaps
+    this.normalizeSeatOrderNumbers();
+
     this.selectedSeats.set([]);
     this.sector.set({ ...sector });
     this.renderSector();
@@ -840,10 +852,24 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     if (!sector) return;
 
     // For now, delete rows that have no seats
+    const rowsBeforeDelete = sector.rows.length;
     sector.rows = sector.rows.filter(row => row.seats.length > 0);
+    const rowsAfterDelete = sector.rows.length;
+    
+    // Normalize order numbers after deletion to prevent gaps
+    if (rowsBeforeDelete !== rowsAfterDelete) {
+      this.normalizeRowOrderNumbers();
+    }
+    
     this.sector.set({ ...sector });
     this.renderSector();
     this.hasChanges.set(true);
+    
+    if (rowsBeforeDelete !== rowsAfterDelete) {
+      this.snackBar.open(`${rowsBeforeDelete - rowsAfterDelete} empty row(s) deleted`, 'Close', { duration: 2000 });
+    } else {
+      this.snackBar.open('No empty rows to delete', 'Close', { duration: 2000 });
+    }
   }
 
   deselectAll() {
@@ -918,6 +944,12 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     this.saving.set(true);
 
     try {
+      // Normalize row order numbers before saving
+      this.normalizeRowOrderNumbers();
+      
+      // Normalize seat order numbers within each row before saving
+      this.normalizeSeatOrderNumbers();
+      
       // First update sector properties if needed
       if (sector.sectorId && !sector.sectorId.startsWith('temp-')) {
         await this.updateSectorProperties(sector);
@@ -928,6 +960,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
         rows: sector.rows.map(row => ({
           seatRowId: row.seatRowId?.startsWith('temp-') ? undefined : row.seatRowId,
           name: row.name,
+          orderNumber: row.orderNumber,
           seats: row.seats.map(seat => ({
             seatId: seat.seatId?.startsWith('temp-') ? undefined : seat.seatId,
             orderNumber: seat.orderNumber,
@@ -967,7 +1000,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
 
     const sectorInput: SectorInput = {
       name: sector.name,
-      order: sector.order,
+      orderNumber: sector.orderNumber,
       position: sector.position,
       rotation: sector.rotation,
       priceCategory: sector.priceCategory,
@@ -1017,5 +1050,39 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     const sector = this.sector();
     if (!sector) return 0;
     return sector.rows.reduce((total, row) => total + (row.seats?.length ?? 0), 0);
+  }
+
+  // Helper method to normalize row order numbers
+  private normalizeRowOrderNumbers() {
+    const sector = this.sector();
+    if (!sector) return;
+
+    // Sort rows by current order number (or fallback to index)
+    sector.rows.sort((a, b) => (a.orderNumber ?? 0) - (b.orderNumber ?? 0));
+    
+    // Reassign order numbers sequentially
+    sector.rows.forEach((row, index) => {
+      row.orderNumber = index + 1;
+    });
+    
+    this.sector.set({ ...sector });
+  }
+
+  // Helper method to normalize seat order numbers within each row
+  private normalizeSeatOrderNumbers() {
+    const sector = this.sector();
+    if (!sector) return;
+
+    sector.rows.forEach(row => {
+      // Sort seats by current order number (or fallback to index)
+      row.seats.sort((a, b) => (a.orderNumber ?? 0) - (b.orderNumber ?? 0));
+      
+      // Reassign order numbers sequentially within each row
+      row.seats.forEach((seat, index) => {
+        seat.orderNumber = index + 1;
+      });
+    });
+    
+    this.sector.set({ ...sector });
   }
 }

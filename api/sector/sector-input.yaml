@@ -3,7 +3,7 @@ SectorInput:
   properties:
     name:
       type: string
-    order:
+    orderNumber:
       type: integer  
     position:
       type: object

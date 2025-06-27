@@ -26,7 +26,7 @@ CREATE TABLE sector (
     sector_id INT AUTO_INCREMENT PRIMARY KEY,
     venue_id INT NOT NULL,
     name VARCHAR(100) NOT NULL,
-    `order` INT,
+    order_number INT,
     position_x FLOAT,
     position_y FLOAT,
     rotation INT DEFAULT 0,

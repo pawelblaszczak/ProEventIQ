@@ -5,7 +5,7 @@ Sector:
       type: string
     name:
       type: string
-    order:
+    orderNumber:
       type: integer      
     position:
       type: object

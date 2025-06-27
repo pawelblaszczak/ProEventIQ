@@ -41,7 +41,7 @@ public class SectorService {
                 .orElseThrow(() -> new IllegalArgumentException("Venue not found"));
         SectorEntity entity = new SectorEntity();
         entity.setName(input.name());
-        entity.setOrder(input.order());
+        entity.setOrderNumber(input.orderNumber());
         entity.setPositionX(input.positionX());
         entity.setPositionY(input.positionY());
         entity.setRotation(input.rotation());
@@ -60,7 +60,7 @@ public class SectorService {
     public Optional<SectorDTO> updateSector(Long sectorId, SectorInputDTO input) {
         return sectorRepository.findById(sectorId).map(entity -> {
             entity.setName(input.name());
-            entity.setOrder(input.order());
+            entity.setOrderNumber(input.orderNumber());
             entity.setPositionX(input.positionX());
             entity.setPositionY(input.positionY());
             entity.setRotation(input.rotation());
@@ -88,7 +88,7 @@ public class SectorService {
         Sector sector = new Sector();
         sector.setSectorId(entity.getSectorId() != null ? entity.getSectorId().toString() : null);
         sector.setName(entity.getName());
-        sector.setOrder(entity.getOrder());
+        sector.setOrderNumber(entity.getOrderNumber());
 
         if (entity.getPositionX() != null && entity.getPositionY() != null) {
             SectorInputPosition position = new SectorInputPosition();
@@ -132,6 +132,7 @@ public class SectorService {
         SeatRow rowDto = new SeatRow();
         rowDto.setSeatRowId(rowEntity.getSeatRowId() != null ? rowEntity.getSeatRowId().toString() : null);
         rowDto.setName(rowEntity.getName());
+        rowDto.setOrderNumber(rowEntity.getOrderNumber());
 
         if (rowEntity.getSeats() != null) {
             List<Seat> seatDtos = new ArrayList<>();
@@ -173,7 +174,7 @@ public class SectorService {
         return new SectorDTO(
                 entity.getSectorId(),
                 entity.getName(),
-                entity.getOrder() != null ? entity.getOrder().intValue() : null,
+                entity.getOrderNumber() != null ? entity.getOrderNumber().intValue() : null,
                 entity.getPositionX(),
                 entity.getPositionY(),
                 entity.getRotation() != null ? entity.getRotation().intValue() : null,

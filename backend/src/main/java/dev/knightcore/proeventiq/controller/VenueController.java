@@ -140,9 +140,9 @@ public class VenueController implements VenuesApi {
     private SectorInputDTO toSectorInputDTO(SectorInput input) {
         String name = input.getName();
 
-        Integer order = null;
-        if (input.getOrder() != null) {
-            order = input.getOrder();
+        Integer orderNumber = null;
+        if (input.getOrderNumber() != null) {
+            orderNumber = input.getOrderNumber();
         }
 
         Float positionX = null;
@@ -160,15 +160,15 @@ public class VenueController implements VenuesApi {
 
         String priceCategory = input.getPriceCategory();
         String status = input.getStatus() != null ? input.getStatus().getValue() : null;
-        
-        return new SectorInputDTO(name, order, positionX, positionY, rotation, priceCategory, status);
+
+        return new SectorInputDTO(name, orderNumber, positionX, positionY, rotation, priceCategory, status);
     }
 
     private Sector toSector(SectorDTO dto) {
         Sector sector = new Sector();
         sector.setSectorId(dto.sectorId() != null ? dto.sectorId().toString() : null);
         sector.setName(dto.name());
-        sector.setOrder(dto.order());
+        sector.setOrderNumber(dto.orderNumber());
         
         if (dto.positionX() != null && dto.positionY() != null) {
             SectorInputPosition position = new SectorInputPosition();

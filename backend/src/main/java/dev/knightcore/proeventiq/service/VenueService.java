@@ -186,7 +186,7 @@ public class VenueService {
         Sector sectorDto = new Sector();
         sectorDto.setSectorId(sectorEntity.getSectorId() != null ? sectorEntity.getSectorId().toString() : null);
         sectorDto.setName(sectorEntity.getName());
-        sectorDto.setOrder(sectorEntity.getOrder());
+        sectorDto.setOrderNumber(sectorEntity.getOrderNumber());
         sectorDto.setRotation(sectorEntity.getRotation());
         sectorDto.setPriceCategory(sectorEntity.getPriceCategory());
         
@@ -239,7 +239,8 @@ public class VenueService {
     private SeatRow mapRowToDto(dev.knightcore.proeventiq.entity.SeatRowEntity rowEntity) {
         SeatRow rowDto = new SeatRow();
         rowDto.setSeatRowId(rowEntity.getSeatRowId() != null ? rowEntity.getSeatRowId().toString() : null);
-        rowDto.setName(rowEntity.getName()); // Use the actual name field instead of orderNumber
+        rowDto.setName(rowEntity.getName());
+        rowDto.setOrderNumber(rowEntity.getOrderNumber());
         
         if (rowEntity.getSeats() != null) {
             List<Seat> seatDtos = new ArrayList<>();

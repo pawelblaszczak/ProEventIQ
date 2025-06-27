@@ -1002,7 +1002,7 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
           // Create new sector
           const sectorInput = {
             name: sector.name ?? '',
-            order: sector.order,
+            orderNumber: sector.orderNumber,
             position: sector.position,
             rotation: sector.rotation,
             priceCategory: sector.priceCategory,
@@ -1013,7 +1013,7 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
           // Update existing sector properties
           const sectorInput = {
             name: sector.name ?? '',
-            order: sector.order,
+            orderNumber: sector.orderNumber,
             position: sector.position,
             rotation: sector.rotation,
             priceCategory: sector.priceCategory,

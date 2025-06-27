@@ -3,6 +3,8 @@ SeatRowInput:
   properties:
     name:
       type: string
+    orderNumber:
+      type: integer
     seats:
       type: array
       items:

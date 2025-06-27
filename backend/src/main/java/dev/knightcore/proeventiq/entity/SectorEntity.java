@@ -24,8 +24,8 @@ public class SectorEntity {
     @OneToMany(mappedBy = "sector", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<SeatRowEntity> seatRows;
 
-    @Column(name = "`order`")
-    private Integer order;
+    @Column(name = "order_number")
+    private Integer orderNumber;
     private Integer rotation;
     
     @Column(name = "price_category")
@@ -46,8 +46,8 @@ public class SectorEntity {
     public void setVenue(VenueEntity venue) { this.venue = venue; }
     public List<SeatRowEntity> getSeatRows() { return seatRows; }
     public void setSeatRows(List<SeatRowEntity> seatRows) { this.seatRows = seatRows; }
-    public Integer getOrder() { return order; }
-    public void setOrder(Integer order) { this.order = order; }
+    public Integer getOrderNumber() { return orderNumber; }
+    public void setOrderNumber(Integer orderNumber) { this.orderNumber = orderNumber; }
     public Integer getRotation() { return rotation; }
     public void setRotation(Integer rotation) { this.rotation = rotation; }
     public String getPriceCategory() { return priceCategory; }

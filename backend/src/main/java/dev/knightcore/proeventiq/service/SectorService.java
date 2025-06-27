@@ -1,5 +1,9 @@
 package dev.knightcore.proeventiq.service;
 
+import dev.knightcore.proeventiq.api.model.Sector;
+import dev.knightcore.proeventiq.api.model.SectorInputPosition;
+import dev.knightcore.proeventiq.api.model.SeatRow;
+import dev.knightcore.proeventiq.api.model.Seat;
 import dev.knightcore.proeventiq.dto.SectorDTO;
 import dev.knightcore.proeventiq.dto.SectorInputDTO;
 import dev.knightcore.proeventiq.entity.SectorEntity;
@@ -9,6 +13,8 @@ import dev.knightcore.proeventiq.repository.VenueRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -71,6 +77,96 @@ public class SectorService {
             return true;
         }
         return false;
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<Sector> getSectorWithSeats(Long sectorId) {
+        return sectorRepository.findById(sectorId).map(this::toSectorWithSeats);
+    }
+
+    private Sector toSectorWithSeats(SectorEntity entity) {
+        Sector sector = new Sector();
+        sector.setSectorId(entity.getSectorId() != null ? entity.getSectorId().toString() : null);
+        sector.setName(entity.getName());
+        sector.setOrder(entity.getOrder());
+
+        if (entity.getPositionX() != null && entity.getPositionY() != null) {
+            SectorInputPosition position = new SectorInputPosition();
+            position.setX(BigDecimal.valueOf(entity.getPositionX()));
+            position.setY(BigDecimal.valueOf(entity.getPositionY()));
+            sector.setPosition(position);
+        }
+
+        sector.setRotation(entity.getRotation());
+        sector.setPriceCategory(entity.getPriceCategory());
+
+        if (entity.getStatus() != null) {
+            sector.setStatus(Sector.StatusEnum.fromValue(entity.getStatus()));
+        }
+
+        // Map rows and seats
+        mapSectorRows(entity, sector);
+
+        return sector;
+    }
+
+    private void mapSectorRows(SectorEntity sectorEntity, Sector sectorDto) {
+        int sectorSeatCount = 0;
+
+        if (sectorEntity.getSeatRows() != null) {
+            List<SeatRow> rowDtos = new ArrayList<>();
+
+            for (var rowEntity : sectorEntity.getSeatRows()) {
+                SeatRow rowDto = mapRowToDto(rowEntity);
+                rowDtos.add(rowDto);
+                sectorSeatCount += countSeatsInRow(rowEntity);
+            }
+
+            sectorDto.setRows(rowDtos);
+        }
+
+        sectorDto.setNumberOfSeats(sectorSeatCount);
+    }
+
+    private SeatRow mapRowToDto(dev.knightcore.proeventiq.entity.SeatRowEntity rowEntity) {
+        SeatRow rowDto = new SeatRow();
+        rowDto.setSeatRowId(rowEntity.getSeatRowId() != null ? rowEntity.getSeatRowId().toString() : null);
+        rowDto.setName(rowEntity.getName());
+
+        if (rowEntity.getSeats() != null) {
+            List<Seat> seatDtos = new ArrayList<>();
+
+            for (var seatEntity : rowEntity.getSeats()) {
+                Seat seatDto = mapSeatToDto(seatEntity);
+                seatDtos.add(seatDto);
+            }
+
+            rowDto.setSeats(seatDtos);
+        }
+
+        return rowDto;
+    }
+
+    private Seat mapSeatToDto(dev.knightcore.proeventiq.entity.SeatEntity seatEntity) {
+        Seat seatDto = new Seat();
+        seatDto.setSeatId(seatEntity.getSeatId() != null ? seatEntity.getSeatId().toString() : null);
+        seatDto.setOrderNumber(seatEntity.getOrderNumber());
+        seatDto.setPriceCategory(seatEntity.getPriceCategory());
+        seatDto.setStatus(seatEntity.getStatus() != null ?
+            Seat.StatusEnum.fromValue(seatEntity.getStatus()) : null);
+
+        if (seatEntity.getPositionX() != null && seatEntity.getPositionY() != null) {
+            SectorInputPosition position = new SectorInputPosition();
+            position.setX(BigDecimal.valueOf(seatEntity.getPositionX()));
+            position.setY(BigDecimal.valueOf(seatEntity.getPositionY()));
+            seatDto.setPosition(position);
+        }
+
+        return seatDto;
+    }
+
+    private int countSeatsInRow(dev.knightcore.proeventiq.entity.SeatRowEntity rowEntity) {
+        return rowEntity.getSeats() != null ? rowEntity.getSeats().size() : 0;
     }
 
     private SectorDTO toDTO(SectorEntity entity) {

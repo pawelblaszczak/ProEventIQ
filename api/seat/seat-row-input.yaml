@@ -3,3 +3,7 @@ SeatRowInput:
   properties:
     name:
       type: string
+    seats:
+      type: array
+      items:
+        $ref: '../seat/seat-input.yaml#/SeatInput'

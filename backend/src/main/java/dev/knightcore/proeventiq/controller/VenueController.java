@@ -4,10 +4,13 @@ import dev.knightcore.proeventiq.api.controller.VenuesApi;
 import dev.knightcore.proeventiq.api.model.Sector;
 import dev.knightcore.proeventiq.api.model.SectorInput;
 import dev.knightcore.proeventiq.api.model.SectorInputPosition;
+import dev.knightcore.proeventiq.api.model.SectorSeatsInput;
 import dev.knightcore.proeventiq.api.model.Venue;
 import dev.knightcore.proeventiq.api.model.VenueInput;
 import dev.knightcore.proeventiq.service.VenueService;
+import jakarta.validation.Valid;
 import dev.knightcore.proeventiq.service.SectorService;
+import dev.knightcore.proeventiq.service.SeatService;
 import dev.knightcore.proeventiq.dto.SectorDTO;
 import dev.knightcore.proeventiq.dto.SectorInputDTO;
 import org.springframework.http.HttpStatus;
@@ -23,10 +26,12 @@ public class VenueController implements VenuesApi {
     
     private final VenueService venueService;
     private final SectorService sectorService;
+    private final SeatService seatService;
     
-    public VenueController(VenueService venueService, SectorService sectorService) {
+    public VenueController(VenueService venueService, SectorService sectorService, SeatService seatService) {
         this.venueService = venueService;
         this.sectorService = sectorService;
+        this.seatService = seatService;
     }
 
     @Override
@@ -137,7 +142,7 @@ public class VenueController implements VenuesApi {
 
         Integer order = null;
         if (input.getOrder() != null) {
-            order = input.getOrder().intValue();
+            order = input.getOrder();
         }
 
         Float positionX = null;
@@ -150,7 +155,7 @@ public class VenueController implements VenuesApi {
         
         Integer rotation = null;
         if (input.getRotation() != null) {
-            rotation = input.getRotation().intValue();
+            rotation = input.getRotation();
         }
 
         String priceCategory = input.getPriceCategory();
@@ -183,5 +188,25 @@ public class VenueController implements VenuesApi {
         // they would need to be calculated/fetched separately if needed
         
         return sector;
+    }
+
+    @Override
+    public ResponseEntity<Sector> updateSectorSeats(String venueId, String sectorId,
+            @Valid SectorSeatsInput sectorSeatsInput) {
+        try {
+            Long id = Long.parseLong(sectorId);
+            
+            // Update the seats using the SeatService
+            seatService.updateSectorSeats(id, sectorSeatsInput.getRows());
+            
+            // Return the updated sector with all seats
+            return sectorService.getSectorWithSeats(id)
+                    .map(sector -> ResponseEntity.status(HttpStatus.OK).body(sector))
+                    .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+        } catch (NumberFormatException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
     }
 }

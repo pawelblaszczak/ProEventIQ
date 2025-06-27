@@ -29,3 +29,5 @@ Sector:
       enum: [active, inactive]
 SectorInput:
   $ref: './sector-input.yaml#/SectorInput'
+SectorSeatsInput:
+  $ref: './sector-seats-input.yaml#/SectorSeatsInput'

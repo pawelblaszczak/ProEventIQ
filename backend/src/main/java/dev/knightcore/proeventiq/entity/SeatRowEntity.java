@@ -10,6 +10,8 @@ public class SeatRowEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long seatRowId;
 
+    private String name;
+    
     private Integer orderNumber;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -22,6 +24,8 @@ public class SeatRowEntity {
     // Getters and setters
     public Long getSeatRowId() { return seatRowId; }
     public void setSeatRowId(Long seatRowId) { this.seatRowId = seatRowId; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
     public Integer getOrderNumber() { return orderNumber; }
     public void setOrderNumber(Integer orderNumber) { this.orderNumber = orderNumber; }
     public SectorEntity getSector() { return sector; }

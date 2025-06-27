@@ -239,7 +239,7 @@ public class VenueService {
     private SeatRow mapRowToDto(dev.knightcore.proeventiq.entity.SeatRowEntity rowEntity) {
         SeatRow rowDto = new SeatRow();
         rowDto.setSeatRowId(rowEntity.getSeatRowId() != null ? rowEntity.getSeatRowId().toString() : null);
-        rowDto.setName(rowEntity.getOrderNumber() != null ? rowEntity.getOrderNumber().toString() : null);
+        rowDto.setName(rowEntity.getName()); // Use the actual name field instead of orderNumber
         
         if (rowEntity.getSeats() != null) {
             List<Seat> seatDtos = new ArrayList<>();
@@ -258,6 +258,8 @@ public class VenueService {
     private Seat mapSeatToDto(dev.knightcore.proeventiq.entity.SeatEntity seatEntity) {
         Seat seatDto = new Seat();
         seatDto.setSeatId(seatEntity.getSeatId() != null ? seatEntity.getSeatId().toString() : null);
+        seatDto.setOrderNumber(seatEntity.getOrderNumber());
+        seatDto.setPriceCategory(seatEntity.getPriceCategory());
         seatDto.setStatus(seatEntity.getStatus() != null ?
             Seat.StatusEnum.fromValue(seatEntity.getStatus()) : null);
         

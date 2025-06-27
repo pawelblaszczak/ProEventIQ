@@ -82,6 +82,13 @@
               <mat-icon>content_copy</mat-icon>
             </button>
             <button mat-icon-button 
+                    (click)="editSectorSeats()"
+                    [disabled]="selectedSectors().length !== 1"
+                    matTooltip="Edit Sector Seats"
+                    color="primary">
+              <mat-icon>event_seat</mat-icon>
+            </button>
+            <button mat-icon-button 
                     (click)="deleteSector()"
                     [disabled]="selectedSectors().length === 0"
                     matTooltip="Delete Sector"

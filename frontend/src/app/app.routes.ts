@@ -15,6 +15,7 @@ export const routes: Routes = [
       { path: 'venues/:id', loadComponent: () => import('./venues/venue-detail/venue-detail.component').then(m => m.VenueDetailComponent) },
       { path: 'venues/:id/edit', loadComponent: () => import('./venues/venue-edit/venue-edit.component').then(m => m.VenueEditComponent) },
       { path: 'venues/:venueId/map-edit', loadComponent: () => import('./venues/venue-map-edit').then(m => m.VenueMapEditComponent) },
+      { path: 'venues/:venueId/sectors/:sectorId/seat-edit', loadComponent: () => import('./venues/sector-seat-edit/sector-seat-edit.component').then(m => m.SectorSeatEditComponent) },
       // Other routes will be added here as needed
     ]
   }

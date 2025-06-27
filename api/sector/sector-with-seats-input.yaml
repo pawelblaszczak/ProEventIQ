@@ -1,0 +1,7 @@
+SectorSeatsInput:
+  type: object
+  properties:
+    rows:
+      type: array
+      items:
+        $ref: '../seat/seat-row-input.yaml#/SeatRowInput'

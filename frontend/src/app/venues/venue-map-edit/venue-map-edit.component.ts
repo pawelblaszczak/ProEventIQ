@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject, signal, ViewChild, ElementRef, AfterViewInit, OnDestroy } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, signal, ViewChild, ElementRef, AfterViewInit, OnDestroy, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
@@ -14,6 +14,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import Konva from 'konva';
 import { Venue } from '../../api/model/venue';
 import { Sector } from '../../api/model/sector';
+import { SectorSeatsInput } from '../../api/model/sector-seats-input';
 import { ProEventIQService } from '../../api/api/pro-event-iq.service';
 import { ConfirmationDialogService } from '../../shared';
 import { firstValueFrom } from 'rxjs';
@@ -117,11 +118,39 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
     });
 
     effect(() => {
-      if (this.stage) {
-        this.stage.scaleX(this.zoom());
-        this.stage.scaleY(this.zoom());
-        this.stage.batchDraw();
-      }
+      // Ensure we track the zoom signal
+      const scale = this.zoom();
+      
+      // Use untracked to avoid re-running the effect during the update
+      untracked(() => {
+        if (this.stage) {
+          // Clear any existing transforms
+          this.stage.scaleX(1);
+          this.stage.scaleY(1);
+          
+          // Apply the scale
+          this.stage.scaleX(scale);
+          this.stage.scaleY(scale);
+          
+          // Update the canvas element size to match the scaled dimensions
+          if (this.canvasContainer) {
+            const canvasElement = this.canvasContainer.nativeElement.querySelector('canvas');
+            if (canvasElement) {
+              const newWidth = this.canvasWidth * scale;
+              const newHeight = this.canvasHeight * scale;
+              
+              canvasElement.style.width = `${newWidth}px`;
+              canvasElement.style.height = `${newHeight}px`;
+              canvasElement.style.transformOrigin = 'top left';
+            }
+          }
+          
+          // Force redraw with a slight delay to ensure everything is updated
+          requestAnimationFrame(() => {
+            this.stage?.batchDraw();
+          });
+        }
+      });
     });
 
     effect(() => {
@@ -561,6 +590,14 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
 
   resetZoom() {
     this.zoom.set(1);
+    // Reset position to center when resetting zoom
+    if (this.stage) {
+      this.stage.x(0);
+      this.stage.y(0);
+      requestAnimationFrame(() => {
+        this.stage?.batchDraw();
+      });
+    }
   }
   onSectorRectClick(sector: EditableSector, event: any) {
     console.log('Sector rect clicked:', sector.name, 'Edit mode:', this.editMode());
@@ -959,27 +996,29 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
       this.saving.set(true);
       console.log('Saving venue changes...');
       
-      // Convert editable sectors back to SectorInput format
-      const sectorsToSave = this.editableSectors().map(sector => {
-            return {
-          name: sector.name ?? '',
-          order: sector.order,
-          position: sector.position,
-          rotation: sector.rotation,
-          priceCategory: sector.priceCategory,
-          status: sector.status
-        };
-      });
-
       // Save all sectors
-      for (let i = 0; i < this.editableSectors().length; i++) {
-        const sector = this.editableSectors()[i];
-        const sectorInput = sectorsToSave[i];
-          if (sector.sectorId?.startsWith('temp-')) {
+      for (const sector of this.editableSectors()) {
+        if (sector.sectorId?.startsWith('temp-')) {
           // Create new sector
+          const sectorInput = {
+            name: sector.name ?? '',
+            order: sector.order,
+            position: sector.position,
+            rotation: sector.rotation,
+            priceCategory: sector.priceCategory,
+            status: sector.status
+          };
           await firstValueFrom(this.venueApi.addSector(venueId, sectorInput));
         } else {
-          // Update existing sector - now requires venueId parameter
+          // Update existing sector properties
+          const sectorInput = {
+            name: sector.name ?? '',
+            order: sector.order,
+            position: sector.position,
+            rotation: sector.rotation,
+            priceCategory: sector.priceCategory,
+            status: sector.status
+          };
           await firstValueFrom(this.venueApi.updateSector(venueId, sector.sectorId!, sectorInput));
         }
       }
@@ -1026,6 +1065,18 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
       }
     }
   }  // Navigation
+  editSectorSeats() {
+    const selectedSectors = this.selectedSectors();
+    if (selectedSectors.length === 1) {
+      const sector = selectedSectors[0];
+      const venueId = this.venueId();
+      
+      if (venueId && sector.sectorId) {
+        this.router.navigate(['/venues', venueId, 'sectors', sector.sectorId, 'seat-edit']);
+      }
+    }
+  }
+
   goBack() {
     this.navigateBack();
   }
@@ -1078,7 +1129,7 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
   }
 
   // Keyboard state
-  private ctrlPressed = signal(false);
+  private readonly ctrlPressed = signal(false);
 
   private readonly handleKeyDown = (event: KeyboardEvent) => {
     if (event.ctrlKey || event.metaKey) {

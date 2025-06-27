@@ -92,12 +92,18 @@ sectorById:
     responses:
       '204':
         description: Sector deleted
-rowsBySector:
-  post:
+
+sectorLayout:
+  put:
     tags: [ProEventIQ]
-    summary: Add a row to a sector
-    operationId: addRow
+    summary: Update sector seats layout
+    operationId: updateSectorSeats
     parameters:
+      - in: path
+        name: venueId
+        required: true
+        schema:
+          type: string
       - in: path
         name: sectorId
         required: true
@@ -108,11 +114,11 @@ rowsBySector:
       content:
         application/json:
           schema:
-            $ref: '../seat/row-input.yaml#/RowInput'
+            $ref: './sector-seats-input.yaml#/SectorSeatsInput'
     responses:
-      '201':
-        description: Row created
+      '200':
+        description: Sector seats updated
         content:
           application/json:
             schema:
-              $ref: '../seat/seat-row.yaml#/SeatRow'
+              $ref: './sector.yaml#/Sector'

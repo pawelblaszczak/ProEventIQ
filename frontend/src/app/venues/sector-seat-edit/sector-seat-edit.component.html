@@ -1,0 +1,278 @@
+@if (loading()) {
+  <div class="loading-container animated-pulse">
+    <div class="loading-icon-wrapper">
+      <mat-progress-spinner color="primary" mode="indeterminate" diameter="50"></mat-progress-spinner>
+    </div>
+    <p class="loading-text">Loading sector for editing...</p>
+  </div>
+}
+
+@if (error()) {
+  <div class="error-container animate-fade-in">
+    <mat-card appearance="outlined" class="error-card">
+      <mat-card-content>
+        <div class="error-icon-container">
+          <mat-icon color="warn">error_outline</mat-icon>
+        </div>
+        <div class="error-message">
+          <h3>Error Loading Sector</h3>
+          <p>{{ error() }}</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+}
+
+@if (sector()) {
+  <div class="sector-seat-editor animate-fade-in">
+  <!-- Header with sector info and actions -->
+  <div class="editor-header">
+    <div class="sector-info">
+      <h1 class="sector-name">
+        <mat-icon>event_seat</mat-icon>
+        Editing Seats: {{ sector()?.name }}
+      </h1>
+      <p class="venue-info">{{ venue()?.name }} - {{ venue()?.city }}, {{ venue()?.country }}</p>
+      <p class="seat-count">Total Seats: {{ getTotalSeats() }}</p>
+    </div>
+    
+    <div class="header-actions">
+      <button mat-stroked-button 
+              color="warn" 
+              (click)="cancelChanges()" 
+              [disabled]="!hasChanges() || saving()">
+        <mat-icon>cancel</mat-icon>
+        Cancel
+      </button>
+      
+      <button mat-raised-button 
+              color="primary" 
+              (click)="saveChanges()" 
+              [disabled]="!hasChanges() || saving()">
+        <mat-icon>save</mat-icon>
+        @if (saving()) {
+          <mat-progress-spinner diameter="20" mode="indeterminate"></mat-progress-spinner>
+          Saving...
+        } @else {
+          Save Changes
+        }
+      </button>
+      
+      <button mat-stroked-button (click)="goBack()">
+        <mat-icon>arrow_back</mat-icon>
+        Back
+      </button>
+    </div>
+  </div>
+
+  <div class="editor-content">
+    <!-- Toolbar -->
+    <mat-card class="toolbar-card">
+      <mat-card-content class="toolbar-content">
+        <!-- Seat Actions -->
+        <div class="tool-group">
+          <h3 class="tool-group-title">
+            <mat-icon>event_seat</mat-icon>
+            Seats
+          </h3>
+          <div class="tool-buttons">
+            <button mat-icon-button 
+                    (click)="addSeatInToolbarMode()"
+                    matTooltip="Add Seat">
+              <mat-icon>add</mat-icon>
+            </button>
+            <button mat-icon-button 
+                    (click)="deleteSelectedSeats()"
+                    [disabled]="selectedSeats().length === 0"
+                    matTooltip="Delete Selected Seats"
+                    color="warn">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </div>
+        </div>
+
+        <!-- Row Actions -->
+        <div class="tool-group">
+          <h3 class="tool-group-title">
+            <mat-icon>view_stream</mat-icon>
+            Rows
+          </h3>
+          <div class="tool-buttons">
+            <button mat-icon-button 
+                    (click)="addNewRow()"
+                    matTooltip="Add New Row">
+              <mat-icon>add</mat-icon>
+            </button>
+            <button mat-icon-button 
+                    (click)="deleteSelectedRows()"
+                    matTooltip="Delete Empty Rows"
+                    color="warn">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </div>
+        </div>
+
+        <div class="spacer"></div>
+
+        <!-- Zoom Controls -->
+        <div class="tool-group">
+          <h3 class="tool-group-title">
+            <mat-icon>zoom_in</mat-icon>
+            Zoom
+          </h3>
+          <div class="zoom-controls">
+            <button mat-mini-fab 
+                    color="primary" 
+                    (click)="zoomOut()" 
+                    matTooltip="Zoom Out">
+              <mat-icon>zoom_out</mat-icon>
+            </button>
+            <div class="zoom-display">{{ zoom() | number:'1.1-2' }}x</div>
+            <button mat-mini-fab 
+                    color="primary" 
+                    (click)="zoomIn()" 
+                    matTooltip="Zoom In">
+              <mat-icon>zoom_in</mat-icon>
+            </button>
+            <button mat-stroked-button 
+                    (click)="resetZoom()"
+                    matTooltip="Reset Zoom">
+              Reset
+            </button>
+          </div>
+        </div>
+
+        <!-- View Options -->
+        <div class="tool-group">
+          <h3 class="tool-group-title">
+            <mat-icon>visibility</mat-icon>
+            View
+          </h3>
+          <div class="view-toggles">
+            <button mat-stroked-button 
+                    [color]="showGrid() ? 'primary' : 'basic'"
+                    (click)="toggleGrid()"
+                    matTooltip="Toggle Grid">
+              <mat-icon>grid_on</mat-icon>
+              Grid {{ showGrid() ? 'ON' : 'OFF' }}
+            </button>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Canvas Area -->
+    <mat-card class="canvas-card">
+      <mat-card-content class="canvas-content">
+        <!-- Canvas -->
+        <div class="sector-canvas-container" 
+             (keydown)="$event.key === 'Escape' && deselectAll()"
+             role="application"
+             aria-label="Sector seat editor canvas">
+          <div #canvasContainer 
+               class="konva-canvas">
+          </div>
+        </div>
+
+        <!-- Selection Info Panel -->
+        @if (selectedSeats().length > 0) {
+          <div class="selection-panel">
+            <div class="selection-info">
+              @if (selectedSeats().length === 1) {
+                <h4>
+                  <mat-icon>info</mat-icon>
+                  Selected: Seat {{ selectedSeats()[0].orderNumber || 'Unknown' }} in {{ getRowNameForSeat(selectedSeats()[0]) }}
+                </h4>
+                <div class="seat-details">
+                  <div class="detail-item">
+                    <span class="detail-label">Row:</span>
+                    <span class="detail-value">{{ getRowNameForSeat(selectedSeats()[0]) }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Order:</span>
+                    <span class="detail-value">{{ selectedSeats()[0].orderNumber ?? '-' }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Position:</span>
+                    <span class="detail-value">                  
+                      X: {{ selectedSeats()[0].position?.x ?? 0 }}, 
+                      Y: {{ selectedSeats()[0].position?.y ?? 0 }}
+                    </span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Price Category:</span>
+                    <span class="detail-value">{{ selectedSeats()[0].priceCategory || 'Standard' }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Status:</span>
+                    <span class="detail-value status" 
+                          [class.active]="selectedSeats()[0].status === 'active'"
+                          [class.inactive]="selectedSeats()[0].status === 'inactive'">
+                      {{ selectedSeats()[0].status }}
+                    </span>
+                  </div>
+                </div>
+              } @else {
+                <h4>
+                  <mat-icon>info</mat-icon>
+                  Multiple Selected ({{ selectedSeats().length }})
+                </h4>
+                <div class="seat-details">
+                  <div class="detail-item">
+                    <span class="detail-label">Selection:</span>
+                    <span class="detail-value">
+                      {{ getSelectedSeatInfo() }}
+                    </span>
+                  </div>
+                </div>
+              }
+            </div>
+            <button mat-icon-button (click)="deselectAll()" matTooltip="Deselect">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+        }
+
+        <!-- Instructions -->
+        <div class="instructions-panel">
+          <div class="instruction-card">
+            <mat-icon>info</mat-icon>
+            <div class="instruction-content">
+              <h4>How to Edit Seats</h4>
+              <div class="instruction-list">
+                <p><strong>Select:</strong> Click seats to select. Hold <strong>Ctrl</strong> for multi-select.</p>
+                <p><strong>Range Select:</strong> Hold <strong>Shift</strong> + click to select seat ranges.</p>
+                <p><strong>Row Select:</strong> <strong>Ctrl + Click</strong> first and last seat in a row.</p>
+                <p><strong>Column Select:</strong> <strong>Shift + Click</strong> seats with same order number.</p>
+                <p><strong>Move:</strong> Drag seats to reposition them with grid snapping.</p>
+                <p><strong>Delete:</strong> Press <strong>Delete</strong> key or use delete button.</p>
+              </div>
+            </div>
+          </div>
+
+          @if (isCtrlPressed()) {
+            <div class="ctrl-indicator">
+              <mat-icon color="primary">keyboard</mat-icon>
+              <span>Multi-select mode active</span>
+            </div>
+          }
+
+          @if (isShiftPressed()) {
+            <div class="shift-indicator">
+              <mat-icon color="accent">keyboard</mat-icon>
+              <span>Range select mode active</span>
+            </div>
+          }
+
+          @if (hasChanges()) {
+            <div class="changes-indicator">
+              <mat-icon color="warn">warning</mat-icon>
+              <span>You have unsaved changes</span>
+            </div>
+          }
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+  </div>
+}

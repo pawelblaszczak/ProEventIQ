@@ -669,11 +669,12 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
       const tooltipText = `Row: ${rowName}, Seat: ${seat.orderNumber ?? ''}`;
       const labelText = this.seatTooltip.findOne('Text') as Konva.Text;
       labelText.text(tooltipText);
-      // Position tooltip above the seat
+      // Position tooltip above the seat, adjusted for zoom
       const absPos = seatGroup.getAbsolutePosition();
+      const zoom = this.zoom();
       this.seatTooltip.position({
-        x: absPos.x + this.seatSize / 2,
-        y: absPos.y - 10
+        x: absPos.x / zoom + this.seatSize / 2,
+        y: absPos.y / zoom - 10
       });
       this.seatTooltip.visible(true);
       this.layer?.batchDraw();

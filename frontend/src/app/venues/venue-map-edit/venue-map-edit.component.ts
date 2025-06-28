@@ -120,35 +120,21 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
     effect(() => {
       // Ensure we track the zoom signal
       const scale = this.zoom();
-      
-      // Use untracked to avoid re-running the effect during the update
       untracked(() => {
         if (this.stage) {
-          // Clear any existing transforms
-          this.stage.scaleX(1);
-          this.stage.scaleY(1);
-          
-          // Apply the scale
-          this.stage.scaleX(scale);
-          this.stage.scaleY(scale);
-          
-          // Update the canvas element size to match the scaled dimensions
+          // Apply Konva scaling for zoom
+          this.stage.scale({ x: scale, y: scale });
+          this.stage.batchDraw();
+          // Optionally, adjust container size if you want to keep the visible area the same
           if (this.canvasContainer) {
             const canvasElement = this.canvasContainer.nativeElement.querySelector('canvas');
             if (canvasElement) {
-              const newWidth = this.canvasWidth * scale;
-              const newHeight = this.canvasHeight * scale;
-              
-              canvasElement.style.width = `${newWidth}px`;
-              canvasElement.style.height = `${newHeight}px`;
-              canvasElement.style.transformOrigin = 'top left';
+              canvasElement.style.transform = '';
+              canvasElement.style.transformOrigin = '';
+              canvasElement.style.width = `${this.canvasWidth}px`;
+              canvasElement.style.height = `${this.canvasHeight}px`;
             }
           }
-          
-          // Force redraw with a slight delay to ensure everything is updated
-          requestAnimationFrame(() => {
-            this.stage?.batchDraw();
-          });
         }
       });
     });
@@ -769,13 +755,9 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
   // Sector movement
   onSectorDragStart(sector: EditableSector) {
     console.log('Drag start for sector:', sector.name);
-    
-    // If this sector is not in the current selection, select it (single selection)
     if (!this.selectedSectors().some(s => s.sectorId === sector.sectorId)) {
       this.selectSector(sector, false);
     }
-    
-    // Mark all selected sectors as dragging
     const sectors = this.editableSectors();
     const selectedIds = this.selectedSectors().map(s => s.sectorId);
     const updatedSectors = sectors.map(s => ({
@@ -783,16 +765,13 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
       isDragging: selectedIds.includes(s.sectorId)
     }));
     this.editableSectors.set(updatedSectors);
-    
-    // Store initial positions for relative movement
+    // Store initial positions for relative movement (Konva handles scaling)
     this.initialDragPositions = new Map();
     this.selectedSectors().forEach(selectedSector => {
       const group = this.sectorGroups.get(selectedSector.sectorId!);
       if (group) {
         this.initialDragPositions.set(selectedSector.sectorId!, { x: group.x(), y: group.y() });
         group.moveToTop();
-        
-        // Apply drag styling
         const rect = group.findOne('.sector-rect') as Konva.Rect;
         if (rect) {
           rect.strokeWidth(4);
@@ -801,46 +780,34 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
           rect.shadowBlur(20);
           rect.shadowOffsetX(8);
           rect.shadowOffsetY(8);
-          const texts = group.find('Text');
-          texts.forEach(node => {
-            const text = node as Konva.Text;
-            text.fill('#000');
-            text.fontStyle('bold');
-            text.opacity(1);
-          });
         }
       }
     });
-    
     this.stage?.draw();
   }
 
   onSectorDragMove(draggedSector: EditableSector, draggedGroup: Konva.Group) {
-    // Get the current position of the dragged sector
-    const currentPos = { x: draggedGroup.x(), y: draggedGroup.y() };
+    // Get the current pointer position and adjust for zoom
+    const scale = this.zoom();
+    const pointerPos = this.stage?.getPointerPosition();
+    if (!pointerPos) return;
+    // Calculate the logical (unscaled) position
+    const logicalPointer = { x: pointerPos.x / scale, y: pointerPos.y / scale };
+    // Calculate the offset from the group's drag start position
     const initialPos = this.initialDragPositions.get(draggedSector.sectorId!);
-    
     if (!initialPos) return;
-    
-    // Calculate the offset from the initial position
-    const deltaX = currentPos.x - initialPos.x;
-    const deltaY = currentPos.y - initialPos.y;
-    
-    // Move all other selected sectors by the same offset
+    const deltaX = logicalPointer.x - initialPos.x;
+    const deltaY = logicalPointer.y - initialPos.y;
     this.selectedSectors().forEach(selectedSector => {
-      if (selectedSector.sectorId === draggedSector.sectorId) return; // Skip the dragged sector
-      
+      if (selectedSector.sectorId === draggedSector.sectorId) return;
       const sectorGroup = this.sectorGroups.get(selectedSector.sectorId!);
       const sectorInitialPos = this.initialDragPositions.get(selectedSector.sectorId!);
-      
       if (sectorGroup && sectorInitialPos) {
         sectorGroup.position({
           x: sectorInitialPos.x + deltaX,
           y: sectorInitialPos.y + deltaY
         });
         sectorGroup.moveToTop();
-        
-        // Apply drag styling
         const rect = sectorGroup.findOne('.sector-rect') as Konva.Rect;
         if (rect) {
           rect.strokeWidth(4);
@@ -856,8 +823,11 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
         }
       }
     });
-    
-    // Apply styling to the dragged sector as well
+    // Move the dragged group
+    draggedGroup.position({
+      x: initialPos.x + deltaX,
+      y: initialPos.y + deltaY
+    });
     draggedGroup.moveToTop();
     const rect = draggedGroup.findOne('.sector-rect') as Konva.Rect;
     if (rect) {
@@ -872,38 +842,27 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
         (node as Konva.Text).opacity(1);
       });
     }
-    
     this.stage?.draw();
   }
 
   onSectorDragEnd(draggedSector: EditableSector, draggedGroup: Konva.Group) {
-    console.log('Drag end for sector:', draggedSector.name);
+    const scale = this.zoom();
+    const pointerPos = this.stage?.getPointerPosition();
+    if (!pointerPos) return;
+    const logicalPointer = { x: pointerPos.x / scale, y: pointerPos.y / scale };
+    const initialPos = this.initialDragPositions.get(draggedSector.sectorId!);
+    if (!initialPos) return;
+    const deltaX = logicalPointer.x - initialPos.x;
+    const deltaY = logicalPointer.y - initialPos.y;
     const sectors = this.editableSectors();
-    
-    // Calculate the final positions for all selected sectors
-    const draggedFinalPos = {
-      x: Math.round(draggedGroup.x()),
-      y: Math.round(draggedGroup.y())
-    };
-    
-    const draggedInitialPos = this.initialDragPositions.get(draggedSector.sectorId!);
-    if (!draggedInitialPos) return;
-    
-    const deltaX = draggedFinalPos.x - draggedInitialPos.x;
-    const deltaY = draggedFinalPos.y - draggedInitialPos.y;
-    
-    console.log('Drag delta:', { deltaX, deltaY });
-    
-    // Update positions for all selected sectors
     const updatedSectors = sectors.map(s => {
       const isSelected = this.selectedSectors().some(selected => selected.sectorId === s.sectorId);
-      
       if (isSelected) {
-        const initialPos = this.initialDragPositions.get(s.sectorId!);
-        if (initialPos) {
+        const sectorInitialPos = this.initialDragPositions.get(s.sectorId!);
+        if (sectorInitialPos) {
           const newPosition = {
-            x: Math.round(initialPos.x + deltaX),
-            y: Math.round(initialPos.y + deltaY)
+            x: Math.round(sectorInitialPos.x + deltaX),
+            y: Math.round(sectorInitialPos.y + deltaY)
           };
           return {
             ...s,
@@ -912,33 +871,24 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
           };
         }
       }
-      
       return { ...s, isDragging: false };
     });
-    
     this.editableSectors.set(updatedSectors);
     this.hasChanges.set(true);
-    
-    // Update the selected sectors with new positions
     const newSelectedSectors = this.selectedSectors().map(selected => {
       const updated = updatedSectors.find(s => s.sectorId === selected.sectorId);
       return updated || selected;
     });
     this.selectedSectors.set(newSelectedSectors);
-    
-    // Update the primary selected sector if it was the one dragged
     if (this.selectedSector()?.sectorId === draggedSector.sectorId) {
       const updatedPrimary = updatedSectors.find(s => s.sectorId === draggedSector.sectorId);
       this.selectedSector.set(updatedPrimary || null);
     }
-    
-    // Restore visual appearance for all selected sectors
     this.selectedSectors().forEach(selectedSector => {
       const sectorGroup = this.sectorGroups.get(selectedSector.sectorId!);
       if (sectorGroup) {
         const rect = sectorGroup.findOne('.sector-rect') as Konva.Rect;
         const updatedSector = updatedSectors.find(s => s.sectorId === selectedSector.sectorId);
-        
         if (rect && updatedSector) {
           rect.fill(this.getSectorColor(updatedSector));
           rect.stroke(this.getSectorStrokeColor(updatedSector));
@@ -948,7 +898,6 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
           rect.shadowBlur(updatedSector.isSelected ? 20 : 10);
           rect.shadowOffsetX(5);
           rect.shadowOffsetY(5);
-          
           const texts = sectorGroup.find('Text');
           texts.forEach(node => {
             const text = node as Konva.Text;
@@ -959,10 +908,7 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
         }
       }
     });
-    
-    // Clear initial drag positions
     this.initialDragPositions.clear();
-    
     this.stage?.draw();
     console.log('Multi-sector drag completed');
   }

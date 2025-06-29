@@ -85,6 +85,11 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
   hasChanges = signal(false);  // Grid settings
   showGrid = signal(true);
   gridSize = 20;
+  
+  // Panning state for canvas scrolling
+  private isPanning = false;
+  private lastPanPoint = { x: 0, y: 0 };
+  private panStartPoint = { x: 0, y: 0 };
   constructor() {
     this.route.paramMap.subscribe(params => {
       const venueId = params.get('venueId');
@@ -653,22 +658,132 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
   zoomIn() {
     const newZoom = Math.min(this.zoom() * 1.2, 3);
     this.zoom.set(newZoom);
+    this.applyZoomBounds();
   }
 
   zoomOut() {
     const newZoom = Math.max(this.zoom() / 1.2, 0.5);
     this.zoom.set(newZoom);
+    this.applyZoomBounds();
   }
 
   resetZoom() {
     this.zoom.set(1);
-    // Reset position to center when resetting zoom
     if (this.stage) {
-      this.stage.x(0);
-      this.stage.y(0);
+      const boundedPos = this.applyPanBounds({ x: 0, y: 0 });
+      this.stage.position(boundedPos);
       requestAnimationFrame(() => {
         this.stage?.batchDraw();
       });
+    }
+  }
+
+  private applyZoomBounds() {
+    if (this.stage) {
+      const currentPos = this.stage.position();
+      const boundedPos = this.applyPanBounds(currentPos);
+      this.stage.position(boundedPos);
+      this.stage.batchDraw();
+    }
+  }
+
+  // Restrict canvas panning so the grid always covers the visible area
+  private applyPanBounds(position: { x: number; y: number }): { x: number; y: number } {
+    if (!this.stage) return position;
+    const zoom = this.zoom();
+    const stageWidth = this.canvasWidth;
+    const stageHeight = this.canvasHeight;
+    const scaledWidth = stageWidth * zoom;
+    const scaledHeight = stageHeight * zoom;
+    // The minimum x/y so the right/bottom edge of the grid is never left of/below the viewport
+    const minX = Math.min(0, stageWidth - scaledWidth);
+    const minY = Math.min(0, stageHeight - scaledHeight);
+    // The maximum x/y so the left/top edge of the grid is never right of/above the viewport
+    const maxX = 0;
+    const maxY = 0;
+    return {
+      x: Math.max(minX, Math.min(maxX, position.x)),
+      y: Math.max(minY, Math.min(maxY, position.y))
+    };
+  }
+
+  // Canvas panning and scrolling methods
+  onCanvasWheel(event: WheelEvent) {
+    event.preventDefault();
+    if (!this.stage) return;
+    if (event.ctrlKey) {
+      const scaleBy = 1.1;
+      const stage = this.stage;
+      const oldScale = stage.scaleX();
+      const pointer = stage.getPointerPosition();
+      if (!pointer) return;
+      const mousePointTo = {
+        x: (pointer.x - stage.x()) / oldScale,
+        y: (pointer.y - stage.y()) / oldScale,
+      };
+      let newScale = event.deltaY > 0 ? oldScale / scaleBy : oldScale * scaleBy;
+      newScale = Math.max(0.5, Math.min(3, newScale));
+      this.zoom.set(newScale);
+      const newPos = {
+        x: pointer.x - mousePointTo.x * newScale,
+        y: pointer.y - mousePointTo.y * newScale,
+      };
+      const boundedPos = this.applyPanBounds(newPos);
+      stage.position(boundedPos);
+      stage.batchDraw();
+    } else {
+      const deltaX = event.deltaX;
+      const deltaY = event.deltaY;
+      const newPos = {
+        x: this.stage.x() - deltaX,
+        y: this.stage.y() - deltaY
+      };
+      const boundedPos = this.applyPanBounds(newPos);
+      this.stage.position(boundedPos);
+      this.stage.batchDraw();
+    }
+  }
+  
+  onCanvasMouseDown(event: MouseEvent) {
+    if (!this.stage) return;
+    
+    // Only start panning if zoomed in and not clicking on a sector
+    if (this.zoom() > 1 && event.button === 0) {
+      const konvaEvent = this.stage.getPointerPosition();
+      if (konvaEvent) {
+        this.isPanning = true;
+        this.panStartPoint = { x: event.clientX, y: event.clientY };
+        this.lastPanPoint = { x: this.stage.x(), y: this.stage.y() };
+        
+        // Change cursor to grabbing
+        if (this.canvasContainer) {
+          this.canvasContainer.nativeElement.style.cursor = 'grabbing';
+        }
+      }
+    }
+  }
+  
+  onCanvasMouseMove(event: MouseEvent) {
+    if (!this.stage || !this.isPanning) return;
+    
+    const deltaX = event.clientX - this.panStartPoint.x;
+    const deltaY = event.clientY - this.panStartPoint.y;
+    
+    const newPos = {
+      x: this.lastPanPoint.x + deltaX,
+      y: this.lastPanPoint.y + deltaY
+    };
+    const boundedPos = this.applyPanBounds(newPos);
+    this.stage.position(boundedPos);
+    this.stage.batchDraw();
+  }
+  
+  onCanvasMouseUp(event: MouseEvent) {
+    this.isPanning = false;
+    
+    // Reset cursor
+    if (this.canvasContainer) {
+      this.canvasContainer.nativeElement.style.cursor = this.zoom() > 1 ? 'grab' : 'default';
     }
   }
   onSectorRectClick(sector: EditableSector, event: any) {

@@ -170,11 +170,18 @@
       <mat-card-content class="canvas-content">
         <!-- Canvas -->
         <div class="venue-canvas-container" 
+             [class.zoomed-in]="zoom() > 1"
              (keydown)="$event.key === 'Escape' && deselectAll()"
+             (wheel)="onCanvasWheel($event)"
+             (mousedown)="onCanvasMouseDown($event)"
+             (mousemove)="onCanvasMouseMove($event)"
+             (mouseup)="onCanvasMouseUp($event)"
+             (mouseleave)="onCanvasMouseUp($event)"
              role="application"
              aria-label="Venue map editor canvas">
           <div #canvasContainer 
-               class="konva-canvas">
+               class="konva-canvas"
+               [class.zoomed]="zoom() > 1">
           </div>
         </div>
 
@@ -248,6 +255,7 @@
             <div class="instruction-content">
               <h4>How to Edit</h4>
               <p>Click sectors to select them. Hold <strong>Ctrl</strong> to select multiple sectors. Drag to move selected sectors together. Use rotation controls to rotate all selected sectors. Click on empty canvas to deselect all.</p>
+              <p><strong>Zoom & Pan:</strong> Hold <strong>Ctrl + scroll</strong> to zoom in/out. When zoomed in, use <strong>scroll wheel</strong> to pan or <strong>click and drag</strong> on empty space to move around the canvas.</p>
             </div>
           </div>
 

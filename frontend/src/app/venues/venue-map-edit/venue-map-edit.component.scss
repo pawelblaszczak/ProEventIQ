@@ -335,7 +335,7 @@ $border-radius: 12px;
   .venue-canvas-container {
     flex: 1;
     position: relative;
-    overflow: hidden;
+    overflow: auto;
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
     min-height: 600px;
     cursor: default;
@@ -347,6 +347,15 @@ $border-radius: 12px;
     &:focus {
       outline: 2px solid $primary-color;
       outline-offset: -2px;
+    }
+    
+    // When zoomed in, show scrollbars
+    &.zoomed-in {
+      cursor: grab;
+      
+      &:active {
+        cursor: grabbing;
+      }
     }
   }
   
@@ -413,6 +422,7 @@ $border-radius: 12px;
   height: 100% !important;
   min-height: 600px;
   box-sizing: border-box;
+  transition: transform 0.1s ease-out;
   
   // Ensure the canvas element inside takes full size
   canvas {
@@ -425,6 +435,14 @@ $border-radius: 12px;
   &:focus {
     outline: 2px solid $primary-color;
     outline-offset: 2px;
+  }
+  
+  // When zoomed, allow for larger canvas size
+  &.zoomed {
+    width: auto !important;
+    height: auto !important;
+    min-width: 100%;
+    min-height: 100%;
   }
 }
 

@@ -1,0 +1,30 @@
+<div class="add-row-dialog">
+  <div class="dialog-header">
+    <div class="dialog-icon">
+      <mat-icon color="primary">edit</mat-icon>
+    </div>
+    <h2 mat-dialog-title class="dialog-title">Change Sector Name</h2>
+  </div>
+  
+  <mat-dialog-content class="dialog-content">
+    <form [formGroup]="form" class="add-row-form">
+      <mat-form-field appearance="outline" class="form-field">
+        <mat-label>Sector Name</mat-label>
+        <input matInput formControlName="name" maxlength="32" required autocomplete="off">
+        <mat-error *ngIf="form.get('name')?.hasError('required')">Name is required</mat-error>
+        <mat-hint align="end">{{ form.get('name')?.value?.length || 0 }}/32</mat-hint>
+      </mat-form-field>
+    </form>
+  </mat-dialog-content>
+  
+  <mat-dialog-actions class="dialog-actions" align="end">
+    <button mat-stroked-button type="button" (click)="onCancel()" class="cancel-button">
+      <mat-icon>close</mat-icon>
+      Cancel
+    </button>
+    <button mat-raised-button color="primary" type="button" (click)="onConfirm()" [disabled]="form.invalid">
+      <mat-icon>check</mat-icon>
+      Save
+    </button>
+  </mat-dialog-actions>
+</div>

@@ -84,9 +84,14 @@
             <button mat-icon-button 
                     (click)="editSectorSeats()"
                     [disabled]="selectedSectors().length !== 1"
-                    matTooltip="Edit Sector Seats"
-                    color="primary">
+                    matTooltip="Edit Sector Seats">
               <mat-icon>event_seat</mat-icon>
+            </button>
+            <button mat-icon-button 
+                    (click)="openChangeSectorNameDialog()"
+                    [disabled]="selectedSectors().length !== 1"
+                    matTooltip="Change Name">
+              <mat-icon>drive_file_rename_outline</mat-icon>
             </button>
             <button mat-icon-button 
                     (click)="deleteSector()"
@@ -95,6 +100,7 @@
                     color="warn">
               <mat-icon>delete</mat-icon>
             </button>
+            <div class="vertical-divider"></div>
           </div>
         </div>
 

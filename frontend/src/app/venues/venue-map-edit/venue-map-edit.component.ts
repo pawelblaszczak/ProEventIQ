@@ -6,7 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
-import { MatDialogModule } from '@angular/material/dialog';
+import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -18,6 +18,7 @@ import { SectorSeatsInput } from '../../api/model/sector-seats-input';
 import { ProEventIQService } from '../../api/api/pro-event-iq.service';
 import { ConfirmationDialogService } from '../../shared';
 import { firstValueFrom } from 'rxjs';
+import { ChangeSectorNameDialogComponent } from './change-sector-name-dialog/change-sector-name-dialog.component';
 
 interface EditableSector extends Sector {
   isSelected: boolean;
@@ -40,7 +41,8 @@ interface EditableSector extends Sector {
     MatMenuModule,
     MatToolbarModule,
     MatTooltipModule,
-    RouterModule
+    RouterModule,
+    ChangeSectorNameDialogComponent
   ],
   templateUrl: './venue-map-edit.component.html',
   styleUrls: ['./venue-map-edit.component.scss'],
@@ -53,6 +55,7 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
   private readonly venueApi = inject(ProEventIQService);
   private readonly confirmationDialog = inject(ConfirmationDialogService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly dialog = inject(MatDialog);
 
   private readonly venueId = signal<string | null>(null);
   public venue = signal<Venue | null>(null);
@@ -585,8 +588,23 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
       fontSize: 14,
       fill: '#000', // Pure black font color
       fontStyle: 'bold',
-      listening: false
+      listening: true // Enable clicking on labels
     });
+
+    // Add click handler to name label
+    nameText.on('click', (e) => {
+      e.cancelBubble = true;
+      this.onSectorRectClick(sector, e);
+    });
+    nameText.on('mouseenter', () => {
+      if (this.editMode() === 'move' || this.editMode() === 'select') {
+        this.stage!.container().style.cursor = 'grab';
+      }
+    });
+    nameText.on('mouseleave', () => {
+      this.stage!.container().style.cursor = 'default';
+    });
+
     group.add(nameText);
 
     const seatsText = new Konva.Text({
@@ -598,8 +616,23 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
       fontSize: 12,
       fill: '#000', // Pure black font color
       opacity: 0.85,
-      listening: false
+      listening: true // Enable clicking on labels
     });
+
+    // Add click handler to seats label
+    seatsText.on('click', (e) => {
+      e.cancelBubble = true;
+      this.onSectorRectClick(sector, e);
+    });
+    seatsText.on('mouseenter', () => {
+      if (this.editMode() === 'move' || this.editMode() === 'select') {
+        this.stage!.container().style.cursor = 'grab';
+      }
+    });
+    seatsText.on('mouseleave', () => {
+      this.stage!.container().style.cursor = 'default';
+    });
+
     group.add(seatsText);
 
     // Add event handlers to group (for fallback if outline is missing)
@@ -1345,6 +1378,33 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
         listening: false
       });
       group.add(indicator);
+    });
+  }
+
+  openChangeSectorNameDialog() {
+    const selected = this.selectedSectors();
+    if (selected.length !== 1) return;
+    const sector = selected[0];
+    const dialogRef = this.dialog.open(ChangeSectorNameDialogComponent, {
+      data: { name: sector.name },
+      disableClose: true
+    });
+    dialogRef.afterClosed().subscribe((result: string | undefined) => {
+      if (result && result !== sector.name) {
+        // Update the sector name in editableSectors
+        this.editableSectors.update(sectors =>
+          sectors.map(s =>
+            s.sectorId === sector.sectorId ? { ...s, name: result } : s
+          )
+        );
+        this.hasChanges.set(true);
+        // Also update selectedSectors signal
+        this.selectedSectors.update(sel =>
+          sel.map(s =>
+            s.sectorId === sector.sectorId ? { ...s, name: result } : s
+          )
+        );
+      }
     });
   }
 }

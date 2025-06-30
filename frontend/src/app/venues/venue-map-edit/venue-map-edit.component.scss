@@ -510,3 +510,12 @@ $border-radius: 12px;
   background-color: $warn-color !important;
   color: white !important;
 }
+
+.vertical-divider {
+  display: inline-block;
+  width: 1px;
+  height: 32px;
+  margin: 0 12px;
+  background: rgba(0,0,0,0.12);
+  vertical-align: middle;
+}

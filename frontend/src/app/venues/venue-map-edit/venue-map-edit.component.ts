@@ -19,6 +19,7 @@ import { ProEventIQService } from '../../api/api/pro-event-iq.service';
 import { ConfirmationDialogService } from '../../shared';
 import { firstValueFrom } from 'rxjs';
 import { ChangeSectorNameDialogComponent } from './change-sector-name-dialog/change-sector-name-dialog.component';
+import { canDeactivateVenueMapEdit } from './can-deactivate-venue-map-edit.guard';
 
 interface EditableSector extends Sector {
   isSelected: boolean;
@@ -322,7 +323,10 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
   private readonly handleBeforeUnload = (event: BeforeUnloadEvent) => {
     if (this.hasChanges()) {
       event.preventDefault();
-      return 'You have unsaved changes. Are you sure you want to leave?';
+      event.returnValue = '';
+      // Native dialogs only: browsers ignore custom dialogs in beforeunload
+      // This will show the default browser dialog
+      return '';
     }
     return undefined;
   };
@@ -470,15 +474,33 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
       sector.rows.forEach((row, rowIdx) => {
         if (row.seats && Array.isArray(row.seats)) {
           maxRowLength = Math.max(maxRowLength, row.seats.length);
-          const rowY = rowIdx * (seatRadius * 2 + seatSpacing);
-          const rowOffset = (maxRowLength - row.seats.length) * (seatRadius + seatSpacing/2);
           row.seats.forEach((seat, seatIdx) => {
-            const x = seatIdx * (seatRadius * 2 + seatSpacing) + rowOffset;
-            const y = rowY;
-            seatPositions.push({x, y});
+            // Use explicit seat position if available, otherwise fallback to calculated
+            if (seat.position && typeof seat.position.x === 'number' && typeof seat.position.y === 'number') {
+              seatPositions.push({ x: seat.position.x, y: seat.position.y });
+            } else if (row.seats) {
+              // Fallback: calculate position as before
+              const rowY = rowIdx * (seatRadius * 2 + seatSpacing);
+              const rowOffset = (maxRowLength - row.seats.length) * (seatRadius + seatSpacing/2);
+              const x = seatIdx * (seatRadius * 2 + seatSpacing) + rowOffset;
+              const y = rowY;
+              seatPositions.push({x, y});
+            }
           });
         }
       });
+      // Normalize and flip Y only if the majority of Y values are negative (i.e., sector defined upwards)
+      if (seatPositions.length > 0) {
+        const negativeYCount = seatPositions.filter(p => p.y < 0).length;
+        const positiveYCount = seatPositions.filter(p => p.y > 0).length;
+        if (negativeYCount > positiveYCount) {
+          // Flip Y so that the largest Y (top row) is at 0 and rows increase downward
+          const minY = Math.min(...seatPositions.map(p => p.y));
+          const maxY = Math.max(...seatPositions.map(p => p.y));
+          seatPositions = seatPositions.map(p => ({ x: p.x, y: maxY - p.y }));
+        }
+        // else: do not flip, keep as is
+      }
     }
 
     // Draw sector outline (convex hull of seat positions) - must be listening for clicks
@@ -1028,8 +1050,9 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
       return updated || selected;
     });
     this.selectedSectors.set(newSelectedSectors);
-    if (this.selectedSector()?.sectorId === draggedSector.sectorId) {
-      const updatedPrimary = updatedSectors.find(s => s.sectorId === draggedSector.sectorId);
+    // Update primary selected sector if it exists
+    if (this.selectedSector()) {
+      const updatedPrimary = updatedSectors.find(s => s.sectorId === this.selectedSector()?.sectorId);
       this.selectedSector.set(updatedPrimary || null);
     }
     this.selectedSectors().forEach(selectedSector => {

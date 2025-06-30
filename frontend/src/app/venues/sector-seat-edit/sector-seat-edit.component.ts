@@ -450,16 +450,6 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
 
     // If no rows exist, show empty sector message
     if (!sector.rows || sector.rows.length === 0) {
-      const emptyText = new Konva.Text({
-        text: 'No rows in this sector. Click "Add New Row" to get started.',
-        x: 50,
-        y: currentY,
-        fontSize: 16,
-        fill: '#666',
-        fontStyle: 'bold',
-        listening: false
-      });
-      this.layer.add(emptyText);
       this.layer.batchDraw();
       return;
     }
@@ -933,6 +923,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
       let baseX = 0;
       let baseY = 0;
       let seatSpacing = this.gridSize;
+      
       if (currentRows.length > 0) {
         const prevRow = currentRows[currentRows.length - 1];
         if (prevRow.seats && prevRow.seats.length > 0) {
@@ -947,24 +938,66 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
           }
         }
       }
-      // Calculate Y based on space between previous two rows
-      if (currentRows.length > 1) {
+      
+      // Calculate Y based on spacing between previous rows
+      if (currentRows.length >= 2) {
+        // Two or more rows exist - calculate spacing from last two rows
         const prevRow = currentRows[currentRows.length - 1];
         const prevPrevRow = currentRows[currentRows.length - 2];
-        const prevY = prevRow.seats[0]?.position?.y ?? 0;
-        const prevPrevY = prevPrevRow.seats[0]?.position?.y ?? 0;
-        const ySpacing = prevY - prevPrevY;
-        if (ySpacing > 0) {
-          baseY = prevY + ySpacing;
+        
+        if (prevRow.seats && prevRow.seats.length > 0 && 
+            prevPrevRow.seats && prevPrevRow.seats.length > 0) {
+          const prevY = prevRow.seats[0].position?.y ?? 0;
+          const prevPrevY = prevPrevRow.seats[0].position?.y ?? 0;
+          
+          // Calculate the spacing between the two previous rows
+          const rowSpacing = Math.abs(prevY - prevPrevY);
+          
+          console.log('Row spacing calculation:', {
+            prevY,
+            prevPrevY,
+            rowSpacing,
+            currentRowsLength: currentRows.length
+          });
+          
+          // Determine which direction rows are progressing (up or down)
+          // and place the new row accordingly
+          let actualSpacing = rowSpacing;
+          if (actualSpacing < this.gridSize) {
+            actualSpacing = this.gridSize * 2; // Use default if too small
+          }
+          
+          // Place new row continuing in the same direction
+          // If prevY > prevPrevY, rows are going down, so add spacing
+          // If prevY < prevPrevY, rows are going up, so subtract spacing  
+          if (prevY >= prevPrevY) {
+            // Rows are progressing downward (increasing Y)
+            baseY = prevY + actualSpacing;
+          } else {
+            // Rows are progressing upward (decreasing Y)
+            baseY = prevY - actualSpacing;
+          }
+          
+          console.log('Calculated baseY:', baseY, 'using spacing:', actualSpacing, 'direction:', prevY >= prevPrevY ? 'down' : 'up');
         } else {
-          baseY = prevY + this.gridSize * 2;
+          // Fallback if seats don't have positions
+          baseY = this.gridSize * 2 * currentRows.length;
+          console.log('Fallback baseY (no positions):', baseY);
         }
       } else if (currentRows.length === 1) {
-        // Only one previous row
+        // Only one previous row exists
         const prevRow = currentRows[0];
-        baseY = (prevRow.seats[0]?.position?.y ?? 0) + this.gridSize * 2;
+        if (prevRow.seats && prevRow.seats.length > 0) {
+          baseY = (prevRow.seats[0].position?.y ?? 0) + this.gridSize * 2;
+          console.log('Single row baseY:', baseY);
+        } else {
+          baseY = this.gridSize * 2;
+          console.log('Single row baseY (no seats):', baseY);
+        }
       } else {
+        // No previous rows - start at origin
         baseY = 0;
+        console.log('No previous rows, baseY:', baseY);
       }
       const newRow: EditableRow = {
         seatRowId: tempId,
@@ -978,6 +1011,10 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
           selected: false
         }))
       };
+      
+      console.log('Creating new row with seats at baseY:', baseY);
+      console.log('First seat position:', newRow.seats[0]?.position);
+      
       const sector = this.sector();
       if (sector) {
         sector.rows.push(newRow);

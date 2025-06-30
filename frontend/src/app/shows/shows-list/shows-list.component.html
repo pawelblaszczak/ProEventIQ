@@ -1,0 +1,93 @@
+<div class="shows-container">
+  <div class="header-section">
+    <div class="header-content">
+      <h1 class="page-title">Discover Shows</h1>
+      <p class="page-subtitle">Browse our collection of amazing performances and entertainment</p>
+    </div>
+    <div class="actions">
+      <button mat-raised-button color="primary" (click)="addShow()" class="edit-button" aria-label="Add show">
+        <mat-icon>add</mat-icon>
+        ADD SHOW
+      </button>
+    </div>
+  </div>
+
+  <mat-card class="filter-card">
+    <mat-card-content>
+      <div class="filter-container">
+        <mat-form-field appearance="outline" class="search-field">
+          <mat-label>Search Shows</mat-label>
+          <input matInput (keyup)="applyFilter($event)" placeholder="Search by name, description, etc.">
+          <mat-icon matSuffix>search</mat-icon>
+        </mat-form-field>
+        
+        <div class="advanced-filters">
+          <mat-form-field appearance="outline" class="filter-field">
+            <mat-label>Your Age</mat-label>
+            <input matInput type="number" placeholder="Find shows for your age" (input)="filterByAgeRange($event)">
+            <mat-icon matSuffix>cake</mat-icon>
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="filter-field">
+            <mat-label>Min Age Requirement</mat-label>
+            <input matInput type="number" placeholder="Minimum age required" (input)="filterByMinAge($event)">
+            <mat-icon matSuffix>child_care</mat-icon>
+          </mat-form-field>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  @if (isLoading()) {
+    <div class="loading-spinner">
+      <mat-spinner diameter="48"></mat-spinner>
+      <p class="loading-text">Loading shows...</p>
+    </div>
+  } @else if (filteredShows().length === 0) {
+    <mat-card class="empty-state">
+      <mat-card-content>
+        <mat-icon class="empty-icon">theater_comedy</mat-icon>
+        <h2>No Shows Found</h2>
+        <p>There are no shows matching your criteria.</p>
+        <button mat-stroked-button color="primary" (click)="resetFilters()">Reset Filters</button>
+      </mat-card-content>
+    </mat-card>
+  } @else {
+    <div class="shows-grid">
+      @for (show of filteredShows(); track show.showId) {
+        <mat-card class="show-card">
+          <ng-container *ngIf="show.thumbnail; else noImage">
+            <img mat-card-image [src]="'data:' + show.thumbnailContentType + ';base64,' + show.thumbnail" [alt]="show.name || 'Show'">
+          </ng-container>
+          <ng-template #noImage>
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; background: #f5f5f5; width: 100%;">
+              <mat-icon style="font-size: 96px; color: #bdbdbd; width: 96px; height: 96px; display: flex; align-items: center; justify-content: center;">theater_comedy</mat-icon>
+              <span style="margin-top: 8px; color: #888; font-size: 16px; text-align: center;">No image available</span>
+            </div>
+          </ng-template>
+          <mat-card-content>
+            <div class="show-badges">
+              <span class="show-badge age-badge">
+                <mat-icon>cake</mat-icon>
+                {{ show.ageFrom }}+ years
+              </span>
+              @if (show.ageTo && show.ageTo < 99) {
+                <span class="show-badge max-age-badge">
+                  <mat-icon>elderly</mat-icon>
+                  up to {{ show.ageTo }}
+                </span>
+              }
+            </div>
+            <h2 class="show-name">{{ show.name }}</h2>
+            <p class="show-description">{{ (show.description || '') | slice:0:120 }}{{ (show.description?.length || 0) > 120 ? '...' : '' }}</p>
+          </mat-card-content>
+          <mat-card-actions>
+            <button mat-button color="primary" disabled matTooltip="Show details coming soon">
+              <mat-icon>visibility</mat-icon>
+              View Details
+            </button>
+          </mat-card-actions>
+        </mat-card>
+      }
+    </div>
+  }
+</div>

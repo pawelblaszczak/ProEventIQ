@@ -1,0 +1,193 @@
+@if (loading()) {
+  <div class="loading-container animated-pulse">
+    <div class="loading-icon-wrapper">
+      <mat-progress-spinner color="primary" mode="indeterminate" diameter="50"></mat-progress-spinner>
+    </div>
+    <p class="loading-text">
+      @if (isAddMode()) {
+        Preparing show form...
+      } @else {
+        Loading show data...
+      }
+    </p>
+    <div class="loading-progress-dots">
+      <span class="dot"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+    </div>
+  </div>
+}
+
+@if (!loading()) {
+  <div class="show-edit-section animate-fade-in">
+    <mat-card appearance="outlined" class="show-edit-card mat-elevation-z3">
+      <div class="card-header-banner">
+        <div class="header-content">
+          <h1 class="banner-title">
+            @if (isAddMode()) {
+              <mat-icon>add</mat-icon>
+              Add New Show
+            } @else {
+              <mat-icon>edit</mat-icon>
+              Edit Show
+            }
+          </h1>
+          <p class="banner-subtitle">
+            @if (isAddMode()) {
+              Create a new show with detailed information
+            } @else {
+              Update show information and settings
+            }
+          </p>
+        </div>
+        <div class="header-icon">
+          <mat-icon>theater_comedy</mat-icon>
+        </div>
+      </div>
+      
+      <mat-divider></mat-divider>
+      
+      <mat-card-content class="show-edit-content">
+        <form [formGroup]="form" (ngSubmit)="onSubmit()" class="show-form">
+          <h3 class="section-title">
+            <mat-icon>info</mat-icon>
+            Basic Information
+          </h3>
+          
+          <div class="form-grid">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Show Name</mat-label>
+              <input matInput formControlName="name" required placeholder="Enter show name" />
+              <mat-icon matSuffix>theater_comedy</mat-icon>
+            </mat-form-field>
+            
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Description</mat-label>
+              <textarea matInput formControlName="description" 
+                       placeholder="Enter show description (optional)"
+                       rows="4"></textarea>
+              <mat-icon matSuffix>description</mat-icon>
+            </mat-form-field>
+            
+            <div class="age-row">
+              <mat-form-field appearance="outline" class="half-width">
+                <mat-label>Minimum Age</mat-label>
+                <input matInput formControlName="ageFrom" type="number" min="0" max="120" placeholder="0" />
+                <mat-icon matSuffix>child_care</mat-icon>
+              </mat-form-field>
+              
+              <mat-form-field appearance="outline" class="half-width">
+                <mat-label>Maximum Age</mat-label>
+                <input matInput formControlName="ageTo" type="number" min="0" max="120" placeholder="99" />
+                <mat-icon matSuffix>elderly</mat-icon>
+              </mat-form-field>
+            </div>
+          </div>
+          
+          <mat-divider class="section-divider"></mat-divider>
+          
+          <h3 class="section-title">
+            <mat-icon>image</mat-icon>
+            Show Image
+          </h3>
+          
+          <div class="thumbnail-section" style="display: flex; gap: 16px;">
+            <div class="thumbnail-upload-area" style="flex: 1;" 
+                 (dragover)="onDragOver($event)" 
+                 (dragleave)="onDragLeave($event)"
+                 (drop)="onDrop($event)" 
+                 [class.drag-over]="dragOver()">
+              <mat-card appearance="outlined" class="upload-card thumbnail-card-equal-height" style="height: 180px; display: flex;">
+                <mat-card-content style="width: 100%; display: flex; align-items: center; justify-content: center; position: relative;">
+                  <div class="upload-content" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%;">
+                    <div class="upload-icon">
+                      <mat-icon>cloud_upload</mat-icon>
+                    </div>
+                    <h4>Upload Show Thumbnail</h4>
+                    <p>Choose an image file to represent this show</p>
+                    <input type="file" 
+                           id="thumbnail-input" 
+                           (change)="onThumbnailChange($event)" 
+                           accept="image/*,.webp" 
+                           class="file-input" />
+                    <label for="thumbnail-input" class="upload-button">
+                      <mat-icon>add_photo_alternate</mat-icon>
+                      Choose Image
+                    </label>
+                  </div>
+                  <!-- Drag overlay is always present but only visible when dragging -->
+                  <div class="drag-overlay" [style.display]="dragOver() ? 'flex' : 'none'">
+                    <mat-icon>file_upload</mat-icon>
+                    <span>Drop image here</span>
+                  </div>
+                </mat-card-content>
+              </mat-card>
+            </div>
+            
+            <div class="thumbnail-preview" style="flex: 1;">
+              @if (thumbnailPreview()) {
+                <mat-card appearance="outlined" class="preview-card thumbnail-card-equal-height" style="height: 180px; display: flex;">
+                  <mat-card-content style="width: 100%; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div class="preview-header">
+                      <h4>Preview</h4>
+                      <mat-icon color="primary">visibility</mat-icon>
+                    </div>
+                    <div class="preview-image-container" style="flex-grow: 1; display: flex; align-items: center; justify-content: center;">
+                      <img [src]="thumbnailPreview()" 
+                           alt="Show thumbnail preview" 
+                           class="preview-image" />
+                    </div>
+                  </mat-card-content>
+                </mat-card>
+              } @else {
+                <mat-card appearance="outlined" class="no-preview-card thumbnail-card-equal-height" style="height: 180px; display: flex;">
+                  <mat-card-content style="width: 100%; display: flex; align-items: center; justify-content: center;">
+                    <div class="no-preview-content" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%;">
+                      <mat-icon style="font-size: 72px; height: 72px; width: 72px; margin-bottom: 12px; color: #bdbdbd;">image_not_supported</mat-icon>
+                      <p style="text-align: center;">No image selected</p>
+                    </div>
+                  </mat-card-content>
+                </mat-card>
+              }
+            </div>
+          </div>
+          
+          @if (error()) {
+            <mat-card appearance="outlined" class="error-card">
+              <mat-card-content>
+                <div class="error-content">
+                  <mat-icon color="warn">error_outline</mat-icon>
+                  <div class="error-message">
+                    <h4>Error</h4>
+                    <p>{{ error() }}</p>
+                  </div>
+                </div>
+              </mat-card-content>
+            </mat-card>
+          }
+        </form>
+      </mat-card-content>
+      
+      <mat-card-actions class="show-actions" align="end">
+        <button mat-stroked-button type="button" (click)="onCancel()" class="cancel-button">
+          <mat-icon>close</mat-icon>
+          CANCEL
+        </button>
+        
+        <button mat-raised-button 
+                color="primary" 
+                type="submit" 
+                [disabled]="form.invalid || loading()"
+                (click)="onSubmit()"
+                class="save-button">
+          <mat-icon>save</mat-icon>
+          @if (isAddMode()) {
+            CREATE SHOW
+          } @else {
+            SAVE CHANGES
+          }
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+}

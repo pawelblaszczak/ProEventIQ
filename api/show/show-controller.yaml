@@ -1,0 +1,103 @@
+# Show controller paths for OpenAPI modularization
+shows:
+  get:
+    tags: [ProEventIQ]
+    summary: List shows
+    description: Get a list of shows, optionally filtered by features
+    operationId: listShows
+    parameters:
+      - in: query
+        name: name
+        schema:
+          type: string
+        description: Filter by show name
+      - in: query
+        name: ageFrom
+        schema:
+          type: integer
+        description: Filter by minimum age
+      - in: query
+        name: ageTo
+        schema:
+          type: integer
+        description: Filter by maximum age
+    responses:
+      '200':
+        description: List of shows
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: './show.yaml#/Show'
+  post:
+    tags: [ProEventIQ]
+    summary: Add a new show
+    operationId: addShow
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: './show-input.yaml#/ShowInput'
+    responses:
+      '201':
+        description: Show created
+        content:
+          application/json:
+            schema:
+              $ref: './show.yaml#/Show'
+showById:
+  get:
+    tags: [ProEventIQ]
+    summary: Get show details
+    operationId: getShowById
+    parameters:
+      - in: path
+        name: showId
+        required: true
+        schema:
+          type: string
+    responses:
+      '200':
+        description: Show details
+        content:
+          application/json:
+            schema:
+              $ref: './show.yaml#/Show'
+  put:
+    tags: [ProEventIQ]
+    summary: Update a show
+    operationId: updateShow
+    parameters:
+      - in: path
+        name: showId
+        required: true
+        schema:
+          type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: './show-input.yaml#/ShowInput'
+    responses:
+      '200':
+        description: Show updated
+        content:
+          application/json:
+            schema:
+              $ref: './show.yaml#/Show'
+  delete:
+    tags: [ProEventIQ]
+    summary: Delete a show
+    operationId: deleteShow
+    parameters:
+      - in: path
+        name: showId
+        required: true
+        schema:
+          type: string
+    responses:
+      '204':
+        description: Show deleted

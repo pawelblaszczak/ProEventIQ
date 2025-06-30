@@ -37,6 +37,17 @@
           <span class="menu-item-text" *ngIf="isExpanded()">Venues</span>
         </div>
       </a>
+      <a mat-list-item routerLink="/shows" routerLinkActive="active"
+         [matTooltip]="!isExpanded() ? 'Shows' : ''" 
+         matTooltipPosition="right"
+         [matTooltipDisabled]="isExpanded()">
+        <div class="menu-item-content">
+          <div class="menu-icon-container">
+            <mat-icon>theater_comedy</mat-icon>
+          </div>
+          <span class="menu-item-text" *ngIf="isExpanded()">Shows</span>
+        </div>
+      </a>
       <a mat-list-item routerLink="/events" routerLinkActive="active"
          [matTooltip]="!isExpanded() ? 'Events' : ''" 
          matTooltipPosition="right"

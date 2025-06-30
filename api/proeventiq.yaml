@@ -28,3 +28,7 @@ paths:
     $ref: './sector/sector-controller.yaml#/sectorById'
   /venues/{venueId}/sectors/{sectorId}/seats:
     $ref: './sector/sector-controller.yaml#/sectorLayout'
+  /shows:
+    $ref: './show/show-controller.yaml#/shows'
+  /shows/{showId}:
+    $ref: './show/show-controller.yaml#/showById'

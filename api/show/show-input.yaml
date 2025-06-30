@@ -1,0 +1,17 @@
+ShowInput:
+  type: object
+  properties:
+    name:
+      type: string
+    ageFrom:
+      type: integer
+    ageTo:
+      type: integer 
+    thumbnail:
+      type: string
+      description: Base64 encoded image data prefixed with data URL (e.g., data:image/jpeg;base64,...)
+    thumbnailContentType:
+      type: string
+      description: MIME type of the thumbnail image (e.g., image/jpeg, image/png)
+    description:
+      type: string

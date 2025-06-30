@@ -1,0 +1,20 @@
+Show:
+  type: object
+  properties:
+    showId:
+      type: string
+    name:
+      type: string
+    thumbnail:
+      type: string
+      format: byte
+      description: Base64 encoded image data
+    thumbnailContentType:
+      type: string
+      description: MIME type of the thumbnail image (e.g., image/jpeg, image/png)
+    description:
+      type: string
+    ageFrom:
+      type: integer
+    ageTo:
+      type: integer

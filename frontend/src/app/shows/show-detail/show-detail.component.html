@@ -1,0 +1,77 @@
+<div class="show-detail-container">
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>
+        <button mat-icon-button (click)="goBack()" aria-label="Go back">
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+        Show Details
+      </mat-card-title>
+    </mat-card-header>
+
+    <mat-card-content>
+      @if (isLoading()) {
+        <div class="loading-container">
+          <mat-spinner></mat-spinner>
+          <p>Loading show details...</p>
+        </div>
+      } @else if (error()) {
+        <div class="error-container">
+          <mat-icon color="warn">error</mat-icon>
+          <p>{{ error() }}</p>
+          <button mat-raised-button color="primary" (click)="goBack()">
+            Go Back to Shows
+          </button>
+        </div>
+      } @else if (show()) {
+        <div class="show-content">
+          <div class="show-image">
+            @if (show()?.thumbnail) {
+              <img [src]="show()?.thumbnail" [alt]="show()?.name" />
+            } @else {
+              <div class="placeholder-image">
+                <mat-icon>theaters</mat-icon>
+                <span>No Image Available</span>
+              </div>
+            }
+          </div>
+
+          <div class="show-info">
+            <h2>{{ show()?.name }}</h2>
+            
+            @if (show()?.description) {
+              <div class="description">
+                <h3>Description</h3>
+                <p>{{ show()?.description }}</p>
+              </div>
+            }
+
+            <div class="age-info">
+              <h3>Age Information</h3>
+              <div class="age-range">
+                @if (show()?.ageFrom !== undefined && show()?.ageTo !== undefined) {
+                  <span>Suitable for ages {{ show()?.ageFrom }} - {{ show()?.ageTo }}</span>
+                } @else if (show()?.ageFrom !== undefined) {
+                  <span>Suitable for ages {{ show()?.ageFrom }}+</span>
+                } @else {
+                  <span>Age information not available</span>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <mat-card-actions align="end">
+          <button mat-button (click)="goBack()">
+            <mat-icon>list</mat-icon>
+            Back to Shows
+          </button>
+          <button mat-raised-button color="primary" (click)="editShow()">
+            <mat-icon>edit</mat-icon>
+            Edit Show
+          </button>
+        </mat-card-actions>
+      }
+    </mat-card-content>
+  </mat-card>
+</div>

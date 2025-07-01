@@ -6,7 +6,7 @@ DROP TABLE IF EXISTS seat;
 DROP TABLE IF EXISTS seat_row;
 DROP TABLE IF EXISTS sector;
 DROP TABLE IF EXISTS venue;
-DROP TABLE IF EXISTS shows;
+DROP TABLE IF EXISTS event_show;
 
 -- Create venue table
 CREATE TABLE venue (
@@ -72,8 +72,8 @@ CREATE INDEX idx_seat_row_sector ON seat_row(sector_id);
 CREATE INDEX idx_seat_seat_row ON seat(seat_row_id);
 CREATE INDEX idx_seat_status ON seat(status);
 
--- Create shows table
-CREATE TABLE shows (
+-- Create event_show table
+CREATE TABLE event_show (
     show_id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     thumbnail MEDIUMBLOB,
@@ -85,6 +85,6 @@ CREATE TABLE shows (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Create indexes for shows table
-CREATE INDEX idx_show_name ON shows(name);
-CREATE INDEX idx_show_age_range ON shows(age_from, age_to);
+-- Create indexes for event_show table
+CREATE INDEX idx_show_name ON event_show(name);
+CREATE INDEX idx_show_age_range ON event_show(age_from, age_to);

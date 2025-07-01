@@ -1,77 +1,95 @@
-<div class="show-detail-container">
-  <mat-card>
-    <mat-card-header>
-      <mat-card-title>
-        <button mat-icon-button (click)="goBack()" aria-label="Go back">
-          <mat-icon>arrow_back</mat-icon>
-        </button>
-        Show Details
-      </mat-card-title>
-    </mat-card-header>
+<div *ngIf="isLoading()" class="loading-container animated-pulse">
+  <div class="loading-icon-wrapper">
+    <mat-progress-spinner color="primary" mode="indeterminate" diameter="50"></mat-progress-spinner>
+  </div>
+  <p class="loading-text">Loading show details...</p>
+  <div class="loading-progress-dots">
+    <span class="dot"></span>
+    <span class="dot"></span>
+    <span class="dot"></span>
+  </div>
+</div>
 
+<div *ngIf="error()" class="error-container animate-fade-in">
+  <mat-card appearance="outlined" class="error-card">
     <mat-card-content>
-      @if (isLoading()) {
-        <div class="loading-container">
-          <mat-spinner></mat-spinner>
-          <p>Loading show details...</p>
-        </div>
-      } @else if (error()) {
-        <div class="error-container">
-          <mat-icon color="warn">error</mat-icon>
-          <p>{{ error() }}</p>
-          <button mat-raised-button color="primary" (click)="goBack()">
-            Go Back to Shows
-          </button>
-        </div>
-      } @else if (show()) {
-        <div class="show-content">
-          <div class="show-image">
-            @if (show()?.thumbnail) {
-              <img [src]="show()?.thumbnail" [alt]="show()?.name" />
-            } @else {
-              <div class="placeholder-image">
-                <mat-icon>theaters</mat-icon>
-                <span>No Image Available</span>
-              </div>
-            }
-          </div>
+      <div class="error-icon-container">
+        <mat-icon color="warn">error_outline</mat-icon>
+      </div>
+      <div class="error-message">
+        <h3>Error Loading Show</h3>
+        <p>{{ error() }}</p>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>
 
-          <div class="show-info">
-            <h2>{{ show()?.name }}</h2>
-            
-            @if (show()?.description) {
-              <div class="description">
-                <h3>Description</h3>
-                <p>{{ show()?.description }}</p>
-              </div>
-            }
-
-            <div class="age-info">
-              <h3>Age Information</h3>
-              <div class="age-range">
-                @if (show()?.ageFrom !== undefined && show()?.ageTo !== undefined) {
-                  <span>Suitable for ages {{ show()?.ageFrom }} - {{ show()?.ageTo }}</span>
-                } @else if (show()?.ageFrom !== undefined) {
-                  <span>Suitable for ages {{ show()?.ageFrom }}+</span>
-                } @else {
-                  <span>Age information not available</span>
-                }
-              </div>
+<div *ngIf="show()" class="show-details-section animate-fade-in">
+  <mat-card appearance="outlined" class="show-details-card mat-elevation-z3">
+    <div class="show-hero" [ngClass]="{'has-image': show()?.thumbnail}">
+      <div class="show-header-content">
+        <h1 class="show-name">{{ show()?.name }}</h1>
+        <h2 class="show-subtitle">
+          <mat-icon class="subtitle-icon">theaters</mat-icon>
+          Entertainment Show
+        </h2>
+        <div class="show-stats">
+          <div class="stat-item">
+            <mat-icon>child_care</mat-icon>
+            <div class="stat-content">
+              <span class="stat-inline" *ngIf="show()?.ageFrom !== undefined && show()?.ageTo !== undefined">Ages {{ show()?.ageFrom }} - {{ show()?.ageTo }}</span>
+              <span class="stat-inline" *ngIf="show()?.ageFrom !== undefined && show()?.ageTo === undefined">Ages {{ show()?.ageFrom }}+</span>
+              <span class="stat-inline" *ngIf="show()?.ageFrom === undefined">All Ages</span>
             </div>
           </div>
         </div>
-
-        <mat-card-actions align="end">
-          <button mat-button (click)="goBack()">
-            <mat-icon>list</mat-icon>
-            Back to Shows
-          </button>
-          <button mat-raised-button color="primary" (click)="editShow()">
-            <mat-icon>edit</mat-icon>
-            Edit Show
-          </button>
-        </mat-card-actions>
-      }
+      </div>
+      
+      <div *ngIf="show()?.thumbnail" class="show-image-container">
+        <img class="show-hero-image" 
+             [src]="'data:' + show()?.thumbnailContentType + ';base64,' + show()?.thumbnail" 
+             [alt]="show()?.name + ' thumbnail'">
+      </div>
+      <div *ngIf="!show()?.thumbnail" class="show-image-placeholder">
+        <mat-icon class="placeholder-icon" style="font-size: 72px; color: #bdbdbd;">theaters</mat-icon>
+        <p>No image available</p>
+      </div>
+    </div>
+    
+    <mat-divider></mat-divider>
+    
+    <mat-card-content class="show-details-content">
+      <div class="show-details-header-row">
+        <h3 class="section-title">
+          <mat-icon>info</mat-icon>
+          Show Details
+        </h3>
+      </div>
+      <div class="show-info-grid">
+        <div class="info-item">
+          <div class="info-label">Age Range</div>
+          <div class="info-value">
+            <span *ngIf="show()?.ageFrom !== undefined && show()?.ageTo !== undefined">{{ show()?.ageFrom }} - {{ show()?.ageTo }} years</span>
+            <span *ngIf="show()?.ageFrom !== undefined && show()?.ageTo === undefined">{{ show()?.ageFrom }}+ years</span>
+            <span *ngIf="show()?.ageFrom === undefined">All ages welcome</span>
+          </div>
+        </div>
+        
+        <div class="info-item full-width">
+          <div class="info-label">Description</div>
+          <div class="info-value description">{{ show()?.description || 'No description available' }}</div>
+        </div>
+      </div>
     </mat-card-content>
+    <mat-card-actions class="show-actions" align="end">
+      <button mat-stroked-button (click)="goBack()" class="back-button">
+        <mat-icon>arrow_back</mat-icon>
+        BACK TO LIST
+      </button>
+      <button mat-raised-button color="primary" (click)="editShow()" aria-label="Edit show" class="edit-button">
+        <mat-icon>edit</mat-icon>
+        EDIT SHOW
+      </button>
+    </mat-card-actions>
   </mat-card>
 </div>

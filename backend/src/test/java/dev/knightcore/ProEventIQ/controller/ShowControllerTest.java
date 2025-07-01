@@ -1,7 +1,8 @@
-package dev.knightcore.proeventiq.controller;
+package dev.knightcore.ProEventIQ.controller;
 
 import dev.knightcore.proeventiq.api.model.Show;
 import dev.knightcore.proeventiq.api.model.ShowInput;
+import dev.knightcore.proeventiq.controller.ShowController;
 import dev.knightcore.proeventiq.service.ShowService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

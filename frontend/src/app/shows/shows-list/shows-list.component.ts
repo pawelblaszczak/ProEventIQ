@@ -137,4 +137,15 @@ export class ShowsListComponent implements OnInit {
   addShow(): void {
     this.router.navigate(['/shows/add']);
   }
+
+  viewShowDetails(showId: string): void {
+    this.router.navigate(['/shows', showId]);
+  }
+
+  onCardKeydown(event: KeyboardEvent, showId: string): void {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      this.viewShowDetails(showId);
+    }
+  }
 }

@@ -3,7 +3,7 @@ package dev.knightcore.proeventiq.entity;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "shows")
+@Table(name = "event_show")
 public class ShowEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -15,6 +15,8 @@ public class ShowEntity {
     private byte[] thumbnail;
     
     private String thumbnailContentType;
+    
+    @Lob
     private String description;
     private Integer ageFrom;
     private Integer ageTo;

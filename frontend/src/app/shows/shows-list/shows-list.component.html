@@ -54,7 +54,12 @@
   } @else {
     <div class="shows-grid">
       @for (show of filteredShows(); track show.showId) {
-        <mat-card class="show-card">
+        <mat-card class="show-card" 
+                  (click)="viewShowDetails(show.showId!)" 
+                  (keydown)="onCardKeydown($event, show.showId!)"
+                  tabindex="0"
+                  [attr.aria-label]="'View details for ' + show.name"
+                  style="cursor: pointer;">
           <ng-container *ngIf="show.thumbnail; else noImage">
             <img mat-card-image [src]="'data:' + show.thumbnailContentType + ';base64,' + show.thumbnail" [alt]="show.name || 'Show'">
           </ng-container>
@@ -81,7 +86,7 @@
             <p class="show-description">{{ (show.description || '') | slice:0:120 }}{{ (show.description?.length || 0) > 120 ? '...' : '' }}</p>
           </mat-card-content>
           <mat-card-actions>
-            <button mat-button color="primary" disabled matTooltip="Show details coming soon">
+            <button mat-button color="primary" (click)="$event.stopPropagation(); viewShowDetails(show.showId!)">
               <mat-icon>visibility</mat-icon>
               View Details
             </button>

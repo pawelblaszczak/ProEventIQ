@@ -199,41 +199,26 @@
 
 .empty-state {
   text-align: center;
-  padding: 64px 32px;
-  border-radius: 16px;
-  background-color: white;
-  max-width: 500px;
-  margin: 64px auto;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+  padding: 80px 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   
   .empty-icon {
-    font-size: 80px;
-    width: 80px;
-    height: 80px;
-    margin-bottom: 24px;
-    opacity: 0.3;
-    color: #607d8b;
+    font-size: 72px;
+    width: 72px;
+    height: 72px;
+    color: rgba(0, 0, 0, 0.3);
+    margin-bottom: 16px;
   }
   
   h2 {
-    margin-top: 0;
-    margin-bottom: 12px;
-    font-size: 24px;
-    font-weight: 500;
-    color: #455a64;
+    color: #2c3e50;
+    margin-bottom: 8px;
   }
   
   p {
-    margin-bottom: 32px;
     color: rgba(0, 0, 0, 0.6);
-    font-size: 16px;
-  }
-  
-  button {
-    padding: 0 32px;
-    height: 44px;
-    font-size: 16px;
-    border-radius: 22px;
+    margin-bottom: 24px;
   }
 }
 

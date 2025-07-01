@@ -3,7 +3,8 @@
     <div class="header-content">
       <h1 class="page-title">Discover Venues</h1>
       <p class="page-subtitle">Browse our collection of premium event spaces</p>
-    </div>    <div class="actions">
+    </div>
+    <div class="actions">
       <button mat-raised-button color="primary" (click)="addVenue()" class="edit-button" aria-label="Add venue">
         <mat-icon>add</mat-icon>
         ADD VENUE
@@ -49,7 +50,7 @@
   } @else if (filteredVenues().length === 0) {
     <mat-card class="empty-state">
       <mat-card-content>
-        <mat-icon class="empty-icon">event_seat</mat-icon>
+        <mat-icon class="empty-icon">stadium</mat-icon>
         <h2>No Venues Found</h2>
         <p>There are no venues matching your criteria.</p>
         <button mat-stroked-button color="primary" (click)="resetFilters()">Reset Filters</button>

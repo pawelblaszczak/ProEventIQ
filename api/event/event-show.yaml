@@ -1,0 +1,13 @@
+EventShow:
+  type: object
+  properties:
+    showId:
+      type: string
+    name:
+      type: string
+    description:
+      type: string
+    ageFrom:
+      type: integer
+    ageTo:
+      type: integer

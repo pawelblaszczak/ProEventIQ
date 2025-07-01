@@ -1,0 +1,13 @@
+EventVenue:
+  type: object
+  properties:
+    venueId:
+      type: string
+    name:
+      type: string
+    country:
+      type: string
+    city:
+      type: string
+    address:
+      type: string

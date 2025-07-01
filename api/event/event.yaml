@@ -1,0 +1,17 @@
+Event:
+  type: object
+  properties:
+    eventId:
+      type: string
+    showId:
+      type: string
+    venueId:
+      type: string
+    showName:
+      type: string
+    venueName:
+      type: string
+    dateTime:
+      type: string
+      format: date-time
+      description: Event date and time in ISO 8601 format

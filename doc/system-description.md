@@ -33,6 +33,31 @@ ProEventIQ - System for organizing and managing events, e.g. theater performance
         1.4.3 PriceCategory (if applicable)
         1.4.4 Status (indicates if seat is accessible to the audience)
 
+    1.5 Show
+        1.5.1 ShowID
+        1.5.2 Age from 
+        1.5.3 Age to
+        1.5.4 Description
+        1.5.5 name
+        1.5.6 Thumbnail
+
+    1.6 Event
+        1.6.1 EventID
+        1.6.2 ShowID
+        1.6.3 VenueId
+        1.6.4 Date and time
+
+    1.7 Participant
+        1.7.1 ParticipantID
+        1.7.2 Name
+        1.7.3 Number of tickets
+    
+    1.8 Reservation
+        1.8.1 EventID
+        1.8.2 SeatID
+        1.8.3 ParticipantID
+
+
 2. Menu:
     2.1 Venues
 

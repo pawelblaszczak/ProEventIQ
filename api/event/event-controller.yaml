@@ -1,0 +1,194 @@
+# Event controller paths for OpenAPI modularization
+events:
+  get:
+    tags: [ProEventIQ]
+    summary: List events
+    description: Get a list of events, optionally filtered by show, date range
+    operationId: listEvents
+    parameters:
+      - in: query
+        name: showId
+        schema:
+          type: string
+        description: Filter by show ID
+      - in: query
+        name: dateFrom
+        schema:
+          type: string
+          format: date-time
+        description: Filter events from this date (inclusive) in ISO 8601 format
+      - in: query
+        name: dateTo
+        schema:
+          type: string
+          format: date-time
+        description: Filter events until this date (inclusive) in ISO 8601 format
+      - in: query
+        name: venueId
+        schema:
+          type: string
+        description: Filter by venue ID
+    responses:
+      '200':
+        description: List of events
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: './event.yaml#/Event'
+      '400':
+        description: Invalid filter parameters
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                error:
+                  type: string
+                message:
+                  type: string
+  post:
+    tags: [ProEventIQ]
+    summary: Create a new event
+    operationId: createEvent
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: './event-input.yaml#/EventInput'
+    responses:
+      '201':
+        description: Event created successfully
+        content:
+          application/json:
+            schema:
+              $ref: './event.yaml#/Event'
+      '400':
+        description: Invalid input data
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                error:
+                  type: string
+                message:
+                  type: string
+      '404':
+        description: Referenced show or venue not found
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                error:
+                  type: string
+                message:
+                  type: string
+
+eventById:
+  get:
+    tags: [ProEventIQ]
+    summary: Get event by ID
+    description: Get a specific event by its ID
+    operationId: getEventById
+    parameters:
+      - in: path
+        name: eventId
+        required: true
+        schema:
+          type: string
+        description: Event ID
+    responses:
+      '200':
+        description: Event details
+        content:
+          application/json:
+            schema:
+              $ref: './event.yaml#/Event'
+      '404':
+        description: Event not found
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                error:
+                  type: string
+                message:
+                  type: string
+  put:
+    tags: [ProEventIQ]
+    summary: Update event
+    description: Update an existing event
+    operationId: updateEvent
+    parameters:
+      - in: path
+        name: eventId
+        required: true
+        schema:
+          type: string
+        description: Event ID
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: './event-input.yaml#/EventInput'
+    responses:
+      '200':
+        description: Event updated successfully
+        content:
+          application/json:
+            schema:
+              $ref: './event.yaml#/Event'
+      '400':
+        description: Invalid input data
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                error:
+                  type: string
+                message:
+                  type: string
+      '404':
+        description: Event not found
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                error:
+                  type: string
+                message:
+                  type: string
+  delete:
+    tags: [ProEventIQ]
+    summary: Delete event
+    description: Delete an existing event
+    operationId: deleteEvent
+    parameters:
+      - in: path
+        name: eventId
+        required: true
+        schema:
+          type: string
+        description: Event ID
+    responses:
+      '204':
+        description: Event deleted successfully
+      '404':
+        description: Event not found
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                error:
+                  type: string
+                message:
+                  type: string

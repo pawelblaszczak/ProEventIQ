@@ -7,6 +7,7 @@ DROP TABLE IF EXISTS seat_row;
 DROP TABLE IF EXISTS sector;
 DROP TABLE IF EXISTS venue;
 DROP TABLE IF EXISTS event_show;
+DROP TABLE IF EXISTS event;
 
 -- Create venue table
 CREATE TABLE venue (
@@ -88,3 +89,20 @@ CREATE TABLE event_show (
 -- Create indexes for event_show table
 CREATE INDEX idx_show_name ON event_show(name);
 CREATE INDEX idx_show_age_range ON event_show(age_from, age_to);
+
+-- Create event table
+CREATE TABLE event (
+    event_id INT AUTO_INCREMENT PRIMARY KEY,
+    show_id INT NOT NULL,
+    venue_id INT NOT NULL,
+    date_time DATETIME NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (show_id) REFERENCES event_show(show_id) ON DELETE CASCADE,
+    FOREIGN KEY (venue_id) REFERENCES venue(venue_id) ON DELETE CASCADE
+);
+
+-- Create indexes for event table
+CREATE INDEX idx_event_show_id ON event(show_id);
+CREATE INDEX idx_event_venue_id ON event(venue_id);
+CREATE INDEX idx_event_date_time ON event(date_time);

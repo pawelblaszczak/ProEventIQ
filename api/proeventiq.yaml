@@ -2,7 +2,7 @@ openapi: 3.0.1
 info:
   title: ProEventIQ Rest API
   description: API for ProEventIQ
-  version: "0.15"
+  version: "0.16"
 servers:
   - url: http://{hostname}:{port}/api
     variables:
@@ -32,3 +32,7 @@ paths:
     $ref: './show/show-controller.yaml#/shows'
   /shows/{showId}:
     $ref: './show/show-controller.yaml#/showById'
+  /events:
+    $ref: './event/event-controller.yaml#/events'
+  /events/{eventId}:
+    $ref: './event/event-controller.yaml#/eventById'

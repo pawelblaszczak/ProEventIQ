@@ -1,0 +1,15 @@
+EventInput:
+  type: object
+  required:
+    - showId
+    - venueId
+    - dateTime
+  properties:
+    showId:
+      type: string
+    venueId:
+      type: string
+    dateTime:
+      type: string
+      format: date-time
+      description: Event date and time in ISO 8601 format

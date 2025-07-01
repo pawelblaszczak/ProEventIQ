@@ -333,16 +333,14 @@ $border-radius: 12px;
   }
   
   .venue-canvas-container {
-    flex: 1;
     position: relative;
     overflow: auto;
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    min-height: 600px;
-    cursor: default;
+    min-height: 0; /* allow to shrink if needed */
     width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
+    height: 600px;
+    display: block;
+    flex-direction: unset;
     
     &:focus {
       outline: 2px solid $primary-color;
@@ -446,6 +444,22 @@ $border-radius: 12px;
   }
 }
 
+// Custom scroll canvas
+.custom-scroll-canvas {
+  overflow: auto;
+  width: 100%;
+  height: 600px;
+}
+
+.fixed-canvas-size {
+  width: 2000px !important;
+  height: 1200px !important;
+  min-width: 2000px !important;
+  min-height: 1200px !important;
+  max-width: none !important;
+  max-height: none !important;
+}
+
 // Responsive design
 @media (max-width: 1200px) {
   .venue-map-editor {
@@ -518,4 +532,23 @@ $border-radius: 12px;
   margin: 0 12px;
   background: rgba(0,0,0,0.12);
   vertical-align: middle;
+}
+
+.venue-canvas-container::-webkit-scrollbar {
+  height: 14px;
+  width: 14px;
+}
+.venue-canvas-container::-webkit-scrollbar-thumb {
+  background: #cfd8dc;
+  border-radius: 7px;
+  border: 3px solid #f5f8fa;
+}
+.venue-canvas-container::-webkit-scrollbar-track {
+  background: #f5f8fa;
+}
+
+/* For Firefox */
+.venue-canvas-container {
+  scrollbar-width: auto;
+  scrollbar-color: #cfd8dc #f5f8fa;
 }

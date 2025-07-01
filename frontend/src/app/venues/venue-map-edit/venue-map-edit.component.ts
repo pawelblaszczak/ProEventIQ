@@ -94,6 +94,10 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
   private isPanning = false;
   private lastPanPoint = { x: 0, y: 0 };
   private panStartPoint = { x: 0, y: 0 };
+  // --- PAN/SCROLL LOGIC FOR HTML CONTAINER ---
+  private isHtmlPanning = false;
+  private htmlPanStart = { x: 0, y: 0 };
+  private htmlScrollStart = { left: 0, top: 0 };
   constructor() {
     this.route.paramMap.subscribe(params => {
       const venueId = params.get('venueId');
@@ -280,31 +284,15 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
     }
   }
   private resizeCanvas() {
-    // Get actual container dimensions if available
-    if (this.canvasContainer?.nativeElement) {
-      const containerElement = this.canvasContainer.nativeElement;
-      
-      // Use clientWidth/clientHeight which gives the interior dimensions
-      // (excluding borders, scrollbars, but including padding)
-      this.canvasWidth = Math.max(containerElement.clientWidth || 800, 800);
-      this.canvasHeight = Math.max(containerElement.clientHeight || 600, 600);
-      
-      console.log('Container clientWidth:', containerElement.clientWidth, 'clientHeight:', containerElement.clientHeight);
-      console.log('Container getBoundingClientRect:', containerElement.getBoundingClientRect());
-    } else {
-      // Fallback to window-based calculation
-      const newWidth = Math.max(window.innerWidth - 400, 800); // Account for sidebar
-      const newHeight = Math.max(window.innerHeight * 0.7, 600);
-      
-      this.canvasWidth = newWidth;
-      this.canvasHeight = newHeight;
-    }
-    
+    // Always use the fixed canvas size for the stage
+    this.canvasWidth = 2000;
+    this.canvasHeight = 1200;
+
     // Update stage size if it exists
     if (this.stage) {
       this.stage.width(this.canvasWidth);
       this.stage.height(this.canvasHeight);
-      
+
       // Update background rectangle size if it exists
       if (this.layer) {
         const background = this.layer.findOne('.canvas-background') as Konva.Rect;
@@ -313,10 +301,10 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
           background.height(this.canvasHeight);
         }
       }
-      
+
       this.stage.batchDraw();
     }
-    
+
     console.log('Canvas resized to:', this.canvasWidth, 'x', this.canvasHeight);
   }
 
@@ -460,9 +448,14 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
       x: sector.position?.x ?? 100,
       y: sector.position?.y ?? 100,
       rotation: sector.rotation || 0,
-      draggable: this.editMode() === 'move' || this.editMode() === 'select'
+      draggable: this.editMode() === 'move' || this.editMode() === 'select',
+      // Fix: ensure drag starts from pointer position
+      dragBoundFunc: (pos) => pos
     });
-
+    // Remove pointer offset logic from dragstart
+    group.on('dragstart', () => {
+      this.onSectorDragStart(sector);
+    });
     // --- Dynamic sector shape based on seats layout ---
     const seatRadius = 8;
     const seatSpacing = 6;
@@ -677,6 +670,9 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
       this.onSectorDragMove(sector, group);
     });
     group.on('dragend', () => {
+      // Reset offset after drag to avoid future jumps
+      group.offsetX(0);
+      group.offsetY(0);
       this.onSectorDragEnd(sector, group);
     });
 
@@ -745,15 +741,16 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
   // Restrict canvas panning so the grid always covers the visible area
   private applyPanBounds(position: { x: number; y: number }): { x: number; y: number } {
     if (!this.stage) return position;
-    const zoom = this.zoom();
-    const stageWidth = this.canvasWidth;
-    const stageHeight = this.canvasHeight;
-    const scaledWidth = stageWidth * zoom;
-    const scaledHeight = stageHeight * zoom;
-    // The minimum x/y so the right/bottom edge of the grid is never left of/below the viewport
-    const minX = Math.min(0, stageWidth - scaledWidth);
-    const minY = Math.min(0, stageHeight - scaledHeight);
-    // The maximum x/y so the left/top edge of the grid is never right of/above the viewport
+    // Get the visible container size
+    const container = this.canvasContainer?.nativeElement;
+    const containerWidth = container?.clientWidth || 0;
+    const containerHeight = container?.clientHeight || 0;
+    // Use the fixed canvas size
+    const canvasWidth = 2000;
+    const canvasHeight = 1200;
+    // Allow panning so any part of the canvas can be visible
+    const minX = Math.min(0, containerWidth - canvasWidth);
+    const minY = Math.min(0, containerHeight - canvasHeight);
     const maxX = 0;
     const maxY = 0;
     return {
@@ -800,17 +797,26 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
   }
   
   onCanvasMouseDown(event: MouseEvent) {
+    if (event.button === 0 && event.altKey && this.canvasContainer) {
+      this.isHtmlPanning = true;
+      this.htmlPanStart = { x: event.clientX, y: event.clientY };
+      const container = this.canvasContainer.nativeElement.parentElement;
+      if (container) {
+        this.htmlScrollStart = { left: container.scrollLeft, top: container.scrollTop };
+        container.style.cursor = 'grabbing';
+      }
+      event.preventDefault();
+      return;
+    }
+    // Konva panning logic
     if (!this.stage) return;
-    
-    // Only start panning if zoomed in and not clicking on a sector
-    if (this.zoom() > 1 && event.button === 0) {
+    // Allow panning at any zoom level if Alt is pressed and left mouse button
+    if (event.button === 0 && event.altKey) {
       const konvaEvent = this.stage.getPointerPosition();
       if (konvaEvent) {
         this.isPanning = true;
         this.panStartPoint = { x: event.clientX, y: event.clientY };
         this.lastPanPoint = { x: this.stage.x(), y: this.stage.y() };
-        
-        // Change cursor to grabbing
         if (this.canvasContainer) {
           this.canvasContainer.nativeElement.style.cursor = 'grabbing';
         }
@@ -819,11 +825,28 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
   }
   
   onCanvasMouseMove(event: MouseEvent) {
+    if (this.isHtmlPanning && this.canvasContainer) {
+      const container = this.canvasContainer.nativeElement.parentElement;
+      if (container) {
+        const dx = event.clientX - this.htmlPanStart.x;
+        const dy = event.clientY - this.htmlPanStart.y;
+        container.scrollLeft = this.htmlScrollStart.left - dx;
+        container.scrollTop = this.htmlScrollStart.top - dy;
+      }
+      event.preventDefault();
+      return;
+    }
     if (!this.stage || !this.isPanning) return;
-    
+    // Only allow panning if Alt key is still pressed
+    if (!event.altKey) {
+      this.isPanning = false;
+      if (this.canvasContainer) {
+        this.canvasContainer.nativeElement.style.cursor = this.zoom() > 1 ? 'grab' : 'default';
+      }
+      return;
+    }
     const deltaX = event.clientX - this.panStartPoint.x;
     const deltaY = event.clientY - this.panStartPoint.y;
-    
     const newPos = {
       x: this.lastPanPoint.x + deltaX,
       y: this.lastPanPoint.y + deltaY
@@ -834,6 +857,15 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
   }
   
   onCanvasMouseUp(event: MouseEvent) {
+    if (this.isHtmlPanning && this.canvasContainer) {
+      const container = this.canvasContainer.nativeElement.parentElement;
+      if (container) {
+        container.style.cursor = '';
+      }
+      this.isHtmlPanning = false;
+      event.preventDefault();
+      return;
+    }
     this.isPanning = false;
     
     // Reset cursor
@@ -957,19 +989,15 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
   }
 
   onSectorDragMove(draggedSector: EditableSector, draggedGroup: Konva.Group) {
-    // Get the current pointer position and adjust for zoom
+    // Only move other selected groups, not the dragged group itself
     const scale = this.zoom();
-    const pointerPos = this.stage?.getPointerPosition();
-    if (!pointerPos) return;
-    // Calculate the logical (unscaled) position
-    const logicalPointer = { x: pointerPos.x / scale, y: pointerPos.y / scale };
-    // Calculate the offset from the group's drag start position
-    const initialPos = this.initialDragPositions.get(draggedSector.sectorId!);
-    if (!initialPos) return;
-    const deltaX = logicalPointer.x - initialPos.x;
-    const deltaY = logicalPointer.y - initialPos.y;
+    const draggedPos = draggedGroup.position();
+    const initialDraggedPos = this.initialDragPositions.get(draggedSector.sectorId!);
+    if (!initialDraggedPos) return;
+    const deltaX = draggedPos.x - initialDraggedPos.x;
+    const deltaY = draggedPos.y - initialDraggedPos.y;
     this.selectedSectors().forEach(selectedSector => {
-      if (selectedSector.sectorId === draggedSector.sectorId) return;
+      if (selectedSector.sectorId === draggedSector.sectorId) return; // skip dragged group
       const sectorGroup = this.sectorGroups.get(selectedSector.sectorId!);
       const sectorInitialPos = this.initialDragPositions.get(selectedSector.sectorId!);
       if (sectorGroup && sectorInitialPos) {
@@ -993,51 +1021,21 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
         }
       }
     });
-    // Move the dragged group
-    draggedGroup.position({
-      x: initialPos.x + deltaX,
-      y: initialPos.y + deltaY
-    });
-    draggedGroup.moveToTop();
-    const rect = draggedGroup.findOne('.sector-rect') as Konva.Rect;
-    if (rect) {
-      rect.strokeWidth(4);
-      rect.opacity(1);
-      rect.shadowColor('rgba(33, 150, 243, 0.6)');
-      rect.shadowBlur(20);
-      rect.shadowOffsetX(8);
-      rect.shadowOffsetY(8);
-      const texts = draggedGroup.find('Text');
-      texts.forEach(node => {
-        (node as Konva.Text).opacity(1);
-      });
-    }
     this.stage?.draw();
   }
 
   onSectorDragEnd(draggedSector: EditableSector, draggedGroup: Konva.Group) {
-    const scale = this.zoom();
-    const pointerPos = this.stage?.getPointerPosition();
-    if (!pointerPos) return;
-    const logicalPointer = { x: pointerPos.x / scale, y: pointerPos.y / scale };
-    const initialPos = this.initialDragPositions.get(draggedSector.sectorId!);
-    if (!initialPos) return;
-    const deltaX = logicalPointer.x - initialPos.x;
-    const deltaY = logicalPointer.y - initialPos.y;
-    const sectors = this.editableSectors();
-    const updatedSectors = sectors.map(s => {
+    // Use the actual group positions after drag
+    const updatedSectors = this.editableSectors().map(s => {
       const isSelected = this.selectedSectors().some(selected => selected.sectorId === s.sectorId);
       if (isSelected) {
-        const sectorInitialPos = this.initialDragPositions.get(s.sectorId!);
-        if (sectorInitialPos) {
-          const newPosition = {
-            x: Math.round(sectorInitialPos.x + deltaX),
-            y: Math.round(sectorInitialPos.y + deltaY)
-          };
+        const group = this.sectorGroups.get(s.sectorId!);
+        if (group) {
+          const pos = group.position();
           return {
             ...s,
             isDragging: false,
-            position: newPosition
+            position: { x: Math.round(pos.x), y: Math.round(pos.y) }
           };
         }
       }

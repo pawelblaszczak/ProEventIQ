@@ -175,7 +175,7 @@
     <mat-card class="canvas-card">
       <mat-card-content class="canvas-content">
         <!-- Canvas -->
-        <div class="venue-canvas-container" 
+        <div class="venue-canvas-container custom-scroll-canvas" 
              [class.zoomed-in]="zoom() > 1"
              (keydown)="$event.key === 'Escape' && deselectAll()"
              (wheel)="onCanvasWheel($event)"
@@ -186,7 +186,7 @@
              role="application"
              aria-label="Venue map editor canvas">
           <div #canvasContainer 
-               class="konva-canvas"
+               class="konva-canvas fixed-canvas-size"
                [class.zoomed]="zoom() > 1">
           </div>
         </div>

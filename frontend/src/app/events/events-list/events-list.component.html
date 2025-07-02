@@ -15,27 +15,47 @@
   <mat-card class="filter-card">
     <mat-card-content>
       <div class="filter-container">
-        <mat-form-field appearance="outline" class="search-field">
-          <mat-label>Search Events</mat-label>
-          <input matInput (input)="applyFilter($event)" placeholder="Search by show, venue, etc.">
-          <mat-icon matSuffix>search</mat-icon>
-        </mat-form-field>
-        
-        <div class="advanced-filters">
-          <mat-form-field appearance="outline" class="filter-field">
+        <div class="filter-row" style="display: flex; gap: 16px;">
+          <mat-form-field appearance="outline" class="search-field" style="flex: 1; min-width: 0;">
+            <mat-label>Search Events</mat-label>
+            <input matInput (input)="applyFilter($event)" placeholder="Search by show, venue, etc.">
+            <mat-icon matSuffix>search</mat-icon>
+          </mat-form-field>
+          <div style="display: flex; flex: 1; min-width: 0; gap: 16px;">
+            <mat-form-field appearance="outline" class="filter-field" style="flex: 1; min-width: 0;">
+              <mat-label>Date from</mat-label>
+              <input matInput type="date" placeholder="Filter from date" (input)="filterByDateFrom($event)" [value]="today">
+              <mat-icon matSuffix>event</mat-icon>
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="filter-field" style="flex: 1; min-width: 0;">
+              <mat-label>Date to</mat-label>
+              <input matInput type="date" placeholder="Filter to date" (input)="filterByDateTo($event)">
+              <mat-icon matSuffix>event</mat-icon>
+            </mat-form-field>
+          </div>
+        </div>
+        <div class="advanced-filters" style="display: flex; gap: 16px;">
+          <mat-form-field appearance="outline" class="filter-field" style="flex: 1; min-width: 0;">
             <mat-label>Show Name</mat-label>
-            <input matInput placeholder="Filter by show" (input)="filterByShow($event)">
+            <input type="text" matInput [matAutocomplete]="autoShow" (input)="filterShowInput($event)" [value]="showInputValue" placeholder="Type or select show">
+            <mat-autocomplete #autoShow="matAutocomplete" (optionSelected)="filterByShow($event)">
+              <mat-option value="">All Shows</mat-option>
+              @for (show of filteredShows(); track show.showId) {
+                <mat-option [value]="show.showId">{{ show.name }}</mat-option>
+              }
+            </mat-autocomplete>
             <mat-icon matSuffix>theaters</mat-icon>
           </mat-form-field>
-          <mat-form-field appearance="outline" class="filter-field">
+          <mat-form-field appearance="outline" class="filter-field" style="flex: 1; min-width: 0;">
             <mat-label>Venue</mat-label>
-            <input matInput placeholder="Filter by venue" (input)="filterByVenue($event)">
+            <input type="text" matInput [matAutocomplete]="autoVenue" (input)="filterVenueInput($event)" [value]="venueInputValue" placeholder="Type or select venue">
+            <mat-autocomplete #autoVenue="matAutocomplete" (optionSelected)="filterByVenue($event)">
+              <mat-option value="">All Venues</mat-option>
+              @for (venue of filteredVenues(); track venue.venueId) {
+                <mat-option [value]="venue.venueId">{{ venue.name }}</mat-option>
+              }
+            </mat-autocomplete>
             <mat-icon matSuffix>location_on</mat-icon>
-          </mat-form-field>
-          <mat-form-field appearance="outline" class="filter-field">
-            <mat-label>Date</mat-label>
-            <input matInput type="date" placeholder="Filter by date" (input)="filterByDate($event)">
-            <mat-icon matSuffix>event</mat-icon>
           </mat-form-field>
         </div>
       </div>
@@ -64,7 +84,6 @@
             <div class="event-date-section">
               <div class="date-block">
                 <div class="date-day">{{ formatDateOnly(event.dateTime) }}</div>
-                <div class="date-time">{{ formatTime(event.dateTime) }}</div>
                 <div class="date-year">{{ formatYear(event.dateTime) }}</div>
               </div>
             </div>
@@ -72,19 +91,32 @@
             <div class="event-details">
               <div class="event-header">
                 <h3 class="event-title">{{ event.showName || 'Untitled Show' }}</h3>
-                <div class="seat-status">
-                  <div class="seat-indicator" [ngClass]="getReservationClass(event.eventId || '1')">
-                    <mat-icon>event_seat</mat-icon>
-                    <span class="seat-text">{{ getSeatStatusText(event.eventId || '1') }}</span>
-                  </div>
-                </div>
               </div>
               
               <div class="event-meta">
                 <div class="meta-item">
+                  <mat-icon>schedule</mat-icon>
+                  <span>{{ formatTime(event.dateTime) }}</span>
+                </div>
+                <div class="meta-item">
                   <mat-icon>location_on</mat-icon>
                   <span>{{ event.venueName || 'TBD' }}</span>
                 </div>
+                <div class="meta-item">
+                  <mat-icon>public</mat-icon>
+                  <span>{{ event.country || 'Unknown Country' }}</span>
+                </div>
+                <div class="meta-item">
+                  <mat-icon>location_city</mat-icon>
+                  <span>{{ event.city || 'Unknown City' }}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="seat-status">
+              <div class="seat-indicator" [ngClass]="getReservationClass(event.eventId || '1')">
+                <mat-icon>event_seat</mat-icon>
+                <span class="seat-text">{{ getSeatStatusText(event.eventId || '1') }}</span>
               </div>
             </div>
             

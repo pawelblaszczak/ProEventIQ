@@ -6,6 +6,8 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { ProEventIQService } from '../../api/api/pro-event-iq.service';
 import { Event as ApiEvent } from '../../api/model/event';
+import { ShowOption } from '../../api/model/show-option';
+import { VenueOption } from '../../api/model/venue-option';
 
 @Component({
   selector: 'app-events-list',
@@ -21,9 +23,23 @@ export class EventsListComponent implements OnInit {
   events = signal<ApiEvent[]>([]);
   filteredEvents = signal<ApiEvent[]>([]);
   isLoading = signal(false);
+  shows = signal<ShowOption[]>([]);
+  venues = signal<VenueOption[]>([]);
+  showInputValue = '';
+  venueInputValue = '';
+  filteredShows = signal<ShowOption[]>([]);
+  filteredVenues = signal<VenueOption[]>([]);
+
+  public today = new Date().toISOString().slice(0, 10); // yyyy-MM-dd
+  private dateFrom: string = this.today;
+  private dateTo: string = '';
 
   ngOnInit() {
     this.loadEvents();
+    this.loadShows();
+    this.loadVenues();
+    this.filteredShows.set([]);
+    this.filteredVenues.set([]);
   }
 
   private loadEvents() {
@@ -94,6 +110,32 @@ export class EventsListComponent implements OnInit {
     this.filteredEvents.set(mockEvents);
   }
 
+  private loadShows() {
+    this.apiService.listShowOptions().subscribe({
+      next: (shows) => {
+        this.shows.set(shows);
+        this.filteredShows.set(shows);
+      },
+      error: () => {
+        this.shows.set([]);
+        this.filteredShows.set([]);
+      }
+    });
+  }
+
+  private loadVenues() {
+    this.apiService.listVenueOptions().subscribe({
+      next: (venues) => {
+        this.venues.set(venues);
+        this.filteredVenues.set(venues);
+      },
+      error: () => {
+        this.venues.set([]);
+        this.filteredVenues.set([]);
+      }
+    });
+  }
+
   applyFilter(event: Event): void {
     const filterValue = (event.target as HTMLInputElement).value.toLowerCase();
     this.filteredEvents.set(
@@ -105,31 +147,43 @@ export class EventsListComponent implements OnInit {
     );
   }
 
-  filterByShow(event: Event): void {
-    const filterValue = (event.target as HTMLInputElement).value.toLowerCase();
-    if (!filterValue) {
-      this.filteredEvents.set(this.events());
-      return;
-    }
-    
-    this.filteredEvents.set(
-      this.events().filter(evt => 
-        (evt.showName?.toLowerCase() ?? '').includes(filterValue)
-      )
+  filterShowInput(event: Event): void {
+    const value = (event.target as HTMLInputElement).value.toLowerCase();
+    this.showInputValue = value;
+    this.filteredShows.set(
+      this.shows().filter(show => show.name.toLowerCase().includes(value))
     );
   }
 
-  filterByVenue(event: Event): void {
-    const filterValue = (event.target as HTMLInputElement).value.toLowerCase();
-    if (!filterValue) {
+  filterVenueInput(event: Event): void {
+    const value = (event.target as HTMLInputElement).value.toLowerCase();
+    this.venueInputValue = value;
+    this.filteredVenues.set(
+      this.venues().filter(venue => venue.name.toLowerCase().includes(value))
+    );
+  }
+
+  filterByShow(event: any): void {
+    const value = event.option?.value || '';
+    this.showInputValue = value ? this.shows().find(s => s.showId === value)?.name || '' : '';
+    if (!value) {
       this.filteredEvents.set(this.events());
       return;
     }
-    
     this.filteredEvents.set(
-      this.events().filter(evt => 
-        (evt.venueName?.toLowerCase() ?? '').includes(filterValue)
-      )
+      this.events().filter(evt => evt.showId === value)
+    );
+  }
+
+  filterByVenue(event: any): void {
+    const value = event.option?.value || '';
+    this.venueInputValue = value ? this.venues().find(v => v.venueId === value)?.name || '' : '';
+    if (!value) {
+      this.filteredEvents.set(this.events());
+      return;
+    }
+    this.filteredEvents.set(
+      this.events().filter(evt => evt.venueId === value)
     );
   }
 
@@ -146,6 +200,30 @@ export class EventsListComponent implements OnInit {
         if (!evt.dateTime) return false;
         const eventDate = new Date(evt.dateTime);
         return eventDate.toDateString() === filterDate.toDateString();
+      })
+    );
+  }
+
+  filterByDateFrom(event: Event): void {
+    this.dateFrom = (event.target as HTMLInputElement).value;
+    this.applyDateRangeFilter();
+  }
+
+  filterByDateTo(event: Event): void {
+    this.dateTo = (event.target as HTMLInputElement).value;
+    this.applyDateRangeFilter();
+  }
+
+  private applyDateRangeFilter(): void {
+    const from = this.dateFrom ? new Date(this.dateFrom) : null;
+    const to = this.dateTo ? new Date(this.dateTo) : null;
+    this.filteredEvents.set(
+      this.events().filter(evt => {
+        if (!evt.dateTime) return false;
+        const eventDate = new Date(evt.dateTime);
+        if (from && eventDate < from) return false;
+        if (to && eventDate > to) return false;
+        return true;
       })
     );
   }

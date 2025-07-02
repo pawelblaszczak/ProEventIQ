@@ -129,6 +129,9 @@ public class EventService {
         
         if (entity.getVenue() != null) {
             dto.setVenueName(entity.getVenue().getName());
+            dto.setCity(entity.getVenue().getCity());
+            dto.setAddress(entity.getVenue().getAddress());
+            dto.setCountry(entity.getVenue().getCountry());
         }
         
         return dto;

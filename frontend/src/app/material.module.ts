@@ -18,6 +18,9 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatBadgeModule } from '@angular/material/badge';
+import { MatSelectModule } from '@angular/material/select';
+import { MatOptionModule } from '@angular/material/core';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 
 const materialModules = [
   MatToolbarModule,
@@ -38,7 +41,10 @@ const materialModules = [
   MatDividerModule,
   MatExpansionModule,
   MatChipsModule,
-  MatBadgeModule
+  MatBadgeModule,
+  MatSelectModule,
+  MatOptionModule,
+  MatAutocompleteModule
 ];
 
 @NgModule({

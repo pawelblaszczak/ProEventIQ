@@ -127,6 +127,8 @@
         border-radius: 8px;
         padding: 8px 6px;
         min-width: 60px;
+        width: 100%;
+        height: 100%;
         text-align: center;
         
         .date-day {
@@ -179,29 +181,31 @@
         }
         
         .seat-status {
+          flex-shrink: 0;
           display: flex;
           align-items: center;
-          flex-shrink: 0;
+          justify-content: center;
+          padding: 0 8px;
           
           .seat-indicator {
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 22px;
-            padding: 0 8px;
-            border-radius: 12px;
+            height: 32px; // increased from 22px
+            padding: 0 16px; // increased from 8px
+            border-radius: 16px; // slightly larger for bigger indicator
             line-height: 1;
             
             mat-icon {
-              font-size: 14px;
-              width: 14px;
-              height: 14px;
+              font-size: 22px; // increased from 14px
+              width: 22px;
+              height: 22px;
               line-height: 1;
-              margin-right: 4px;
+              margin-right: 8px; // more space for bigger icon
             }
             
             .seat-text {
-              font-size: 12px;
+              font-size: 16px; // increased from 12px
               line-height: 1;
             }
           }
@@ -234,6 +238,37 @@
             overflow: hidden;
             text-overflow: ellipsis;
           }
+        }
+      }
+    }
+    
+    .seat-status {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 8px;
+      
+      .seat-indicator {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 32px; // increased from 22px
+        padding: 0 16px; // increased from 8px
+        border-radius: 16px; // slightly larger for bigger indicator
+        line-height: 1;
+        
+        mat-icon {
+          font-size: 22px; // increased from 14px
+          width: 22px;
+          height: 22px;
+          line-height: 1;
+          margin-right: 8px; // more space for bigger icon
+        }
+        
+        .seat-text {
+          font-size: 16px; // increased from 12px
+          line-height: 1;
         }
       }
     }

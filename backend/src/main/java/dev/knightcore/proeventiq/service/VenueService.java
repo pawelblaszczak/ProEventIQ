@@ -2,6 +2,7 @@ package dev.knightcore.proeventiq.service;
 
 import dev.knightcore.proeventiq.api.model.Venue;
 import dev.knightcore.proeventiq.api.model.VenueInput;
+import dev.knightcore.proeventiq.api.model.VenueOption;
 import dev.knightcore.proeventiq.entity.VenueEntity;
 import dev.knightcore.proeventiq.repository.VenueRepository;
 import dev.knightcore.proeventiq.api.model.Sector;
@@ -276,5 +277,16 @@ public class VenueService {
 
     private int countSeatsInRow(dev.knightcore.proeventiq.entity.SeatRowEntity rowEntity) {
         return rowEntity.getSeats() != null ? rowEntity.getSeats().size() : 0;
+    }
+
+    @Transactional(readOnly = true)
+    public List<VenueOption> listVenueOptions() {
+        List<VenueEntity> entities = venueRepository.findAll();
+        return entities.stream()
+                .map(entity -> new VenueOption(
+                    entity.getVenueId() != null ? entity.getVenueId().toString() : null,
+                    entity.getName()
+                ))
+                .toList();
     }
 }

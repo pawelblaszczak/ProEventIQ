@@ -3,6 +3,7 @@ package dev.knightcore.proeventiq.controller;
 import dev.knightcore.proeventiq.api.controller.ShowsApi;
 import dev.knightcore.proeventiq.api.model.Show;
 import dev.knightcore.proeventiq.api.model.ShowInput;
+import dev.knightcore.proeventiq.api.model.ShowOption;
 import dev.knightcore.proeventiq.service.ShowService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -83,6 +84,18 @@ public class ShowController implements ShowsApi {
             return ResponseEntity.ok(shows);
         } catch (Exception e) {
             log.error("Error listing shows: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Override
+    public ResponseEntity<List<ShowOption>> listShowOptions() {
+        log.info("Listing show options");
+        try {
+            List<ShowOption> options = showService.listShowOptions();
+            return ResponseEntity.ok(options);
+        } catch (Exception e) {
+            log.error("Error listing show options: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

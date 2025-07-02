@@ -7,6 +7,7 @@ import dev.knightcore.proeventiq.api.model.SectorInputPosition;
 import dev.knightcore.proeventiq.api.model.SectorSeatsInput;
 import dev.knightcore.proeventiq.api.model.Venue;
 import dev.knightcore.proeventiq.api.model.VenueInput;
+import dev.knightcore.proeventiq.api.model.VenueOption;
 import dev.knightcore.proeventiq.service.VenueService;
 import jakarta.validation.Valid;
 import dev.knightcore.proeventiq.service.SectorService;
@@ -84,6 +85,12 @@ public class VenueController implements VenuesApi {
     public ResponseEntity<List<Venue>> listVenues(String name, String country, String city) {
         List<Venue> venues = venueService.listVenues(name, country, city);
         return ResponseEntity.status(HttpStatus.OK).body(venues);
+    }
+
+    @Override
+    public ResponseEntity<List<VenueOption>> listVenueOptions() {
+        List<VenueOption> options = venueService.listVenueOptions();
+        return ResponseEntity.status(HttpStatus.OK).body(options);
     }
 
     @Override

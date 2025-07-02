@@ -63,19 +63,20 @@
           <mat-card-content class="event-content">
             <div class="event-date-section">
               <div class="date-block">
-                <div class="date-day">{{ formatDate(event.dateTime) }}</div>
+                <div class="date-day">{{ formatDateOnly(event.dateTime) }}</div>
                 <div class="date-time">{{ formatTime(event.dateTime) }}</div>
+                <div class="date-year">{{ formatYear(event.dateTime) }}</div>
               </div>
             </div>
             
             <div class="event-details">
               <div class="event-header">
                 <h3 class="event-title">{{ event.showName || 'Untitled Show' }}</h3>
-                <div class="event-badges">
-                  <span class="event-badge show-badge">
-                    <mat-icon>theaters</mat-icon>
-                    Show
-                  </span>
+                <div class="seat-status">
+                  <div class="seat-indicator" [ngClass]="getReservationClass(event.eventId || '1')">
+                    <mat-icon>event_seat</mat-icon>
+                    <span class="seat-text">{{ getSeatStatusText(event.eventId || '1') }}</span>
+                  </div>
                 </div>
               </div>
               
@@ -83,10 +84,6 @@
                 <div class="meta-item">
                   <mat-icon>location_on</mat-icon>
                   <span>{{ event.venueName || 'TBD' }}</span>
-                </div>
-                <div class="meta-item">
-                  <mat-icon>event</mat-icon>
-                  <span>{{ formatDateTime(event.dateTime) }}</span>
                 </div>
               </div>
             </div>

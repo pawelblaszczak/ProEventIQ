@@ -1,0 +1,10 @@
+VenueOption:
+  type: object
+  properties:
+    venueId:
+      type: string
+    name:
+      type: string
+  required:
+    - venueId
+    - name

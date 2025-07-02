@@ -101,3 +101,19 @@ showById:
     responses:
       '204':
         description: Show deleted
+
+showOptions:
+  get:
+    tags: [ProEventIQ]
+    summary: List show options
+    description: Get a lightweight list of shows with only ID and name for dropdown lists
+    operationId: listShowOptions
+    responses:
+      '200':
+        description: List of show options
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: './show-option.yaml#/ShowOption'

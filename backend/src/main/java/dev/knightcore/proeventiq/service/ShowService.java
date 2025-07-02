@@ -2,6 +2,7 @@ package dev.knightcore.proeventiq.service;
 
 import dev.knightcore.proeventiq.api.model.Show;
 import dev.knightcore.proeventiq.api.model.ShowInput;
+import dev.knightcore.proeventiq.api.model.ShowOption;
 import dev.knightcore.proeventiq.entity.ShowEntity;
 import dev.knightcore.proeventiq.repository.ShowRepository;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,18 @@ public class ShowService {
         log.info("Listing shows with filters - name: {}, ageFrom: {}, ageTo: {}", name, ageFrom, ageTo);
         List<ShowEntity> entities = showRepository.findByFilters(name, ageFrom, ageTo);
         return entities.stream().map(this::toDto).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ShowOption> listShowOptions() {
+        log.info("Listing show options");
+        List<ShowEntity> entities = showRepository.findAll();
+        return entities.stream()
+                .map(entity -> new ShowOption(
+                    entity.getShowId() != null ? entity.getShowId().toString() : null,
+                    entity.getName()
+                ))
+                .toList();
     }
 
     @Transactional(readOnly = true)

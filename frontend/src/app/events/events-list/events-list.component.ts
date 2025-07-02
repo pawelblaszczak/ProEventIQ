@@ -98,9 +98,9 @@ export class EventsListComponent implements OnInit {
     const filterValue = (event.target as HTMLInputElement).value.toLowerCase();
     this.filteredEvents.set(
       this.events().filter(evt => 
-        (evt.showName?.toLowerCase() || '').includes(filterValue) ||
-        (evt.venueName?.toLowerCase() || '').includes(filterValue) ||
-        (evt.eventId?.toLowerCase() || '').includes(filterValue)
+        (evt.showName?.toLowerCase() ?? '').includes(filterValue) ||
+        (evt.venueName?.toLowerCase() ?? '').includes(filterValue) ||
+        (evt.eventId?.toLowerCase() ?? '').includes(filterValue)
       )
     );
   }
@@ -114,7 +114,7 @@ export class EventsListComponent implements OnInit {
     
     this.filteredEvents.set(
       this.events().filter(evt => 
-        (evt.showName?.toLowerCase() || '').includes(filterValue)
+        (evt.showName?.toLowerCase() ?? '').includes(filterValue)
       )
     );
   }
@@ -128,7 +128,7 @@ export class EventsListComponent implements OnInit {
     
     this.filteredEvents.set(
       this.events().filter(evt => 
-        (evt.venueName?.toLowerCase() || '').includes(filterValue)
+        (evt.venueName?.toLowerCase() ?? '').includes(filterValue)
       )
     );
   }
@@ -181,6 +181,21 @@ export class EventsListComponent implements OnInit {
     });
   }
 
+  formatDateOnly(dateTime: string | undefined): string {
+    if (!dateTime) return 'TBD';
+    const date = new Date(dateTime);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
+    });
+  }
+
+  formatYear(dateTime: string | undefined): string {
+    if (!dateTime) return '';
+    const date = new Date(dateTime);
+    return date.getFullYear().toString();
+  }
+
   formatTime(dateTime: string | undefined): string {
     if (!dateTime) return 'TBD';
     const date = new Date(dateTime);
@@ -188,5 +203,34 @@ export class EventsListComponent implements OnInit {
       hour: '2-digit',
       minute: '2-digit'
     });
+  }
+
+  // Mock seat reservation data - replace with real API data later
+  getReservedSeats(eventId: string): { reserved: number; total: number; percentage: number } {
+    // Generate consistent but random-looking data based on eventId
+    const seed = eventId.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+    const total = 150 + (seed % 350); // Total seats between 150-500
+    const reserved = Math.floor(total * (0.3 + (seed % 40) / 100)); // 30-70% reserved
+    const percentage = Math.round((reserved / total) * 100);
+    
+    return { reserved, total, percentage };
+  }
+
+  getSeatStatusText(eventId: string): string {
+    const seatInfo = this.getReservedSeats(eventId);
+    return `${seatInfo.reserved}/${seatInfo.total} (${seatInfo.percentage}%)`;
+  }
+
+  getReservationClass(eventId: string): string {
+    const seatInfo = this.getReservedSeats(eventId);
+    const percentage = seatInfo.percentage;
+    
+    if (percentage <= 35) {
+      return 'low-reservation';
+    } else if (percentage <= 65) {
+      return 'medium-reservation';
+    } else {
+      return 'high-reservation';
+    }
   }
 }

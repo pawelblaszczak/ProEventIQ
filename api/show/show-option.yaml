@@ -1,0 +1,10 @@
+ShowOption:
+  type: object
+  properties:
+    showId:
+      type: string
+    name:
+      type: string
+  required:
+    - showId
+    - name

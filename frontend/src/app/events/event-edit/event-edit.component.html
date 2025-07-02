@@ -3,13 +3,24 @@
     <div class="card-header-banner">
       <div class="header-content">
         <h1 class="banner-title">
-          <mat-icon>event</mat-icon>
-          {{ isAddMode() ? 'Add Event' : 'Edit Event' }}
+          @if (isAddMode()) {
+            <mat-icon>add</mat-icon>
+            Add New Event
+          } @else {
+            <mat-icon>edit</mat-icon>
+            Edit Event
+          }
         </h1>
-        <p class="banner-subtitle">{{ isAddMode() ? 'Create a new event by selecting show, venue and date' : 'Update event details' }}</p>
+        <p class="banner-subtitle">
+          @if (isAddMode()) {
+            Create a new event by selecting show, venue and date
+          } @else {
+            Update event details
+          }
+        </p>
       </div>
       <div class="header-icon">
-        <mat-icon>{{ isAddMode() ? 'add_circle' : 'edit' }}</mat-icon>
+        <mat-icon>event</mat-icon>
       </div>
     </div>
 

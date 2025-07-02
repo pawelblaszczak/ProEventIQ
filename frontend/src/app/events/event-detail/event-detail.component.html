@@ -1,0 +1,206 @@
+<!-- Loading State -->
+<div *ngIf="loading()" class="loading-container animated-pulse">
+  <div class="loading-icon-wrapper">
+    <mat-progress-spinner color="primary" mode="indeterminate" diameter="50"></mat-progress-spinner>
+  </div>
+  <p class="loading-text">Loading event details...</p>
+  <div class="loading-progress-dots">
+    <span class="dot"></span>
+    <span class="dot"></span>
+    <span class="dot"></span>
+  </div>
+</div>
+
+<!-- Error State -->
+<div *ngIf="error()" class="error-container animate-fade-in">
+  <mat-card appearance="outlined" class="error-card">
+    <mat-card-content>
+      <div class="error-icon-container">
+        <mat-icon color="warn">error_outline</mat-icon>
+      </div>
+      <div class="error-message">
+        <h3>Error Loading Event</h3>
+        <p>{{ error() }}</p>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>
+
+<!-- Event Details -->
+<div *ngIf="event()" class="event-details-section animate-fade-in">
+  <mat-card appearance="outlined" class="event-details-card mat-elevation-z3">
+    <div class="event-hero">
+      <div class="event-header-content">
+        <div class="event-status-badge">
+          <mat-chip [color]="getStatusColor()" class="status-chip">
+            <mat-icon>schedule</mat-icon>
+            {{ getEventStatus() }}
+          </mat-chip>
+        </div>
+        
+        <h1 class="event-show-name">{{ event()?.showName }}</h1>
+        <h2 class="event-venue">
+          <mat-icon class="venue-icon">location_on</mat-icon>
+          {{ event()?.venueName }}
+        </h2>
+        
+        <div class="event-datetime">
+          <div class="datetime-item">
+            <mat-icon>event</mat-icon>
+            <div class="datetime-content">
+              <span class="date-label">Date</span>
+              <span class="date-value">{{ formatDate(event()?.dateTime) }}</span>
+            </div>
+          </div>
+          <div class="datetime-item">
+            <mat-icon>access_time</mat-icon>
+            <div class="datetime-content">
+              <span class="time-label">Time</span>
+              <span class="time-value">{{ formatTime(event()?.dateTime) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="event-image-placeholder">
+        <mat-icon class="placeholder-icon">event</mat-icon>
+        <p>Event Poster</p>
+      </div>
+    </div>
+    
+    <mat-divider></mat-divider>
+    
+    <mat-card-content class="event-details-content">
+      <div class="event-details-header-row">
+        <h3 class="section-title">
+          <mat-icon>info</mat-icon>
+          Event Details
+        </h3>
+        <button mat-icon-button color="warn" (click)="onDelete()" class="delete-icon-btn" [disabled]="loading()" aria-label="Delete event">
+          <mat-icon>delete</mat-icon>
+        </button>
+      </div>
+      
+      <div class="event-info-grid">
+        <div class="info-item">
+          <div class="info-label">Event ID</div>
+          <div class="info-value">{{ event()?.eventId || 'N/A' }}</div>
+        </div>
+        
+        <div class="info-item">
+          <div class="info-label">Show ID</div>
+          <div class="info-value">{{ event()?.showId || 'N/A' }}</div>
+        </div>
+        
+        <div class="info-item">
+          <div class="info-label">Venue ID</div>
+          <div class="info-value">{{ event()?.venueId || 'N/A' }}</div>
+        </div>
+        
+        <div class="info-item">
+          <div class="info-label">Full Date & Time</div>
+          <div class="info-value">{{ formatDateTime(event()?.dateTime) }}</div>
+        </div>
+      </div>
+    </mat-card-content>
+    
+    <mat-card-actions class="event-actions" align="end">
+      <button mat-stroked-button routerLink="/events" class="back-button">
+        <mat-icon>arrow_back</mat-icon>
+        BACK TO LIST
+      </button>
+      <button mat-raised-button color="primary" [routerLink]="['/events', event()?.eventId, 'edit']" aria-label="Edit event" class="edit-button">
+        <mat-icon>edit</mat-icon>
+        EDIT EVENT
+      </button>
+    </mat-card-actions>
+  </mat-card>
+</div>
+
+<!-- Related Information Card -->
+<mat-card appearance="outlined" class="related-info-card mat-elevation-z3" *ngIf="event()">
+  <div class="card-header-banner">
+    <div class="header-content">
+      <div class="title-with-icon">
+        <mat-icon class="title-icon">link</mat-icon>
+        <div>
+          <h2 class="banner-title">Related Information</h2>
+          <p class="banner-subtitle">View show and venue details</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <mat-card-content class="related-content">
+    <div class="related-items">
+      <button class="related-item" (click)="navigateToShow()" [disabled]="!event()?.showId" type="button">
+        <div class="related-icon">
+          <mat-icon>theater_comedy</mat-icon>
+        </div>
+        <div class="related-details">
+          <h3>Show Details</h3>
+          <p>{{ event()?.showName }}</p>
+          <span class="related-id">Show ID: {{ event()?.showId || 'N/A' }}</span>
+        </div>
+        <div class="related-action" *ngIf="event()?.showId">
+          <mat-icon>arrow_forward</mat-icon>
+        </div>
+      </button>
+      
+      <mat-divider></mat-divider>
+      
+      <button class="related-item" (click)="navigateToVenue()" [disabled]="!event()?.venueId" type="button">
+        <div class="related-icon">
+          <mat-icon>location_city</mat-icon>
+        </div>
+        <div class="related-details">
+          <h3>Venue Details</h3>
+          <p>{{ event()?.venueName }}</p>
+          <span class="related-id">Venue ID: {{ event()?.venueId || 'N/A' }}</span>
+        </div>
+        <div class="related-action" *ngIf="event()?.venueId">
+          <mat-icon>arrow_forward</mat-icon>
+        </div>
+      </button>
+    </div>
+  </mat-card-content>
+</mat-card>
+
+<!-- Quick Actions Card -->
+<mat-card appearance="outlined" class="quick-actions-card mat-elevation-z3" *ngIf="event()">
+  <div class="card-header-banner">
+    <div class="header-content">
+      <div class="title-with-icon">
+        <mat-icon class="title-icon">bolt</mat-icon>
+        <div>
+          <h2 class="banner-title">Quick Actions</h2>
+          <p class="banner-subtitle">Manage this event</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <mat-card-content class="actions-content">
+    <div class="action-buttons">
+      <button mat-raised-button color="primary" [routerLink]="['/events', event()?.eventId, 'edit']" class="action-btn">
+        <mat-icon>edit</mat-icon>
+        Edit Event
+      </button>
+      
+      <button mat-raised-button color="accent" [disabled]="!event()?.venueId" (click)="navigateToVenue()" class="action-btn">
+        <mat-icon>map</mat-icon>
+        View Venue Map
+      </button>
+      
+      <button mat-raised-button [disabled]="!event()?.showId" (click)="navigateToShow()" class="action-btn">
+        <mat-icon>theater_comedy</mat-icon>
+        Show Details
+      </button>
+      
+      <button mat-raised-button color="warn" (click)="onDelete()" [disabled]="loading()" class="action-btn delete-btn">
+        <mat-icon>delete</mat-icon>
+        Delete Event
+      </button>
+    </div>
+  </mat-card-content>
+</mat-card>

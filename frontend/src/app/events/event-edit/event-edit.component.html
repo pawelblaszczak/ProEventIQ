@@ -1,0 +1,90 @@
+<div class="event-edit-section">
+  <mat-card class="event-edit-card">
+    <div class="card-header-banner">
+      <div class="header-content">
+        <h1 class="banner-title">
+          <mat-icon>event</mat-icon>
+          {{ isAddMode() ? 'Add Event' : 'Edit Event' }}
+        </h1>
+        <p class="banner-subtitle">{{ isAddMode() ? 'Create a new event by selecting show, venue and date' : 'Update event details' }}</p>
+      </div>
+      <div class="header-icon">
+        <mat-icon>{{ isAddMode() ? 'add_circle' : 'edit' }}</mat-icon>
+      </div>
+    </div>
+
+    <div class="event-edit-content">
+      <form [formGroup]="form" (ngSubmit)="submit()" class="event-form">
+        <div class="form-grid">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Show</mat-label>
+            <mat-select formControlName="showId" required>
+              <mat-option *ngFor="let show of shows()" [value]="show.showId">{{
+              show.name }}</mat-option>
+            </mat-select>
+            <mat-icon matSuffix>theaters</mat-icon>
+            <mat-error *ngIf="form.get('showId')?.hasError('required')">Show is
+            required</mat-error>
+          </mat-form-field>
+          
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Venue</mat-label>
+            <mat-select formControlName="venueId" required>
+              <mat-option *ngFor="let venue of venues()" [value]="venue.venueId">{{
+              venue.name }}</mat-option>
+            </mat-select>
+            <mat-icon matSuffix>location_on</mat-icon>
+            <mat-error *ngIf="form.get('venueId')?.hasError('required')">Venue is
+            required</mat-error>
+          </mat-form-field>
+          
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Date & Time</mat-label>
+            <input matInput formControlName="dateTime" type="datetime-local" required />
+            <mat-icon matSuffix>schedule</mat-icon>
+            <mat-error *ngIf="form.get('dateTime')?.hasError('required')">Date and
+            time are required</mat-error>
+          </mat-form-field>
+        </div>
+
+        @if (loading()) {
+          <div class="loading-container">
+            <div class="loading-icon-wrapper">
+              <mat-spinner diameter="48"></mat-spinner>
+            </div>
+            <div class="loading-text">{{ isAddMode() ? 'Creating event...' : 'Updating event...' }}</div>
+          </div>
+        }
+
+        @if (error()) {
+          <mat-card class="error-card">
+            <mat-card-content>
+              <div class="error-content">
+                <mat-icon color="warn">error</mat-icon>
+                <div class="error-message">
+                  <h4>Error</h4>
+                  <p>{{ error() }}</p>
+                </div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        }
+      </form>
+    </div>
+
+    <mat-card-actions class="event-actions" align="end">
+      <button mat-stroked-button type="button" (click)="cancel()" class="cancel-button">
+        <mat-icon>close</mat-icon>
+        CANCEL
+      </button>
+      <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid || loading()" (click)="submit()" class="save-button">
+        <mat-icon>save</mat-icon>
+        @if (isAddMode()) {
+          CREATE EVENT
+        } @else {
+          SAVE CHANGES
+        }
+      </button>
+    </mat-card-actions>
+  </mat-card>
+</div>

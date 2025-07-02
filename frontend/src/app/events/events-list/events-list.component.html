@@ -1,0 +1,104 @@
+<div class="events-container">
+  <div class="header-section">
+    <div class="header-content">
+      <h1 class="page-title">Upcoming Events</h1>
+      <p class="page-subtitle">Browse all scheduled performances and shows</p>
+    </div>
+    <div class="actions">
+      <button mat-raised-button color="primary" (click)="addEvent()" class="edit-button" aria-label="Add event">
+        <mat-icon>add</mat-icon>
+        ADD EVENT
+      </button>
+    </div>
+  </div>
+
+  <mat-card class="filter-card">
+    <mat-card-content>
+      <div class="filter-container">
+        <mat-form-field appearance="outline" class="search-field">
+          <mat-label>Search Events</mat-label>
+          <input matInput (input)="applyFilter($event)" placeholder="Search by show, venue, etc.">
+          <mat-icon matSuffix>search</mat-icon>
+        </mat-form-field>
+        
+        <div class="advanced-filters">
+          <mat-form-field appearance="outline" class="filter-field">
+            <mat-label>Show Name</mat-label>
+            <input matInput placeholder="Filter by show" (input)="filterByShow($event)">
+            <mat-icon matSuffix>theaters</mat-icon>
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="filter-field">
+            <mat-label>Venue</mat-label>
+            <input matInput placeholder="Filter by venue" (input)="filterByVenue($event)">
+            <mat-icon matSuffix>location_on</mat-icon>
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="filter-field">
+            <mat-label>Date</mat-label>
+            <input matInput type="date" placeholder="Filter by date" (input)="filterByDate($event)">
+            <mat-icon matSuffix>event</mat-icon>
+          </mat-form-field>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  @if (isLoading()) {
+    <div class="loading-spinner">
+      <mat-spinner diameter="48"></mat-spinner>
+      <p class="loading-text">Loading events...</p>
+    </div>
+  } @else if (filteredEvents().length === 0) {
+    <mat-card class="empty-state">
+      <mat-card-content>
+        <mat-icon class="empty-icon">event_note</mat-icon>
+        <h2>No Events Found</h2>
+        <p>There are no events matching your criteria.</p>
+        <button mat-stroked-button color="primary" (click)="resetFilters()">Reset Filters</button>
+      </mat-card-content>
+    </mat-card>
+  } @else {
+    <div class="events-list">
+      @for (event of filteredEvents(); track event.eventId) {
+        <mat-card class="event-item" [routerLink]="['/events', event.eventId]">
+          <mat-card-content class="event-content">
+            <div class="event-date-section">
+              <div class="date-block">
+                <div class="date-day">{{ formatDate(event.dateTime) }}</div>
+                <div class="date-time">{{ formatTime(event.dateTime) }}</div>
+              </div>
+            </div>
+            
+            <div class="event-details">
+              <div class="event-header">
+                <h3 class="event-title">{{ event.showName || 'Untitled Show' }}</h3>
+                <div class="event-badges">
+                  <span class="event-badge show-badge">
+                    <mat-icon>theaters</mat-icon>
+                    Show
+                  </span>
+                </div>
+              </div>
+              
+              <div class="event-meta">
+                <div class="meta-item">
+                  <mat-icon>location_on</mat-icon>
+                  <span>{{ event.venueName || 'TBD' }}</span>
+                </div>
+                <div class="meta-item">
+                  <mat-icon>event</mat-icon>
+                  <span>{{ formatDateTime(event.dateTime) }}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="event-actions">
+              <button mat-icon-button color="primary" class="action-button" aria-label="View event details">
+                <mat-icon>arrow_forward</mat-icon>
+              </button>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      }
+    </div>
+  }
+</div>

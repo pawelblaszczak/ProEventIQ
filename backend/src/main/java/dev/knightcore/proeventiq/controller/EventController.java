@@ -3,8 +3,11 @@ package dev.knightcore.proeventiq.controller;
 import dev.knightcore.proeventiq.api.controller.EventsApi;
 import dev.knightcore.proeventiq.api.model.Event;
 import dev.knightcore.proeventiq.api.model.EventInput;
+import dev.knightcore.proeventiq.api.model.PaginatedEvents;
 import dev.knightcore.proeventiq.service.EventService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
@@ -82,30 +85,32 @@ public class EventController implements EventsApi {
     }
 
     @Override
-    public ResponseEntity<List<Event>> listEvents(String showId, OffsetDateTime dateFrom, OffsetDateTime dateTo, String venueId) {
-        log.info("Listing events with filters - showId: {}, venueId: {}, dateFrom: {}, dateTo: {}", 
-                showId, venueId, dateFrom, dateTo);
+    public ResponseEntity<PaginatedEvents> listEvents(String showId, OffsetDateTime dateFrom, OffsetDateTime dateTo, String venueId, Integer page, Integer size) {
+        log.info("Listing events with filters - showId: {}, venueId: {}, dateFrom: {}, dateTo: {}, page: {}, size: {}", 
+                showId, venueId, dateFrom, dateTo, page, size);
         try {
-            // Validate date range
             if (dateFrom != null && dateTo != null && dateFrom.isAfter(dateTo)) {
                 log.warn("Invalid date range: dateFrom {} is after dateTo {}", dateFrom, dateTo);
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
             }
-            
-            // Parse IDs if provided
             Long parsedShowId = null;
             Long parsedVenueId = null;
-            
             if (showId != null && !showId.trim().isEmpty()) {
                 parsedShowId = Long.parseLong(showId);
             }
-            
             if (venueId != null && !venueId.trim().isEmpty()) {
                 parsedVenueId = Long.parseLong(venueId);
             }
-            
-            List<Event> events = eventService.listEvents(parsedShowId, parsedVenueId, dateFrom, dateTo);
-            return ResponseEntity.ok(events);
+            int pageNum = (page != null && page > 0) ? page - 1 : 0;
+            int pageSize = (size != null && size > 0) ? size : 20;
+            Page<Event> eventPage = eventService.listEventsPaginated(parsedShowId, parsedVenueId, dateFrom, dateTo, PageRequest.of(pageNum, pageSize));
+            PaginatedEvents result = new PaginatedEvents()
+                .items(eventPage.getContent())
+                .totalItems((int) eventPage.getTotalElements())
+                .totalPages(eventPage.getTotalPages())
+                .currentPage(pageNum + 1)
+                .pageSize(pageSize);
+            return ResponseEntity.ok(result);
         } catch (NumberFormatException e) {
             log.error("Invalid ID format in filters - showId: {}, venueId: {}", showId, venueId);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();

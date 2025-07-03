@@ -9,6 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { ProEventIQService } from '../../api/api/pro-event-iq.service';
 import { EventInput } from '../../api/model/event-input';
 import { ShowOption } from '../../api/model/show-option';
@@ -27,7 +28,8 @@ import { VenueOption } from '../../api/model/venue-option';
     MatIconModule,
     MatDividerModule,
     MatProgressSpinnerModule,
-    MatSelectModule
+    MatSelectModule,
+    MatAutocompleteModule
   ],
   templateUrl: './event-edit.component.html',
   styleUrls: ['./event-edit.component.scss'],
@@ -47,6 +49,11 @@ export class EventEditComponent {
   shows = signal<ShowOption[]>([]);
   venues = signal<VenueOption[]>([]);
 
+  showInputValue = '';
+  venueInputValue = '';
+  filteredShowsList: ShowOption[] = [];
+  filteredVenuesList: VenueOption[] = [];
+
   constructor() {
     const fb = inject(FormBuilder);
     this.form = fb.group({
@@ -63,6 +70,32 @@ export class EventEditComponent {
     });
     this.loadShows();
     this.loadVenues();
+  }
+
+  ngOnInit() {
+    this.filteredShowsList = this.sortByName(this.shows());
+    this.filteredVenuesList = this.sortByName(this.venues());
+  }
+
+  // Patch input display logic: only patch input value when an object is selected, not when user types. Prevents showing the ID in the input field after selection or typing.
+  ngAfterViewInit() {
+    // Patch input display for Show
+    this.form.get('showId')?.valueChanges.subscribe((id) => {
+      if (typeof id === 'string') {
+        // If user types, do not patch
+        return;
+      }
+      const selected = this.shows().find(show => show.showId === id);
+      this.showInputValue = selected ? selected.name : '';
+    });
+    // Patch input display for Venue
+    this.form.get('venueId')?.valueChanges.subscribe((id) => {
+      if (typeof id === 'string') {
+        return;
+      }
+      const selected = this.venues().find(venue => venue.venueId === id);
+      this.venueInputValue = selected ? selected.name : '';
+    });
   }
 
   loadEvent(id: string) {
@@ -85,15 +118,27 @@ export class EventEditComponent {
 
   loadShows() {
     this.eventApi.listShowOptions().subscribe({
-      next: (shows) => this.shows.set(shows),
-      error: () => this.shows.set([])
+      next: (shows) => {
+        this.shows.set(shows);
+        this.filteredShowsList = this.sortByName(shows);
+      },
+      error: () => {
+        this.shows.set([]);
+        this.filteredShowsList = [];
+      }
     });
   }
 
   loadVenues() {
     this.eventApi.listVenueOptions().subscribe({
-      next: (venues) => this.venues.set(venues),
-      error: () => this.venues.set([])
+      next: (venues) => {
+        this.venues.set(venues);
+        this.filteredVenuesList = this.sortByName(venues);
+      },
+      error: () => {
+        this.venues.set([]);
+        this.filteredVenuesList = [];
+      }
     });
   }
 
@@ -142,6 +187,37 @@ export class EventEditComponent {
 
   cancel() {
     this.router.navigate(['/events']);
+  }
+
+  filterShowInput(event: Event) {
+    const value = (event.target as HTMLInputElement).value;
+    this.showInputValue = value;
+    this.filteredShowsList = this.sortByName(this.shows().filter(show => show.name.toLowerCase().includes(value.toLowerCase())));
+    // If user types, do not patch form value
+  }
+
+  filterVenueInput(event: Event) {
+    const value = (event.target as HTMLInputElement).value;
+    this.venueInputValue = value;
+    this.filteredVenuesList = this.sortByName(this.venues().filter(venue => venue.name.toLowerCase().includes(value.toLowerCase())));
+  }
+
+  onShowSelected(event: any) {
+    const showId = event.option.value;
+    const selected = this.shows().find(show => show.showId === showId);
+    this.showInputValue = selected ? selected.name : '';
+    this.form.get('showId')?.setValue(showId);
+  }
+
+  onVenueSelected(event: any) {
+    const venueId = event.option.value;
+    const selected = this.venues().find(venue => venue.venueId === venueId);
+    this.venueInputValue = selected ? selected.name : '';
+    this.form.get('venueId')?.setValue(venueId);
+  }
+
+  sortByName<T extends { name: string }>(arr: T[]): T[] {
+    return [...arr].sort((a, b) => a.name.localeCompare(b.name));
   }
 
   private formatDateTimeForApi(dateTimeValue: string): string {

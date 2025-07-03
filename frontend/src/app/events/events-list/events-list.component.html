@@ -36,11 +36,11 @@
         </div>
         <div class="advanced-filters" style="display: flex; gap: 16px;">
           <mat-form-field appearance="outline" class="filter-field" style="flex: 1; min-width: 0;">
-            <mat-label>Show Name</mat-label>
+            <mat-label>Show</mat-label>
             <input type="text" matInput [matAutocomplete]="autoShow" (input)="filterShowInput($event)" [value]="showInputValue" placeholder="Type or select show">
             <mat-autocomplete #autoShow="matAutocomplete" (optionSelected)="filterByShow($event)">
               <mat-option value="">All Shows</mat-option>
-              @for (show of filteredShows(); track show.showId) {
+              @for (show of filteredShows() | orderByName; track show.showId) {
                 <mat-option [value]="show.showId">{{ show.name }}</mat-option>
               }
             </mat-autocomplete>
@@ -51,7 +51,7 @@
             <input type="text" matInput [matAutocomplete]="autoVenue" (input)="filterVenueInput($event)" [value]="venueInputValue" placeholder="Type or select venue">
             <mat-autocomplete #autoVenue="matAutocomplete" (optionSelected)="filterByVenue($event)">
               <mat-option value="">All Venues</mat-option>
-              @for (venue of filteredVenues(); track venue.venueId) {
+              @for (venue of filteredVenues() | orderByName; track venue.venueId) {
                 <mat-option [value]="venue.venueId">{{ venue.name }}</mat-option>
               }
             </mat-autocomplete>
@@ -128,6 +128,14 @@
           </mat-card-content>
         </mat-card>
       }
+      <mat-paginator
+        [length]="totalItems()"
+        [pageIndex]="page() - 1"
+        [pageSize]="pageSize()"
+        [pageSizeOptions]="[10, 20, 50, 100]"
+        (page)="onMatPage($event)"
+        aria-label="Event pagination">
+      </mat-paginator>
     </div>
   }
 </div>

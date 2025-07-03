@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -113,6 +115,15 @@ public class EventService {
             return true;
         }
         return false;
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Event> listEventsPaginated(Long showId, Long venueId, OffsetDateTime dateFrom, OffsetDateTime dateTo, Pageable pageable) {
+        log.info("Listing events (paginated) with filters - showId: {}, venueId: {}, dateFrom: {}, dateTo: {}, pageable: {}", showId, venueId, dateFrom, dateTo, pageable);
+        LocalDateTime localDateFrom = dateFrom != null ? dateFrom.toLocalDateTime() : null;
+        LocalDateTime localDateTo = dateTo != null ? dateTo.toLocalDateTime() : null;
+        Page<EventEntity> page = eventRepository.findByFiltersPaginated(showId, venueId, localDateFrom, localDateTo, pageable);
+        return page.map(this::toDto);
     }
 
     private Event toDto(EventEntity entity) {

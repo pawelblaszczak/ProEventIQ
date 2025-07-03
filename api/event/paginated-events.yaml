@@ -1,0 +1,19 @@
+PaginatedEvents:
+  type: object
+  properties:
+    items:
+      type: array
+      items:
+        $ref: './event.yaml#/Event'
+    totalItems:
+      type: integer
+      description: Total number of events
+    totalPages:
+      type: integer
+      description: Total number of pages
+    currentPage:
+      type: integer
+      description: Current page number
+    pageSize:
+      type: integer
+      description: Number of items per page

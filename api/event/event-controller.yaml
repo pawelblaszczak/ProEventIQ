@@ -3,7 +3,7 @@ events:
   get:
     tags: [ProEventIQ]
     summary: List events
-    description: Get a list of events, optionally filtered by show, date range
+    description: Get a paginated list of events, optionally filtered by show, date range
     operationId: listEvents
     parameters:
       - in: query
@@ -28,17 +28,30 @@ events:
         schema:
           type: string
         description: Filter by venue ID
+      - in: query
+        name: page
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+        description: Page number (1-based)
+      - in: query
+        name: size
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        description: Page size (number of items per page)
     responses:
       '200':
-        description: List of events
+        description: Paginated list of events
         content:
           application/json:
             schema:
-              type: array
-              items:
-                $ref: './event.yaml#/Event'
+              $ref: './paginated-events.yaml#/PaginatedEvents'
       '400':
-        description: Invalid filter parameters
+        description: Invalid filter or pagination parameters
         content:
           application/json:
             schema:

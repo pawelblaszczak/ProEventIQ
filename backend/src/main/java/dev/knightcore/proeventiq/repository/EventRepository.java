@@ -1,6 +1,8 @@
 package dev.knightcore.proeventiq.repository;
 
 import dev.knightcore.proeventiq.entity.EventEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -36,4 +38,18 @@ public interface EventRepository extends JpaRepository<EventEntity, Long> {
     
     @Query("SELECT e FROM EventEntity e WHERE e.venueId = :venueId ORDER BY e.dateTime ASC")
     List<EventEntity> findByVenueId(@Param("venueId") Long venueId);
+    
+    @Query("SELECT e FROM EventEntity e " +
+           "LEFT JOIN FETCH e.show " +
+           "LEFT JOIN FETCH e.venue " +
+           "WHERE (:showId IS NULL OR e.showId = :showId) AND " +
+           "(:venueId IS NULL OR e.venueId = :venueId) AND " +
+           "(:dateFrom IS NULL OR e.dateTime >= :dateFrom) AND " +
+           "(:dateTo IS NULL OR e.dateTime <= :dateTo) " +
+           "ORDER BY e.dateTime ASC")
+    Page<EventEntity> findByFiltersPaginated(@Param("showId") Long showId,
+                                             @Param("venueId") Long venueId,
+                                             @Param("dateFrom") LocalDateTime dateFrom,
+                                             @Param("dateTo") LocalDateTime dateTo,
+                                             Pageable pageable);
 }

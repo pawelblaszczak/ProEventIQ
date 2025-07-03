@@ -8,11 +8,12 @@ import { ProEventIQService } from '../../api/api/pro-event-iq.service';
 import { Event as ApiEvent } from '../../api/model/event';
 import { ShowOption } from '../../api/model/show-option';
 import { VenueOption } from '../../api/model/venue-option';
+import { OrderByNamePipe } from '../../shared/order-by-name.pipe';
 
 @Component({
   selector: 'app-events-list',
   standalone: true,
-  imports: [CommonModule, MaterialModule, FormsModule, ReactiveFormsModule, RouterModule, MatProgressSpinnerModule],
+  imports: [CommonModule, MaterialModule, FormsModule, ReactiveFormsModule, RouterModule, MatProgressSpinnerModule, OrderByNamePipe],
   templateUrl: './events-list.component.html',
   styleUrl: './events-list.component.scss'
 })
@@ -34,6 +35,11 @@ export class EventsListComponent implements OnInit {
   private dateFrom: string = this.today;
   private dateTo: string = '';
 
+  // Pagination state
+  public page = signal(1); // 1-based
+  public pageSize = signal(10); // Set default page size to match backend
+  public totalItems = signal(0);
+
   ngOnInit() {
     this.loadEvents();
     this.loadShows();
@@ -42,14 +48,17 @@ export class EventsListComponent implements OnInit {
     this.filteredVenues.set([]);
   }
 
-  private loadEvents() {
+  private loadEvents(page: number = this.page(), size: number = this.pageSize()): void {
     this.isLoading.set(true);
-    
     // Try to load from API first, fallback to mock data if it fails
-    this.apiService.listEvents().subscribe({
-      next: (events: ApiEvent[]) => {
-        this.events.set(events ?? []);
-        this.filteredEvents.set(events ?? []);
+    this.apiService.listEvents(undefined, undefined, undefined, undefined, page, size).subscribe({
+      next: (response: any) => {
+        // Expecting paginated response: { items: ApiEvent[], totalItems: number, ... }
+        const events = response?.items ?? response?.content ?? [];
+        const total = response?.totalItems ?? response?.total ?? response?.totalElements ?? events.length;
+        this.events.set(events);
+        this.filteredEvents.set(events);
+        this.totalItems.set(total);
         this.isLoading.set(false);
       },
       error: (error: any) => {
@@ -309,6 +318,28 @@ export class EventsListComponent implements OnInit {
       return 'medium-reservation';
     } else {
       return 'high-reservation';
+    }
+  }
+
+  // Call this when user changes page
+  onPageChange(newPage: number): void {
+    this.page.set(newPage);
+    this.loadEvents(newPage, this.pageSize());
+  }
+
+  // Call this when user changes page size
+  onPageSizeChange(newSize: number): void {
+    this.pageSize.set(newSize);
+    this.page.set(1); // Reset to first page
+    this.loadEvents(1, newSize);
+  }
+
+  // Handler for Angular Material paginator
+  onMatPage(event: any): void {
+    if (event.pageSize !== this.pageSize()) {
+      this.onPageSizeChange(event.pageSize);
+    } else if ((event.pageIndex + 1) !== this.page()) {
+      this.onPageChange(event.pageIndex + 1);
     }
   }
 }

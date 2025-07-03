@@ -27,34 +27,40 @@
     <div class="event-edit-content">
       <form [formGroup]="form" (ngSubmit)="submit()" class="event-form">
         <div class="form-grid">
+          <!-- Show Autocomplete -->
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Show</mat-label>
-            <mat-select formControlName="showId" required>
-              <mat-option *ngFor="let show of shows()" [value]="show.showId">{{
-              show.name }}</mat-option>
-            </mat-select>
+            <input type="text" matInput [matAutocomplete]="autoShow" [value]="showInputValue" (input)="filterShowInput($event)" required placeholder="Type or select show">
+            <mat-autocomplete #autoShow="matAutocomplete" (optionSelected)="onShowSelected($event)">
+              <mat-option value="">All Shows</mat-option>
+              @for (show of filteredShowsList; track show.showId) {
+                <mat-option [value]="show.showId">{{ show.name }}</mat-option>
+              }
+            </mat-autocomplete>
             <mat-icon matSuffix>theaters</mat-icon>
-            <mat-error *ngIf="form.get('showId')?.hasError('required')">Show is
-            required</mat-error>
+            <mat-error *ngIf="form.get('showId')?.hasError('required')">Show is required</mat-error>
           </mat-form-field>
-          
+
+          <!-- Venue Autocomplete -->
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Venue</mat-label>
-            <mat-select formControlName="venueId" required>
-              <mat-option *ngFor="let venue of venues()" [value]="venue.venueId">{{
-              venue.name }}</mat-option>
-            </mat-select>
+            <input type="text" matInput [matAutocomplete]="autoVenue" [value]="venueInputValue" (input)="filterVenueInput($event)" required placeholder="Type or select venue">
+            <mat-autocomplete #autoVenue="matAutocomplete" (optionSelected)="onVenueSelected($event)">
+              <mat-option value="">All Venues</mat-option>
+              @for (venue of filteredVenuesList; track venue.venueId) {
+                <mat-option [value]="venue.venueId">{{ venue.name }}</mat-option>
+              }
+            </mat-autocomplete>
             <mat-icon matSuffix>location_on</mat-icon>
-            <mat-error *ngIf="form.get('venueId')?.hasError('required')">Venue is
-            required</mat-error>
+            <mat-error *ngIf="form.get('venueId')?.hasError('required')">Venue is required</mat-error>
           </mat-form-field>
-          
+
+          <!-- Date & Time -->
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Date & Time</mat-label>
             <input matInput formControlName="dateTime" type="datetime-local" required />
             <mat-icon matSuffix>schedule</mat-icon>
-            <mat-error *ngIf="form.get('dateTime')?.hasError('required')">Date and
-            time are required</mat-error>
+            <mat-error *ngIf="form.get('dateTime')?.hasError('required')">Date and time are required</mat-error>
           </mat-form-field>
         </div>
 

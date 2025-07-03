@@ -1,4 +1,4 @@
-import { Component, signal, inject, OnInit } from '@angular/core';
+import { Component, signal, inject, OnInit, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MaterialModule } from '../../material.module';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -9,6 +9,8 @@ import { Event as ApiEvent } from '../../api/model/event';
 import { ShowOption } from '../../api/model/show-option';
 import { VenueOption } from '../../api/model/venue-option';
 import { OrderByNamePipe } from '../../shared/order-by-name.pipe';
+import { debounceTime } from 'rxjs/operators';
+import { Subject } from 'rxjs';
 
 @Component({
   selector: 'app-events-list',
@@ -32,28 +34,80 @@ export class EventsListComponent implements OnInit {
   filteredVenues = signal<VenueOption[]>([]);
 
   public today = new Date().toISOString().slice(0, 10); // yyyy-MM-dd
-  private dateFrom: string = this.today;
-  private dateTo: string = '';
+  // Filter state as signals
+  public search = signal('');
+  public selectedShowId = signal<string | null>(null);
+  public selectedVenueId = signal<string | null>(null);
+  public dateFrom = signal<string>(this.today);
+  public dateTo = signal<string>('');
 
   // Pagination state
   public page = signal(1); // 1-based
   public pageSize = signal(10); // Set default page size to match backend
   public totalItems = signal(0);
 
+  // Debounce subject for search
+  private searchSubject = new Subject<string>();
+  // Debounce subjects for date filters
+  private dateFromSubject = new Subject<string>();
+  private dateToSubject = new Subject<string>();
+
+  // Effect for all filters and pagination (must be a field, not in ngOnInit)
+  private filterEffect = effect(() => {
+    // Only trigger loadEvents when any filter or pagination changes
+    const _search = this.search();
+    const _show = this.selectedShowId();
+    const _venue = this.selectedVenueId();
+    const _from = this.dateFrom();
+    const _to = this.dateTo();
+    const _page = this.page();
+    const _size = this.pageSize();
+    queueMicrotask(() => this.loadEvents(_page, _size));
+  });
+
   ngOnInit() {
-    this.loadEvents();
     this.loadShows();
     this.loadVenues();
     this.filteredShows.set([]);
     this.filteredVenues.set([]);
+    // Debounce search
+    this.searchSubject.pipe(debounceTime(400)).subscribe((value) => {
+      this.search.set(value);
+      this.page.set(1);
+    });
+    // Debounce dateFrom
+    this.dateFromSubject.pipe(debounceTime(400)).subscribe((value) => {
+      this.dateFrom.set(value);
+      this.page.set(1);
+    });
+    // Debounce dateTo
+    this.dateToSubject.pipe(debounceTime(400)).subscribe((value) => {
+      this.dateTo.set(value);
+      this.page.set(1);
+    });
   }
 
   private loadEvents(page: number = this.page(), size: number = this.pageSize()): void {
     this.isLoading.set(true);
-    // Try to load from API first, fallback to mock data if it fails
-    this.apiService.listEvents(undefined, undefined, undefined, undefined, page, size).subscribe({
+    // Use filter values for API call
+    const showId = this.selectedShowId();
+    const venueId = this.selectedVenueId();
+    // Format dateFrom and dateTo as ISO 8601 with time and Z
+    const dateFromRaw = this.dateFrom();
+    const dateToRaw = this.dateTo();
+    const dateFrom = dateFromRaw ? new Date(dateFromRaw + 'T00:00:00.000Z').toISOString() : undefined;
+    const dateTo = dateToRaw ? new Date(dateToRaw + 'T23:59:59.999Z').toISOString() : undefined;
+    const search = this.search();
+    this.apiService.listEvents(
+      showId || undefined,
+      dateFrom || undefined,
+      dateTo || undefined,
+      venueId || undefined,
+      page,
+      size,
+      search || undefined
+    ).subscribe({
       next: (response: any) => {
-        // Expecting paginated response: { items: ApiEvent[], totalItems: number, ... }
         const events = response?.items ?? response?.content ?? [];
         const total = response?.totalItems ?? response?.total ?? response?.totalElements ?? events.length;
         this.events.set(events);
@@ -63,9 +117,7 @@ export class EventsListComponent implements OnInit {
       },
       error: (error: any) => {
         console.error('Error loading events from API:', error);
-        console.log('API calls are being made to:', this.apiService.configuration?.basePath ?? 'default base path');
         this.isLoading.set(false);
-        // Fallback to mock data for development
         this.loadMockData();
       }
     });
@@ -145,15 +197,10 @@ export class EventsListComponent implements OnInit {
     });
   }
 
+  // --- FILTER HANDLERS ---
   applyFilter(event: Event): void {
-    const filterValue = (event.target as HTMLInputElement).value.toLowerCase();
-    this.filteredEvents.set(
-      this.events().filter(evt => 
-        (evt.showName?.toLowerCase() ?? '').includes(filterValue) ||
-        (evt.venueName?.toLowerCase() ?? '').includes(filterValue) ||
-        (evt.eventId?.toLowerCase() ?? '').includes(filterValue)
-      )
-    );
+    const value = (event.target as HTMLInputElement).value;
+    this.searchSubject.next(value);
   }
 
   filterShowInput(event: Event): void {
@@ -174,75 +221,38 @@ export class EventsListComponent implements OnInit {
 
   filterByShow(event: any): void {
     const value = event.option?.value || '';
+    this.selectedShowId.set(value || null);
     this.showInputValue = value ? this.shows().find(s => s.showId === value)?.name || '' : '';
-    if (!value) {
-      this.filteredEvents.set(this.events());
-      return;
-    }
-    this.filteredEvents.set(
-      this.events().filter(evt => evt.showId === value)
-    );
+    this.page.set(1);
+    // Removed direct this.loadEvents() call; effect will handle API request
   }
 
   filterByVenue(event: any): void {
     const value = event.option?.value || '';
+    this.selectedVenueId.set(value || null);
     this.venueInputValue = value ? this.venues().find(v => v.venueId === value)?.name || '' : '';
-    if (!value) {
-      this.filteredEvents.set(this.events());
-      return;
-    }
-    this.filteredEvents.set(
-      this.events().filter(evt => evt.venueId === value)
-    );
-  }
-
-  filterByDate(event: Event): void {
-    const filterValue = (event.target as HTMLInputElement).value;
-    if (!filterValue) {
-      this.filteredEvents.set(this.events());
-      return;
-    }
-    
-    const filterDate = new Date(filterValue);
-    this.filteredEvents.set(
-      this.events().filter(evt => {
-        if (!evt.dateTime) return false;
-        const eventDate = new Date(evt.dateTime);
-        return eventDate.toDateString() === filterDate.toDateString();
-      })
-    );
+    this.page.set(1);
+    // Removed direct this.loadEvents() call; effect will handle API request
   }
 
   filterByDateFrom(event: Event): void {
-    this.dateFrom = (event.target as HTMLInputElement).value;
-    this.applyDateRangeFilter();
+    const value = (event.target as HTMLInputElement).value;
+    this.dateFromSubject.next(value);
   }
 
   filterByDateTo(event: Event): void {
-    this.dateTo = (event.target as HTMLInputElement).value;
-    this.applyDateRangeFilter();
-  }
-
-  private applyDateRangeFilter(): void {
-    const from = this.dateFrom ? new Date(this.dateFrom) : null;
-    const to = this.dateTo ? new Date(this.dateTo) : null;
-    this.filteredEvents.set(
-      this.events().filter(evt => {
-        if (!evt.dateTime) return false;
-        const eventDate = new Date(evt.dateTime);
-        if (from && eventDate < from) return false;
-        if (to && eventDate > to) return false;
-        return true;
-      })
-    );
+    const value = (event.target as HTMLInputElement).value;
+    this.dateToSubject.next(value);
   }
 
   resetFilters(): void {
-    this.filteredEvents.set(this.events());
-  }
-
-  addEvent(): void {
-    this.router.navigate(['/events/add']);
+    this.search.set('');
+    this.selectedShowId.set(null);
+    this.selectedVenueId.set(null);
+    this.dateFrom.set(this.today);
+    this.dateTo.set('');
+    this.page.set(1);
+    this.loadEvents();
   }
 
   formatDateTime(dateTime: string | undefined): string {
@@ -324,14 +334,14 @@ export class EventsListComponent implements OnInit {
   // Call this when user changes page
   onPageChange(newPage: number): void {
     this.page.set(newPage);
-    this.loadEvents(newPage, this.pageSize());
+    // Removed direct this.loadEvents() call; effect will handle API request
   }
 
   // Call this when user changes page size
   onPageSizeChange(newSize: number): void {
     this.pageSize.set(newSize);
     this.page.set(1); // Reset to first page
-    this.loadEvents(1, newSize);
+    // Removed direct this.loadEvents() call; effect will handle API request
   }
 
   // Handler for Angular Material paginator
@@ -341,5 +351,9 @@ export class EventsListComponent implements OnInit {
     } else if ((event.pageIndex + 1) !== this.page()) {
       this.onPageChange(event.pageIndex + 1);
     }
+  }
+
+  addEvent(): void {
+    this.router.navigate(['/events/add']);
   }
 }

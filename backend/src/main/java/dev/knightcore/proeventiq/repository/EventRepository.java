@@ -40,16 +40,21 @@ public interface EventRepository extends JpaRepository<EventEntity, Long> {
     List<EventEntity> findByVenueId(@Param("venueId") Long venueId);
     
     @Query("SELECT e FROM EventEntity e " +
-           "LEFT JOIN FETCH e.show " +
-           "LEFT JOIN FETCH e.venue " +
+           "LEFT JOIN FETCH e.show s " +
+           "LEFT JOIN FETCH e.venue v " +
            "WHERE (:showId IS NULL OR e.showId = :showId) AND " +
            "(:venueId IS NULL OR e.venueId = :venueId) AND " +
            "(:dateFrom IS NULL OR e.dateTime >= :dateFrom) AND " +
-           "(:dateTo IS NULL OR e.dateTime <= :dateTo) " +
+           "(:dateTo IS NULL OR e.dateTime <= :dateTo) AND " +
+           "(:search IS NULL OR :search = '' OR " +
+           "LOWER(s.name) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(v.name) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "CAST(e.eventId AS string) LIKE CONCAT('%', :search, '%')) " +
            "ORDER BY e.dateTime ASC")
     Page<EventEntity> findByFiltersPaginated(@Param("showId") Long showId,
                                              @Param("venueId") Long venueId,
                                              @Param("dateFrom") LocalDateTime dateFrom,
                                              @Param("dateTo") LocalDateTime dateTo,
+                                             @Param("search") String search,
                                              Pageable pageable);
 }

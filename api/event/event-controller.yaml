@@ -43,6 +43,11 @@ events:
           maximum: 100
           default: 20
         description: Page size (number of items per page)
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Filter events by search text (show, venue, etc.)
     responses:
       '200':
         description: Paginated list of events

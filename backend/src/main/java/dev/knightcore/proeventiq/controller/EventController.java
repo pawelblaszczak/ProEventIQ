@@ -85,9 +85,9 @@ public class EventController implements EventsApi {
     }
 
     @Override
-    public ResponseEntity<PaginatedEvents> listEvents(String showId, OffsetDateTime dateFrom, OffsetDateTime dateTo, String venueId, Integer page, Integer size) {
-        log.info("Listing events with filters - showId: {}, venueId: {}, dateFrom: {}, dateTo: {}, page: {}, size: {}", 
-                showId, venueId, dateFrom, dateTo, page, size);
+    public ResponseEntity<PaginatedEvents> listEvents(String showId, OffsetDateTime dateFrom, OffsetDateTime dateTo, String venueId, Integer page, Integer size, String search) {
+        log.info("Listing events with filters - showId: {}, venueId: {}, dateFrom: {}, dateTo: {}, page: {}, size: {}, search: {}", 
+                showId, venueId, dateFrom, dateTo, page, size, search);
         try {
             if (dateFrom != null && dateTo != null && dateFrom.isAfter(dateTo)) {
                 log.warn("Invalid date range: dateFrom {} is after dateTo {}", dateFrom, dateTo);
@@ -103,7 +103,7 @@ public class EventController implements EventsApi {
             }
             int pageNum = (page != null && page > 0) ? page - 1 : 0;
             int pageSize = (size != null && size > 0) ? size : 20;
-            Page<Event> eventPage = eventService.listEventsPaginated(parsedShowId, parsedVenueId, dateFrom, dateTo, PageRequest.of(pageNum, pageSize));
+            Page<Event> eventPage = eventService.listEventsPaginated(parsedShowId, parsedVenueId, dateFrom, dateTo, search, PageRequest.of(pageNum, pageSize));
             PaginatedEvents result = new PaginatedEvents()
                 .items(eventPage.getContent())
                 .totalItems((int) eventPage.getTotalElements())

@@ -118,11 +118,11 @@ public class EventService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Event> listEventsPaginated(Long showId, Long venueId, OffsetDateTime dateFrom, OffsetDateTime dateTo, Pageable pageable) {
-        log.info("Listing events (paginated) with filters - showId: {}, venueId: {}, dateFrom: {}, dateTo: {}, pageable: {}", showId, venueId, dateFrom, dateTo, pageable);
+    public Page<Event> listEventsPaginated(Long showId, Long venueId, OffsetDateTime dateFrom, OffsetDateTime dateTo, String search, Pageable pageable) {
+        log.info("Listing events (paginated) with filters - showId: {}, venueId: {}, dateFrom: {}, dateTo: {}, search: {}, pageable: {}", showId, venueId, dateFrom, dateTo, search, pageable);
         LocalDateTime localDateFrom = dateFrom != null ? dateFrom.toLocalDateTime() : null;
         LocalDateTime localDateTo = dateTo != null ? dateTo.toLocalDateTime() : null;
-        Page<EventEntity> page = eventRepository.findByFiltersPaginated(showId, venueId, localDateFrom, localDateTo, pageable);
+        Page<EventEntity> page = eventRepository.findByFiltersPaginated(showId, venueId, localDateFrom, localDateTo, search, pageable);
         return page.map(this::toDto);
     }
 

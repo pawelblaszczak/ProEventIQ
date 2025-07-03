@@ -2,7 +2,7 @@ openapi: 3.0.1
 info:
   title: ProEventIQ Rest API
   description: API for ProEventIQ
-  version: "0.19"
+  version: "0.20"
 servers:
   - url: http://{hostname}:{port}/api
     variables:

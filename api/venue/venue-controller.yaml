@@ -3,7 +3,7 @@ venues:
   get:
     tags: [ProEventIQ]
     summary: List venues
-    description: Get a list of venues, optionally filtered by features
+    description: Get a paginated list of venues, optionally filtered by features
     operationId: listVenues
     parameters:
       - in: query
@@ -21,15 +21,44 @@ venues:
         schema:
           type: string
         description: Filter by city
+      - in: query
+        name: page
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+        description: Page number (1-based)
+      - in: query
+        name: size
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        description: Page size (number of items per page)
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Filter venues by search text (name, city, etc.)
     responses:
       '200':
-        description: List of venues
+        description: Paginated list of venues
         content:
           application/json:
             schema:
-              type: array
-              items:
-                $ref: './venue.yaml#/Venue'
+              $ref: './paginated-venues.yaml#/PaginatedVenues'
+      '400':
+        description: Invalid filter or pagination parameters
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                error:
+                  type: string
+                message:
+                  type: string
   post:
     tags: [ProEventIQ]
     summary: Add a new venue

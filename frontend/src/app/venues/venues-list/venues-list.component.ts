@@ -1,4 +1,4 @@
-import { Component, signal, inject, OnInit } from '@angular/core';
+import { Component, signal, effect, inject, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MaterialModule } from '../../material.module';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -6,6 +6,8 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { ProEventIQService } from '../../api/api/pro-event-iq.service';
 import { Venue } from '../../api/model/venue';
+import { Subject } from 'rxjs';
+import { debounceTime } from 'rxjs/operators';
 
 @Component({
   selector: 'app-venues-list',
@@ -14,34 +16,142 @@ import { Venue } from '../../api/model/venue';
   templateUrl: './venues-list.component.html',
   styleUrl: './venues-list.component.scss'
 })
-export class VenuesListComponent implements OnInit {
+export class VenuesListComponent implements OnInit, OnDestroy {
   private readonly apiService = inject(ProEventIQService);
   private readonly router = inject(Router);
-  
+
   venues = signal<Venue[]>([]);
-  filteredVenues = signal<Venue[]>([]);
   isLoading = signal(false);
 
-  ngOnInit() {
-    this.loadVenues();
+  // Pagination state
+  page = signal(1); // 1-based
+  pageSize = signal(10); // Default page size
+  totalItems = signal(0);
+
+  // Filter signals
+  search = signal('');
+  country = signal('');
+  city = signal('');
+  minSeats = signal<number | null>(null);
+
+  // Debounce subjects for filters
+  private searchSubject = new Subject<string>();
+  private countrySubject = new Subject<string>();
+  private citySubject = new Subject<string>();
+  private minSeatsSubject = new Subject<number | null>();
+
+  // Effect to watch for filter or pagination changes
+  private readonly filterEffect = effect(() => {
+    const _search = this.search();
+    const _country = this.country();
+    const _city = this.city();
+    const _minSeats = this.minSeats();
+    const _page = this.page();
+    const _size = this.pageSize();
+    queueMicrotask(() => this.loadVenues(_page, _size));
+  });
+
+  constructor() {
+    // Prevent effect from being tree-shaken
+    this.filterEffect;
   }
-  private loadVenues() {
+
+  ngOnInit() {
+    // Debounce search
+    this.searchSubject.pipe(debounceTime(400)).subscribe((value) => {
+      this.search.set(value);
+      this.page.set(1);
+    });
+    // Debounce country
+    this.countrySubject.pipe(debounceTime(400)).subscribe((value) => {
+      this.country.set(value);
+      this.page.set(1);
+    });
+    // Debounce city
+    this.citySubject.pipe(debounceTime(400)).subscribe((value) => {
+      this.city.set(value);
+      this.page.set(1);
+    });
+    // Debounce minSeats
+    this.minSeatsSubject.pipe(debounceTime(400)).subscribe((value) => {
+      this.minSeats.set(value);
+      this.page.set(1);
+    });
+  }
+
+  ngOnDestroy() {
+    this.searchSubject.complete();
+    this.countrySubject.complete();
+    this.citySubject.complete();
+    this.minSeatsSubject.complete();
+  }
+
+  private loadVenues(page: number = this.page(), size: number = this.pageSize()): void {
     this.isLoading.set(true);
-    
-    // Try to load from API first, fallback to mock data if it fails
-    this.apiService.listVenues().subscribe({      next: (venues: Venue[]) => {
-        this.venues.set(venues ?? []);
-        this.filteredVenues.set(venues ?? []);
+    const search = this.search();
+    const country = this.country();
+    const city = this.city();
+    const minSeats = this.minSeats();
+    this.apiService.listVenues(
+      search,
+      country,
+      city,
+      page,
+      size,
+      minSeats != null ? String(minSeats) : undefined
+    ).subscribe({
+      next: (response: any) => {
+        const venues = response?.items ?? response?.content ?? response ?? [];
+        const total = response?.totalItems ?? response?.total ?? response?.totalElements ?? venues.length;
+        this.venues.set(venues);
+        this.totalItems.set(total);
         this.isLoading.set(false);
       },
       error: (error: any) => {
         console.error('Error loading venues from API:', error);
-        console.log('API calls are being made to:', this.apiService.configuration?.basePath ?? 'default base path');
         this.isLoading.set(false);
-        // Fallback to mock data for development
         this.loadMockData();
       }
     });
+  }
+
+  // Filter input handlers
+  applyFilter(event: Event): void {
+    this.searchSubject.next((event.target as HTMLInputElement).value);
+  }
+
+  filterByCountry(event: Event): void {
+    this.countrySubject.next((event.target as HTMLInputElement).value);
+  }
+
+  filterByCity(event: Event): void {
+    this.citySubject.next((event.target as HTMLInputElement).value);
+  }
+
+  filterByMinSeats(event: Event): void {
+    const val = (event.target as HTMLInputElement).value;
+    this.minSeatsSubject.next(val ? parseInt(val, 10) : null);
+  }
+
+  resetFilters(): void {
+    this.search.set('');
+    this.country.set('');
+    this.city.set('');
+    this.minSeats.set(null);
+    this.page.set(1);
+  }
+
+  onMatPage(event: any): void {
+    if (event.pageSize !== this.pageSize()) {
+      this.pageSize.set(event.pageSize);
+      this.page.set(1);
+    } else if ((event.pageIndex + 1) !== this.page()) {
+      this.page.set(event.pageIndex + 1);
+    }
+  }
+
+  addVenue(): void {
+    this.router.navigate(['/venues/add']);
   }
 
   private loadMockData() {
@@ -53,7 +163,7 @@ export class VenuesListComponent implements OnInit {
         country: 'USA',
         city: 'New York',
         address: '30 Lincoln Center Plaza, New York, NY 10023',
-        thumbnail: 'https://via.placeholder.com/300x200?text=Metropolitan+Opera',
+        thumbnail: '',
         description: 'The Metropolitan Opera House is a world-renowned opera house located at Lincoln Center in New York City.',
         numberOfSeats: 3800
       },
@@ -63,7 +173,7 @@ export class VenuesListComponent implements OnInit {
         country: 'UK',
         city: 'London',
         address: 'Kensington Gore, South Kensington, London SW7 2AP',
-        thumbnail: 'https://via.placeholder.com/300x200?text=Royal+Albert+Hall',
+        thumbnail: '',
         description: 'The Royal Albert Hall is a concert hall on the northern edge of South Kensington, London.',
         numberOfSeats: 5272
       },
@@ -73,72 +183,12 @@ export class VenuesListComponent implements OnInit {
         country: 'Australia',
         city: 'Sydney',
         address: 'Bennelong Point, Sydney NSW 2000',
-        thumbnail: 'https://via.placeholder.com/300x200?text=Sydney+Opera+House',
+        thumbnail: '',
         description: 'The Sydney Opera House is a multi-venue performing arts centre in Sydney, Australia.',
         numberOfSeats: 5738
       }
     ];
     this.venues.set(mockVenues);
-    this.filteredVenues.set(mockVenues);
-  }
-
-  applyFilter(event: Event): void {
-    const filterValue = (event.target as HTMLInputElement).value.toLowerCase();
-    this.filteredVenues.set(
-      this.venues().filter(venue => 
-        (venue.name?.toLowerCase() || '').includes(filterValue) ||
-        (venue.city?.toLowerCase() || '').includes(filterValue) ||
-        (venue.country?.toLowerCase() || '').includes(filterValue) ||
-        (venue.address?.toLowerCase() || '').includes(filterValue) ||
-        (venue.description?.toLowerCase() || '').includes(filterValue)
-      )
-    );
-  }
-
-  filterByCountry(event: Event): void {
-    const filterValue = (event.target as HTMLInputElement).value.toLowerCase();
-    if (!filterValue) {
-      this.filteredVenues.set(this.venues());
-      return;
-    }
-    
-    this.filteredVenues.set(
-      this.venues().filter(venue => 
-        (venue.country?.toLowerCase() || '').includes(filterValue)
-      )
-    );
-  }
-
-  filterByCity(event: Event): void {
-    const filterValue = (event.target as HTMLInputElement).value.toLowerCase();
-    if (!filterValue) {
-      this.filteredVenues.set(this.venues());
-      return;
-    }
-    
-    this.filteredVenues.set(
-      this.venues().filter(venue => 
-        (venue.city?.toLowerCase() || '').includes(filterValue)
-      )
-    );
-  }
-
-  filterByMinSeats(event: Event): void {
-    const minSeats = parseInt((event.target as HTMLInputElement).value);
-    if (isNaN(minSeats)) {
-      this.filteredVenues.set(this.venues());
-      return;
-    }
-    
-    this.filteredVenues.set(
-      this.venues().filter(venue => (venue.numberOfSeats || 0) >= minSeats)
-    );
-  }
-
-  resetFilters(): void {
-    this.filteredVenues.set(this.venues());
-  }
-  addVenue(): void {
-    this.router.navigate(['/venues/add']);
+    this.totalItems.set(mockVenues.length);
   }
 }

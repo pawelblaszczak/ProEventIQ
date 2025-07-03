@@ -8,6 +8,7 @@ import dev.knightcore.proeventiq.api.model.SectorSeatsInput;
 import dev.knightcore.proeventiq.api.model.Venue;
 import dev.knightcore.proeventiq.api.model.VenueInput;
 import dev.knightcore.proeventiq.api.model.VenueOption;
+import dev.knightcore.proeventiq.api.model.PaginatedVenues;
 import dev.knightcore.proeventiq.service.VenueService;
 import jakarta.validation.Valid;
 import dev.knightcore.proeventiq.service.SectorService;
@@ -20,6 +21,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.validation.annotation.Validated;
 import java.math.BigDecimal;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
 @RestController
 @Validated
@@ -82,9 +85,17 @@ public class VenueController implements VenuesApi {
     }
 
     @Override
-    public ResponseEntity<List<Venue>> listVenues(String name, String country, String city) {
-        List<Venue> venues = venueService.listVenues(name, country, city);
-        return ResponseEntity.status(HttpStatus.OK).body(venues);
+    public ResponseEntity<PaginatedVenues> listVenues(String name, String country, String city, Integer page, Integer size, String search) {
+        int pageNum = (page != null && page > 0) ? page - 1 : 0;
+        int pageSize = (size != null && size > 0) ? size : 20;
+        Page<Venue> venuePage = venueService.listVenuesPaginated(name, country, city, search, PageRequest.of(pageNum, pageSize));
+        PaginatedVenues result = new PaginatedVenues()
+            .items(venuePage.getContent())
+            .page(pageNum + 1)
+            .size(pageSize)
+            .totalItems((int) venuePage.getTotalElements())
+            .totalPages(venuePage.getTotalPages());
+        return ResponseEntity.ok(result);
     }
 
     @Override

@@ -13,6 +13,8 @@ import java.util.ArrayList;
 import java.util.Base64;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -288,5 +290,22 @@ public class VenueService {
                     entity.getName()
                 ))
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Venue> listVenuesPaginated(String name, String country, String city, String search, Pageable pageable) {
+        String nameFilter = (name != null) ? name : "";
+        String countryFilter = (country != null) ? country : "";
+        String cityFilter = (city != null) ? city : "";
+        String searchFilter = (search != null) ? search : "";
+        // If search is provided, override other filters for a broad search
+        if (!searchFilter.isEmpty()) {
+            return venueRepository.findByNameContainingIgnoreCaseOrCityContainingIgnoreCaseOrCountryContainingIgnoreCase(
+                searchFilter, searchFilter, searchFilter, pageable
+            ).map(this::toDto);
+        }
+        return venueRepository.findByNameContainingIgnoreCaseAndCountryContainingIgnoreCaseAndCityContainingIgnoreCase(
+            nameFilter, countryFilter, cityFilter, pageable
+        ).map(this::toDto);
     }
 }

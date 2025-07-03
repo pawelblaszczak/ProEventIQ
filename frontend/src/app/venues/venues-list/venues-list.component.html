@@ -17,7 +17,7 @@
       <div class="filter-container">
         <mat-form-field appearance="outline" class="search-field">
           <mat-label>Search Venues</mat-label>
-          <input matInput (keyup)="applyFilter($event)" placeholder="Search by name, city, etc.">
+          <input matInput (input)="applyFilter($event)" placeholder="Search by name, city, etc.">
           <mat-icon matSuffix>search</mat-icon>
         </mat-form-field>
         
@@ -47,7 +47,7 @@
       <mat-spinner diameter="48"></mat-spinner>
       <p class="loading-text">Loading venues...</p>
     </div>
-  } @else if (filteredVenues().length === 0) {
+  } @else if (venues().length === 0) {
     <mat-card class="empty-state">
       <mat-card-content>
         <mat-icon class="empty-icon">stadium</mat-icon>
@@ -58,7 +58,7 @@
     </mat-card>
   } @else {
     <div class="venues-grid">
-      @for (venue of filteredVenues(); track venue.venueId) {
+      @for (venue of venues(); track venue.venueId) {
         <mat-card class="venue-card" [routerLink]="['/venues', venue.venueId]">
           <ng-container *ngIf="venue.thumbnail; else noImage">
             <img mat-card-image [src]="'data:' + venue.thumbnailContentType + ';base64,' + venue.thumbnail" [alt]="venue.name || 'Venue'">
@@ -92,5 +92,13 @@
         </mat-card>
       }
     </div>
+    <mat-paginator
+      [length]="totalItems()"
+      [pageIndex]="page() - 1"
+      [pageSize]="pageSize()"
+      [pageSizeOptions]="[10, 20, 50, 100]"
+      (page)="onMatPage($event)"
+      aria-label="Venue pagination">
+    </mat-paginator>
   }
 </div>

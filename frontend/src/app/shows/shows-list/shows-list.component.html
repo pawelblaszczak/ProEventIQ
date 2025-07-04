@@ -23,13 +23,13 @@
         
         <div class="advanced-filters">
           <mat-form-field appearance="outline" class="filter-field">
-            <mat-label>Your Age</mat-label>
-            <input matInput type="number" placeholder="Find shows for your age" (input)="filterByAgeRange($event)">
+            <mat-label>Age from</mat-label>
+            <input matInput type="number" placeholder="Minimum age" (input)="filterByAgeRange($event)">
             <mat-icon matSuffix>cake</mat-icon>
           </mat-form-field>
           <mat-form-field appearance="outline" class="filter-field">
-            <mat-label>Min Age Requirement</mat-label>
-            <input matInput type="number" placeholder="Minimum age required" (input)="filterByMinAge($event)">
+            <mat-label>Age to</mat-label>
+            <input matInput type="number" placeholder="Maximum age" (input)="filterByMinAge($event)">
             <mat-icon matSuffix>child_care</mat-icon>
           </mat-form-field>
         </div>
@@ -94,5 +94,14 @@
         </mat-card>
       }
     </div>
+    <mat-paginator
+      class="shows-paginator"
+      [length]="totalItems()"
+      [pageIndex]="page() - 1"
+      [pageSize]="pageSize()"
+      [pageSizeOptions]="[10, 20, 50, 100]"
+      (page)="onMatPage($event)"
+      aria-label="Show pagination">
+    </mat-paginator>
   }
 </div>

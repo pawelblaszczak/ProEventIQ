@@ -4,8 +4,11 @@ import dev.knightcore.proeventiq.api.controller.ShowsApi;
 import dev.knightcore.proeventiq.api.model.Show;
 import dev.knightcore.proeventiq.api.model.ShowInput;
 import dev.knightcore.proeventiq.api.model.ShowOption;
+import dev.knightcore.proeventiq.api.model.PaginatedShows;
 import dev.knightcore.proeventiq.service.ShowService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
@@ -77,18 +80,6 @@ public class ShowController implements ShowsApi {
     }
 
     @Override
-    public ResponseEntity<List<Show>> listShows(String name, Integer ageFrom, Integer ageTo) {
-        log.info("Listing shows with filters - name: {}, ageFrom: {}, ageTo: {}", name, ageFrom, ageTo);
-        try {
-            List<Show> shows = showService.listShows(name, ageFrom, ageTo);
-            return ResponseEntity.ok(shows);
-        } catch (Exception e) {
-            log.error("Error listing shows: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    @Override
     public ResponseEntity<List<ShowOption>> listShowOptions() {
         log.info("Listing show options");
         try {
@@ -113,6 +104,26 @@ public class ShowController implements ShowsApi {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             log.error("Error updating show: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Override
+    public ResponseEntity<PaginatedShows> listShows(String name, Integer ageFrom, Integer ageTo, Integer page, Integer size, String search) {
+        log.info("Listing shows with filters - name: {}, ageFrom: {}, ageTo: {}, page: {}, size: {}, search: {}", name, ageFrom, ageTo, page, size, search);
+        try {
+            int pageNum = (page != null && page > 0) ? page : 1;
+            int pageSize = (size != null && size > 0) ? size : 20;
+            Page<Show> showPage = showService.listShowsPaginated(name, ageFrom, ageTo, search, PageRequest.of(pageNum - 1, pageSize));
+            PaginatedShows result = new PaginatedShows()
+                .items(showPage.getContent())
+                .page(pageNum)
+                .size(pageSize)
+                .totalItems((int) showPage.getTotalElements())
+                .totalPages(showPage.getTotalPages());
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("Error listing shows: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

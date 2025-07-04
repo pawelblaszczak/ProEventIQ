@@ -5,6 +5,8 @@ import dev.knightcore.proeventiq.api.model.ShowInput;
 import dev.knightcore.proeventiq.api.model.ShowOption;
 import dev.knightcore.proeventiq.entity.ShowEntity;
 import dev.knightcore.proeventiq.repository.ShowRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
@@ -73,6 +75,13 @@ public class ShowService {
             return true;
         }
         return false;
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Show> listShowsPaginated(String name, Integer ageFrom, Integer ageTo, String search, Pageable pageable) {
+        log.info("Listing shows (paginated) with filters - name: {}, ageFrom: {}, ageTo: {}, search: {}, pageable: {}", name, ageFrom, ageTo, search, pageable);
+        Page<ShowEntity> page = showRepository.findByFiltersPaginated(name, ageFrom, ageTo, search, pageable);
+        return page.map(this::toDto);
     }
 
     private Show toDto(ShowEntity entity) {

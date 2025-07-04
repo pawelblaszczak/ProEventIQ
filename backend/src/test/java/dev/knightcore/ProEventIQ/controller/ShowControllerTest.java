@@ -1,5 +1,6 @@
 package dev.knightcore.ProEventIQ.controller;
 
+import dev.knightcore.proeventiq.api.model.PaginatedShows;
 import dev.knightcore.proeventiq.api.model.Show;
 import dev.knightcore.proeventiq.api.model.ShowInput;
 import dev.knightcore.proeventiq.controller.ShowController;
@@ -10,6 +11,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -91,15 +95,21 @@ class ShowControllerTest {
     }
 
     @Test
-    void listShows_ShouldReturnListOfShows() {
+    void listShows_ShouldReturnPaginatedShows() {
         List<Show> shows = Arrays.asList(testShow);
-        when(showService.listShows(any(), any(), any())).thenReturn(shows);
+        Page<Show> showPage = new PageImpl<>(shows, PageRequest.of(0, 20), 1);
+        when(showService.listShowsPaginated(any(), any(), any(), any(), any())).thenReturn(showPage);
 
-        ResponseEntity<List<Show>> response = showController.listShows("Test", 12, 65);
+        ResponseEntity<PaginatedShows> response = showController.listShows("Test", 12, 65, 1, 20, null);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(shows, response.getBody());
-        verify(showService).listShows("Test", 12, 65);
+        assertNotNull(response.getBody());
+        assertEquals(1, response.getBody().getItems().size());
+        assertEquals(1, response.getBody().getPage());
+        assertEquals(20, response.getBody().getSize());
+        assertEquals(1, response.getBody().getTotalItems());
+        assertEquals(1, response.getBody().getTotalPages());
+        verify(showService).listShowsPaginated(eq("Test"), eq(12), eq(65), eq(null), any(PageRequest.class));
     }
 
     @Test

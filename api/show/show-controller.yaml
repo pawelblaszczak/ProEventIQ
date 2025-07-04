@@ -3,7 +3,7 @@ shows:
   get:
     tags: [ProEventIQ]
     summary: List shows
-    description: Get a list of shows, optionally filtered by features
+    description: Get a paginated list of shows, optionally filtered by features
     operationId: listShows
     parameters:
       - in: query
@@ -21,15 +21,44 @@ shows:
         schema:
           type: integer
         description: Filter by maximum age
+      - in: query
+        name: page
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+        description: Page number (1-based)
+      - in: query
+        name: size
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        description: Page size (number of items per page)
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Filter shows by search text (name, etc.)
     responses:
       '200':
-        description: List of shows
+        description: Paginated list of shows
         content:
           application/json:
             schema:
-              type: array
-              items:
-                $ref: './show.yaml#/Show'
+              $ref: './paginated-shows.yaml#/PaginatedShows'
+      '400':
+        description: Invalid filter or pagination parameters
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                error:
+                  type: string
+                message:
+                  type: string
   post:
     tags: [ProEventIQ]
     summary: Add a new show

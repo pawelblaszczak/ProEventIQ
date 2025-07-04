@@ -5,6 +5,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { ProEventIQService } from '../../api/api/pro-event-iq.service';
 import { Show } from '../../api/model/show';
+import { ConfirmationDialogService } from '../../shared';
 
 @Component({
   selector: 'app-show-detail',
@@ -17,6 +18,7 @@ export class ShowDetailComponent implements OnInit {
   private readonly apiService = inject(ProEventIQService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly confirmationDialog = inject(ConfirmationDialogService);
   
   show = signal<Show | null>(null);
   isLoading = signal(false);
@@ -55,5 +57,32 @@ export class ShowDetailComponent implements OnInit {
 
   goBack(): void {
     this.router.navigate(['/shows']);
+  }
+
+  onDelete(): void {
+    const show = this.show();
+    if (!show || typeof show.showId !== 'string') return;
+
+    this.confirmationDialog.confirmDelete(show.name || 'this show', 'show')
+      .subscribe(confirmed => {
+        if (confirmed) {
+          this.isLoading.set(true);
+          this.apiService.deleteShow(show.showId!).subscribe({
+            next: () => {
+              this.router.navigate(['/shows']);
+            },
+            error: err => {
+              let errorMessage = 'Failed to delete show.';
+              if (err?.error?.message) {
+                errorMessage += ' ' + err.error.message;
+              } else if (typeof err?.error === 'string') {
+                errorMessage += ' ' + err.error;
+              }
+              this.error.set(errorMessage);
+              this.isLoading.set(false);
+            }
+          });
+        }
+      });
   }
 }

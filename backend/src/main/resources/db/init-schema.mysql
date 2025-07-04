@@ -8,6 +8,7 @@ DROP TABLE IF EXISTS sector;
 DROP TABLE IF EXISTS venue;
 DROP TABLE IF EXISTS event_show;
 DROP TABLE IF EXISTS event;
+DROP TABLE IF EXISTS participant;
 
 -- Create venue table
 CREATE TABLE venue (
@@ -106,3 +107,18 @@ CREATE TABLE event (
 CREATE INDEX idx_event_show_id ON event(show_id);
 CREATE INDEX idx_event_venue_id ON event(venue_id);
 CREATE INDEX idx_event_date_time ON event(date_time);
+
+-- Create participant table
+CREATE TABLE participant (
+    participant_id INT AUTO_INCREMENT PRIMARY KEY,
+    event_id INT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    number_of_tickets INT NOT NULL CHECK (number_of_tickets >= 1),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (event_id) REFERENCES event(event_id) ON DELETE CASCADE
+);
+
+-- Create indexes for participant table
+CREATE INDEX idx_participant_event_id ON participant(event_id);
+

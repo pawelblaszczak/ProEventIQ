@@ -4,6 +4,8 @@ import dev.knightcore.proeventiq.api.controller.EventsApi;
 import dev.knightcore.proeventiq.api.model.Event;
 import dev.knightcore.proeventiq.api.model.EventInput;
 import dev.knightcore.proeventiq.api.model.PaginatedEvents;
+import dev.knightcore.proeventiq.api.model.Participant;
+import dev.knightcore.proeventiq.api.model.ParticipantInput;
 import dev.knightcore.proeventiq.service.EventService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -133,6 +135,94 @@ public class EventController implements EventsApi {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             log.error("Error updating event: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    // PARTICIPANT ENDPOINTS
+    @Override
+    public ResponseEntity<List<Participant>> eventsEventIdParticipantsGet(String eventId) {
+        log.info("Listing participants for event ID: {}", eventId);
+        try {
+            Long id = Long.parseLong(eventId);
+            List<Participant> participants = eventService.listParticipantsByEvent(id);
+            return ResponseEntity.ok(participants);
+        } catch (NumberFormatException e) {
+            log.error(INVALID_EVENT_ID_FORMAT, eventId);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (Exception e) {
+            log.error("Error listing participants: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Override
+    public ResponseEntity<Participant> eventsEventIdParticipantsPost(String eventId, @Valid ParticipantInput participantInput) {
+        log.info("Adding participant to event ID: {}", eventId);
+        try {
+            Long id = Long.parseLong(eventId);
+            return eventService.addParticipant(id, participantInput)
+                    .map(participant -> ResponseEntity.status(HttpStatus.CREATED).body(participant))
+                    .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(null));
+        } catch (NumberFormatException e) {
+            log.error(INVALID_EVENT_ID_FORMAT, eventId);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (Exception e) {
+            log.error("Error adding participant: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Override
+    public ResponseEntity<Participant> eventsEventIdParticipantsParticipantIdGet(String eventId, String participantId) {
+        log.info("Fetching participant {} for event ID: {}", participantId, eventId);
+        try {
+            Long eid = Long.parseLong(eventId);
+            return eventService.getParticipant(eid, participantId)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+        } catch (NumberFormatException e) {
+            log.error(INVALID_EVENT_ID_FORMAT, eventId);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (Exception e) {
+            log.error("Error fetching participant: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Override
+    public ResponseEntity<Participant> eventsEventIdParticipantsParticipantIdPut(String eventId, String participantId, @Valid ParticipantInput participantInput) {
+        log.info("Updating participant {} for event ID: {}", participantId, eventId);
+        try {
+            Long eid = Long.parseLong(eventId);
+            return eventService.updateParticipant(eid, participantId, participantInput)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+        } catch (NumberFormatException e) {
+            log.error(INVALID_EVENT_ID_FORMAT, eventId);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (Exception e) {
+            log.error("Error updating participant: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Override
+    public ResponseEntity<Void> eventsEventIdParticipantsParticipantIdDelete(String eventId, String participantId) {
+        log.info("Deleting participant {} from event ID: {}", participantId, eventId);
+        try {
+            Long eid = Long.parseLong(eventId);
+            boolean deleted = eventService.deleteParticipant(eid, participantId);
+            if (deleted) {
+                return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+        } catch (NumberFormatException e) {
+            log.error(INVALID_EVENT_ID_FORMAT, eventId);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (Exception e) {
+            log.error("Error deleting participant: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

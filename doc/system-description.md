@@ -48,7 +48,8 @@ ProEventIQ - System for organizing and managing events, e.g. theater performance
         1.6.4 Date and time
 
     1.7 Participant
-        1.7.1 ParticipantID
+        1.7.1 ParticipantID (unique identifier)
+        1.7.2 EventId
         1.7.2 Name
         1.7.3 Number of tickets
     

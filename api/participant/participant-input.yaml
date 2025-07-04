@@ -1,0 +1,15 @@
+components:
+  schemas:
+    ParticipantInput:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Name of the participant
+        numberOfTickets:
+          type: integer
+          minimum: 1
+          description: Number of tickets the participant wants to reserve
+      required:
+        - name
+        - numberOfTickets

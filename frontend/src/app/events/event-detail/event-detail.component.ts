@@ -1,15 +1,20 @@
 import { ChangeDetectionStrategy, Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatTableModule } from '@angular/material/table';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 import { Event as ApiEvent } from '../../api/model/event';
 import { ProEventIQService } from '../../api/api/pro-event-iq.service';
 import { ConfirmationDialogService } from '../../shared';
+import { Participant } from '../../api/model/participant';
 
 @Component({
   selector: 'app-event-detail',
@@ -22,22 +27,28 @@ import { ConfirmationDialogService } from '../../shared';
     MatProgressSpinnerModule,
     MatDividerModule,
     MatChipsModule,
-    RouterModule
+    RouterModule,
+    MatTableModule,
+    MatFormFieldModule,
+    MatInputModule,
+    FormsModule
   ],
   templateUrl: './event-detail.component.html',
   styleUrls: ['./event-detail.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class EventDetailComponent implements OnInit {
-  private route = inject(ActivatedRoute);
-  private router = inject(Router);
-  private eventApi = inject(ProEventIQService);
-  private confirmationDialog = inject(ConfirmationDialogService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly eventApi = inject(ProEventIQService);
+  private readonly confirmationDialog = inject(ConfirmationDialogService);
 
-  private eventId = signal<string | null>(null);
+  private readonly eventId = signal<string | null>(null);
   public event = signal<ApiEvent | null>(null);
   public loading = signal(true);
   public error = signal<string | null>(null);
+  public participants = signal<Participant[]>([]);
+  public editingParticipant = signal<string | null>(null);
 
   ngOnInit() {
     this.route.paramMap.subscribe(params => {
@@ -45,6 +56,7 @@ export class EventDetailComponent implements OnInit {
       this.eventId.set(id);
       if (id) {
         this.loadEvent(id);
+        this.loadParticipants(id);
       }
     });
   }
@@ -118,6 +130,93 @@ export class EventDetailComponent implements OnInit {
       this.event.set(foundEvent);
     } else {
       this.error.set('Event not found');
+    }
+  }
+
+  private loadParticipants(eventId: string) {
+    this.eventApi.eventsEventIdParticipantsGet(eventId).subscribe({
+      next: (participants) => this.participants.set(participants),
+      error: (err) => {
+        console.error('Error loading participants:', err);
+        this.participants.set([]);
+      }
+    });
+  }
+
+  public onDeleteParticipant(participantId: string) {
+    const eventId = this.eventId();
+    if (!eventId) return;
+    this.confirmationDialog.confirm({
+      title: 'Delete Participant',
+      message: 'Are you sure you want to remove this participant?',
+      confirmButtonText: 'Delete',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: 'warn',
+      icon: 'delete_forever'
+    }).subscribe(confirmed => {
+      if (confirmed) {
+        this.eventApi.eventsEventIdParticipantsParticipantIdDelete(eventId, participantId).subscribe({
+          next: () => this.loadParticipants(eventId),
+          error: (err) => console.error('Error deleting participant:', err)
+        });
+      }
+    });
+  }
+
+  public onAddParticipant() {
+    const currentParticipants = this.participants();
+    const newParticipant: Participant = {
+      participantId: 'new',
+      eventId: this.eventId() ?? '',
+      name: '',
+      numberOfTickets: 1
+    };
+    this.participants.set([...currentParticipants, newParticipant]);
+    this.editingParticipant.set('new');
+  }
+
+  public onEditParticipant(participantId: string) {
+    this.editingParticipant.set(participantId);
+  }
+
+  public onSaveParticipant(participant: Participant) {
+    const eventId = this.eventId();
+    if (!eventId || !participant.name.trim()) return;
+
+    if (participant.participantId === 'new') {
+      // Create new participant
+      const participantInput = {
+        name: participant.name,
+        numberOfTickets: participant.numberOfTickets
+      };
+      this.eventApi.eventsEventIdParticipantsPost(eventId, participantInput).subscribe({
+        next: () => {
+          this.editingParticipant.set(null);
+          this.loadParticipants(eventId);
+        },
+        error: (err) => console.error('Error creating participant:', err)
+      });
+    } else {
+      // Update existing participant
+      const participantInput = {
+        name: participant.name,
+        numberOfTickets: participant.numberOfTickets
+      };
+      this.eventApi.eventsEventIdParticipantsParticipantIdPut(eventId, participant.participantId, participantInput).subscribe({
+        next: () => {
+          this.editingParticipant.set(null);
+          this.loadParticipants(eventId);
+        },
+        error: (err) => console.error('Error updating participant:', err)
+      });
+    }
+  }
+
+  public onCancelEdit() {
+    this.editingParticipant.set(null);
+    const eventId = this.eventId();
+    if (eventId) {
+      this.loadParticipants(eventId); // Reload to remove the 'new' participant or revert changes
     }
   }
 

@@ -1,0 +1,140 @@
+participantsByEvent:
+  get:
+    tags:
+      - ProEventIQ
+    summary: List all participants for a specific event
+    description: Retrieve all participants registered for the specified event
+    parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: ID of the event
+    responses:
+      '200':
+        description: List of participants for the event
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: './participant.yaml#/components/schemas/Participant'
+      '404':
+        description: Event not found
+  post:
+    tags:
+      - ProEventIQ
+    summary: Add a new participant to an event
+    description: Register a new participant for the specified event
+    parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: ID of the event
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: './participant-input.yaml#/components/schemas/ParticipantInput'
+    responses:
+      '201':
+        description: Participant successfully created
+        content:
+          application/json:
+            schema:
+              $ref: './participant.yaml#/components/schemas/Participant'
+      '400':
+        description: Invalid participant data
+      '404':
+        description: Event not found
+
+participantById:
+  get:
+    tags:
+      - ProEventIQ
+    summary: Get participant details
+    description: Retrieve details of a specific participant for an event
+    parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: ID of the event
+      - name: participantId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: ID of the participant
+    responses:
+      '200':
+        description: Participant details
+        content:
+          application/json:
+            schema:
+              $ref: './participant.yaml#/components/schemas/Participant'
+      '404':
+        description: Event or participant not found
+  put:
+    tags:
+      - ProEventIQ
+    summary: Update participant information
+    description: Update details of a specific participant for an event
+    parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: ID of the event
+      - name: participantId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: ID of the participant
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: './participant-input.yaml#/components/schemas/ParticipantInput'
+    responses:
+      '200':
+        description: Participant successfully updated
+        content:
+          application/json:
+            schema:
+              $ref: './participant.yaml#/components/schemas/Participant'
+      '400':
+        description: Invalid participant data
+      '404':
+        description: Event or participant not found
+  delete:
+    tags:
+      - ProEventIQ
+    summary: Delete a participant
+    description: Remove a participant from an event
+    parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: ID of the event
+      - name: participantId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: ID of the participant
+    responses:
+      '204':
+        description: Participant successfully deleted
+      '404':
+        description: Event or participant not found

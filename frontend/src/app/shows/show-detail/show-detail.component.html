@@ -64,6 +64,9 @@
           <mat-icon>info</mat-icon>
           Show Details
         </h3>
+        <button mat-icon-button color="warn" (click)="onDelete()" class="delete-icon-btn" [disabled]="isLoading()" aria-label="Delete show">
+          <mat-icon>delete</mat-icon>
+        </button>
       </div>
       <div class="show-info-grid">
         <div class="info-item">

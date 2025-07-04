@@ -29,42 +29,38 @@
 <!-- Event Details -->
 <div *ngIf="event()" class="event-details-section animate-fade-in">
   <mat-card appearance="outlined" class="event-details-card mat-elevation-z3">
-    <div class="event-hero">
+    <div class="event-hero" [ngClass]="{'has-image': false}">
       <div class="event-header-content">
-        <div class="event-status-badge">
-          <mat-chip [color]="getStatusColor()" class="status-chip">
-            <mat-icon>schedule</mat-icon>
-            {{ getEventStatus() }}
-          </mat-chip>
-        </div>
-        
         <h1 class="event-show-name">{{ event()?.showName }}</h1>
         <h2 class="event-venue">
           <mat-icon class="venue-icon">location_on</mat-icon>
           {{ event()?.venueName }}
         </h2>
-        
-        <div class="event-datetime">
-          <div class="datetime-item">
-            <mat-icon>event</mat-icon>
-            <div class="datetime-content">
-              <span class="date-label">Date</span>
-              <span class="date-value">{{ formatDate(event()?.dateTime) }}</span>
+        <div class="event-header-status-row">
+          <mat-chip [color]="getStatusColor()" class="status-chip">
+            <mat-icon>schedule</mat-icon>
+            {{ getEventStatus() }}
+          </mat-chip>
+          <div class="event-stats">
+            <div class="stat-item">
+              <mat-icon>event</mat-icon>
+              <div class="stat-content">
+                <span class="stat-inline">{{ formatDate(event()?.dateTime) }}</span>
+              </div>
             </div>
-          </div>
-          <div class="datetime-item">
-            <mat-icon>access_time</mat-icon>
-            <div class="datetime-content">
-              <span class="time-label">Time</span>
-              <span class="time-value">{{ formatTime(event()?.dateTime) }}</span>
+            <div class="stat-item">
+              <mat-icon>access_time</mat-icon>
+              <div class="stat-content">
+                <span class="stat-inline">{{ formatTime(event()?.dateTime) }}</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
       
       <div class="event-image-placeholder">
-        <mat-icon class="placeholder-icon">event</mat-icon>
-        <p>Event Poster</p>
+        <mat-icon class="placeholder-icon" style="font-size: 72px; color: #bdbdbd;">image_not_supported</mat-icon>
+        <p>No image available</p>
       </div>
     </div>
     
@@ -82,24 +78,19 @@
       </div>
       
       <div class="event-info-grid">
-        <div class="info-item">
-          <div class="info-label">Event ID</div>
-          <div class="info-value">{{ event()?.eventId || 'N/A' }}</div>
-        </div>
-        
-        <div class="info-item">
-          <div class="info-label">Show ID</div>
-          <div class="info-value">{{ event()?.showId || 'N/A' }}</div>
-        </div>
-        
-        <div class="info-item">
-          <div class="info-label">Venue ID</div>
-          <div class="info-value">{{ event()?.venueId || 'N/A' }}</div>
-        </div>
-        
-        <div class="info-item">
+        <div class="info-item full-width">
           <div class="info-label">Full Date & Time</div>
           <div class="info-value">{{ formatDateTime(event()?.dateTime) }}</div>
+        </div>
+        <div class="info-item full-width">
+          <div class="info-label">Show</div>
+          <div class="info-value">{{ event()?.showName }}</div>
+        </div>
+        <div class="info-item full-width">
+          <div class="info-label">Venue</div>
+          <div class="info-value">
+            {{ event()?.venueName }}<ng-container *ngIf="event()?.address">, {{ event()?.address }}</ng-container><ng-container *ngIf="event()?.city">, {{ event()?.city }}</ng-container><ng-container *ngIf="event()?.country">, {{ event()?.country }}</ng-container>
+          </div>
         </div>
       </div>
     </mat-card-content>
@@ -117,90 +108,84 @@
   </mat-card>
 </div>
 
-<!-- Related Information Card -->
-<mat-card appearance="outlined" class="related-info-card mat-elevation-z3" *ngIf="event()">
-  <div class="card-header-banner">
-    <div class="header-content">
-      <div class="title-with-icon">
-        <mat-icon class="title-icon">link</mat-icon>
-        <div>
-          <h2 class="banner-title">Related Information</h2>
-          <p class="banner-subtitle">View show and venue details</p>
-        </div>
+<!-- Participants Card -->
+<div *ngIf="event()" class="participants-section animate-fade-in">
+  <mat-card appearance="outlined" class="participants-card mat-elevation-z2">
+    <mat-card-content>
+      <div class="participants-header-row">
+        <h3 class="section-title">
+          <mat-icon>group</mat-icon>
+          Participants
+        </h3>
+        <button mat-raised-button color="primary" (click)="onAddParticipant()" aria-label="Add participant" class="add-participant-btn">
+          <mat-icon>person_add</mat-icon>
+          ADD PARTICIPANT
+        </button>
       </div>
-    </div>
-  </div>
-  
-  <mat-card-content class="related-content">
-    <div class="related-items">
-      <button class="related-item" (click)="navigateToShow()" [disabled]="!event()?.showId" type="button">
-        <div class="related-icon">
-          <mat-icon>theater_comedy</mat-icon>
-        </div>
-        <div class="related-details">
-          <h3>Show Details</h3>
-          <p>{{ event()?.showName }}</p>
-          <span class="related-id">Show ID: {{ event()?.showId || 'N/A' }}</span>
-        </div>
-        <div class="related-action" *ngIf="event()?.showId">
-          <mat-icon>arrow_forward</mat-icon>
-        </div>
-      </button>
-      
       <mat-divider></mat-divider>
-      
-      <button class="related-item" (click)="navigateToVenue()" [disabled]="!event()?.venueId" type="button">
-        <div class="related-icon">
-          <mat-icon>location_city</mat-icon>
-        </div>
-        <div class="related-details">
-          <h3>Venue Details</h3>
-          <p>{{ event()?.venueName }}</p>
-          <span class="related-id">Venue ID: {{ event()?.venueId || 'N/A' }}</span>
-        </div>
-        <div class="related-action" *ngIf="event()?.venueId">
-          <mat-icon>arrow_forward</mat-icon>
-        </div>
-      </button>
-    </div>
-  </mat-card-content>
-</mat-card>
-
-<!-- Quick Actions Card -->
-<mat-card appearance="outlined" class="quick-actions-card mat-elevation-z3" *ngIf="event()">
-  <div class="card-header-banner">
-    <div class="header-content">
-      <div class="title-with-icon">
-        <mat-icon class="title-icon">bolt</mat-icon>
-        <div>
-          <h2 class="banner-title">Quick Actions</h2>
-          <p class="banner-subtitle">Manage this event</p>
-        </div>
+      <div *ngIf="participants()?.length; else noParticipants">
+        <table mat-table [dataSource]="participants()" class="mat-elevation-z1 participants-table">
+          <!-- Name Column -->
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef>Name</th>
+            <td mat-cell *matCellDef="let p">
+              <div *ngIf="p.participantId !== 'new' && editingParticipant() !== p.participantId; else editNameTemplate">
+                {{ p.name }}
+              </div>
+              <ng-template #editNameTemplate>
+                <mat-form-field appearance="outline" class="inline-edit-field">
+                  <input matInput [(ngModel)]="p.name" placeholder="Enter name">
+                </mat-form-field>
+              </ng-template>
+            </td>
+          </ng-container>
+          <!-- Tickets Column -->
+          <ng-container matColumnDef="numberOfTickets">
+            <th mat-header-cell *matHeaderCellDef>Tickets</th>
+            <td mat-cell *matCellDef="let p">
+              <div *ngIf="p.participantId !== 'new' && editingParticipant() !== p.participantId; else editTicketsTemplate">
+                {{ p.numberOfTickets }}
+              </div>
+              <ng-template #editTicketsTemplate>
+                <mat-form-field appearance="outline" class="inline-edit-field">
+                  <input matInput type="number" [(ngModel)]="p.numberOfTickets" placeholder="Number of tickets" min="1">
+                </mat-form-field>
+              </ng-template>
+            </td>
+          </ng-container>
+          <!-- Actions Column -->
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Actions</th>
+            <td mat-cell *matCellDef="let p">
+              <div *ngIf="p.participantId !== 'new' && editingParticipant() !== p.participantId; else editActionsTemplate">
+                <button mat-icon-button color="primary" (click)="onEditParticipant(p.participantId)" aria-label="Edit participant">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button mat-icon-button color="warn" (click)="onDeleteParticipant(p.participantId)" aria-label="Delete participant">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+              <ng-template #editActionsTemplate>
+                <button mat-icon-button color="primary" (click)="onSaveParticipant(p)" aria-label="Save participant">
+                  <mat-icon>save</mat-icon>
+                </button>
+                <button mat-icon-button color="warn" (click)="onCancelEdit()" aria-label="Cancel edit">
+                  <mat-icon>cancel</mat-icon>
+                </button>
+              </ng-template>
+            </td>
+          </ng-container>
+          <tr mat-header-row *matHeaderRowDef="['name', 'numberOfTickets', 'actions']"></tr>
+          <tr mat-row *matRowDef="let row; columns: ['name', 'numberOfTickets', 'actions'];" 
+              [class.editing-row]="row.participantId === 'new' || editingParticipant() === row.participantId"></tr>
+        </table>
       </div>
-    </div>
-  </div>
-  
-  <mat-card-content class="actions-content">
-    <div class="action-buttons">
-      <button mat-raised-button color="primary" [routerLink]="['/events', event()?.eventId, 'edit']" class="action-btn">
-        <mat-icon>edit</mat-icon>
-        Edit Event
-      </button>
-      
-      <button mat-raised-button color="accent" [disabled]="!event()?.venueId" (click)="navigateToVenue()" class="action-btn">
-        <mat-icon>map</mat-icon>
-        View Venue Map
-      </button>
-      
-      <button mat-raised-button [disabled]="!event()?.showId" (click)="navigateToShow()" class="action-btn">
-        <mat-icon>theater_comedy</mat-icon>
-        Show Details
-      </button>
-      
-      <button mat-raised-button color="warn" (click)="onDelete()" [disabled]="loading()" class="action-btn delete-btn">
-        <mat-icon>delete</mat-icon>
-        Delete Event
-      </button>
-    </div>
-  </mat-card-content>
-</mat-card>
+      <ng-template #noParticipants>
+        <div class="no-participants-message">
+          <mat-icon>info</mat-icon>
+          No participants registered for this event.
+        </div>
+      </ng-template>
+    </mat-card-content>
+  </mat-card>
+</div>

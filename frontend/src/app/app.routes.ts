@@ -26,6 +26,7 @@ export const routes: Routes = [
       { path: 'events', component: EventsListComponent },
       { path: 'events/add', loadComponent: () => import('./events/event-edit/event-edit.component').then(m => m.EventEditComponent) },
       { path: 'events/:id', loadComponent: () => import('./events/event-detail').then(m => m.EventDetailComponent) },
+      { path: 'events/:id/edit', loadComponent: () => import('./events/event-edit/event-edit.component').then(m => m.EventEditComponent) },
       // Other routes will be added here as needed
     ]
   }

@@ -107,6 +107,11 @@ export class EventEditComponent {
           venueId: event.venueId,
           dateTime: this.formatDateTimeForForm(event.dateTime!)
         });
+        // Set display values for autocomplete fields
+        const show = this.shows().find(s => s.showId === event.showId);
+        this.showInputValue = show ? show.name : '';
+        const venue = this.venues().find(v => v.venueId === event.venueId);
+        this.venueInputValue = venue ? venue.name : '';
         this.loading.set(false);
       },
       error: () => {

@@ -44,7 +44,7 @@
           <!-- Venue Autocomplete -->
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Venue</mat-label>
-            <input type="text" matInput [matAutocomplete]="autoVenue" [value]="venueInputValue" (input)="filterVenueInput($event)" required placeholder="Type or select venue">
+            <input type="text" matInput [matAutocomplete]="autoVenue" [value]="venueInputValue" (input)="filterVenueInput($event)" required placeholder="Type or select venue" [readonly]="!isAddMode()">
             <mat-autocomplete #autoVenue="matAutocomplete" (optionSelected)="onVenueSelected($event)">
               <mat-option value="">All Venues</mat-option>
               @for (venue of filteredVenuesList; track venue.venueId) {

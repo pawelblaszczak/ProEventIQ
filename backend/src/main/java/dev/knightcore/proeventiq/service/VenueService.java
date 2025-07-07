@@ -146,6 +146,13 @@ public class VenueService {
         mapBasicVenueProperties(entity, dto);
         mapVenueThumbnail(entity, dto);
         mapVenueSectors(entity, dto);
+        // Set numberOfSeats using DB function
+        if (entity.getVenueId() != null) {
+            Integer seatCount = venueRepository.getSeatCountForVenue(entity.getVenueId());
+            dto.setNumberOfSeats(seatCount != null ? seatCount : 0);
+        } else {
+            dto.setNumberOfSeats(0);
+        }
         return dto;
     }
 
@@ -172,16 +179,12 @@ public class VenueService {
     private void mapVenueSectors(VenueEntity entity, Venue dto) {
         if (entity.getSectors() != null) {
             List<Sector> sectorDtos = new ArrayList<>();
-            int totalSeats = 0;
-            
             for (var sectorEntity : entity.getSectors()) {
                 Sector sectorDto = mapSectorToDto(sectorEntity);
                 sectorDtos.add(sectorDto);
-                totalSeats += sectorDto.getNumberOfSeats() != null ? sectorDto.getNumberOfSeats() : 0;
             }
-            
             dto.setSectors(sectorDtos);
-            dto.setNumberOfSeats(totalSeats);
+            // numberOfSeats is now set in toDto using DB function
         }
     }
 
@@ -222,21 +225,16 @@ public class VenueService {
     }
 
     private void mapSectorRows(dev.knightcore.proeventiq.entity.SectorEntity sectorEntity, Sector sectorDto) {
-        int sectorSeatCount = 0;
-        
         if (sectorEntity.getSeatRows() != null) {
             List<SeatRow> rowDtos = new ArrayList<>();
             
             for (var rowEntity : sectorEntity.getSeatRows()) {
                 SeatRow rowDto = mapRowToDto(rowEntity);
                 rowDtos.add(rowDto);
-                sectorSeatCount += countSeatsInRow(rowEntity);
             }
             
             sectorDto.setRows(rowDtos);
         }
-        
-        sectorDto.setNumberOfSeats(sectorSeatCount);
     }
 
     private SeatRow mapRowToDto(dev.knightcore.proeventiq.entity.SeatRowEntity rowEntity) {
@@ -275,10 +273,6 @@ public class VenueService {
         }
         
         return seatDto;
-    }
-
-    private int countSeatsInRow(dev.knightcore.proeventiq.entity.SeatRowEntity rowEntity) {
-        return rowEntity.getSeats() != null ? rowEntity.getSeats().size() : 0;
     }
 
     @Transactional(readOnly = true)

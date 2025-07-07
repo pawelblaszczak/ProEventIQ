@@ -200,19 +200,23 @@ public class EventService {
         dto.setShowId(entity.getShowId().toString());
         dto.setVenueId(entity.getVenueId().toString());
         dto.setDateTime(entity.getDateTime().atOffset(ZoneOffset.UTC));
-        
         // Set show and venue names from the loaded entities
         if (entity.getShow() != null) {
             dto.setShowName(entity.getShow().getName());
         }
-        
         if (entity.getVenue() != null) {
             dto.setVenueName(entity.getVenue().getName());
             dto.setCity(entity.getVenue().getCity());
             dto.setAddress(entity.getVenue().getAddress());
             dto.setCountry(entity.getVenue().getCountry());
+            // Set venueNumberOfSeats using DB function
+            if (entity.getVenue().getVenueId() != null) {
+                Integer seatCount = venueRepository.getSeatCountForVenue(entity.getVenue().getVenueId());
+                dto.setVenueNumberOfSeats(seatCount != null ? seatCount : 0);
+            } else {
+                dto.setVenueNumberOfSeats(0);
+            }
         }
-        
         return dto;
     }
 

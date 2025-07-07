@@ -114,9 +114,9 @@
             </div>
             
             <div class="seat-status">
-              <div class="seat-indicator" [ngClass]="getReservationClass(event.eventId || '1')">
+              <div class="seat-indicator" [ngClass]="getReservationClass(event.eventId ?? '1')">
                 <mat-icon>event_seat</mat-icon>
-                <span class="seat-text">{{ getSeatStatusText(event.eventId || '1') }}</span>
+                <span class="seat-text">{{ getSeatStatusText(event) }}</span>
               </div>
             </div>
             

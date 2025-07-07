@@ -47,13 +47,13 @@ export class EventsListComponent implements OnInit {
   public totalItems = signal(0);
 
   // Debounce subject for search
-  private searchSubject = new Subject<string>();
+  private readonly searchSubject = new Subject<string>();
   // Debounce subjects for date filters
-  private dateFromSubject = new Subject<string>();
-  private dateToSubject = new Subject<string>();
+  private readonly dateFromSubject = new Subject<string>();
+  private readonly dateToSubject = new Subject<string>();
 
   // Effect for all filters and pagination (must be a field, not in ngOnInit)
-  private filterEffect = effect(() => {
+  private readonly filterEffect = effect(() => {
     // Only trigger loadEvents when any filter or pagination changes
     const _search = this.search();
     const _show = this.selectedShowId();
@@ -99,13 +99,13 @@ export class EventsListComponent implements OnInit {
     const dateTo = dateToRaw ? new Date(dateToRaw + 'T23:59:59.999Z').toISOString() : undefined;
     const search = this.search();
     this.apiService.listEvents(
-      showId || undefined,
-      dateFrom || undefined,
-      dateTo || undefined,
-      venueId || undefined,
+      showId ?? undefined,
+      dateFrom ?? undefined,
+      dateTo ?? undefined,
+      venueId ?? undefined,
       page,
       size,
-      search || undefined
+      search ?? undefined
     ).subscribe({
       next: (response: any) => {
         const events = response?.items ?? response?.content ?? [];
@@ -220,17 +220,17 @@ export class EventsListComponent implements OnInit {
   }
 
   filterByShow(event: any): void {
-    const value = event.option?.value || '';
-    this.selectedShowId.set(value || null);
-    this.showInputValue = value ? this.shows().find(s => s.showId === value)?.name || '' : '';
+    const value = event.option?.value ?? '';
+    this.selectedShowId.set(value ?? null);
+    this.showInputValue = value ? this.shows().find(s => s.showId === value)?.name ?? '' : '';
     this.page.set(1);
     // Removed direct this.loadEvents() call; effect will handle API request
   }
 
   filterByVenue(event: any): void {
-    const value = event.option?.value || '';
-    this.selectedVenueId.set(value || null);
-    this.venueInputValue = value ? this.venues().find(v => v.venueId === value)?.name || '' : '';
+    const value = event.option?.value ?? '';
+    this.selectedVenueId.set(value ?? null);
+    this.venueInputValue = value ? this.venues().find(v => v.venueId === value)?.name ?? '' : '';
     this.page.set(1);
     // Removed direct this.loadEvents() call; effect will handle API request
   }
@@ -313,9 +313,11 @@ export class EventsListComponent implements OnInit {
     return { reserved, total, percentage };
   }
 
-  getSeatStatusText(eventId: string): string {
-    const seatInfo = this.getReservedSeats(eventId);
-    return `${seatInfo.reserved}/${seatInfo.total} (${seatInfo.percentage}%)`;
+  getSeatStatusText(event: ApiEvent): string {
+    const totalSeats = event.venueNumberOfSeats ?? this.getReservedSeats(event.eventId ?? '').total;
+    const reserved = Math.floor(totalSeats * 0.5); // Placeholder: 50% reserved, replace with real data if available
+    const percentage = totalSeats > 0 ? Math.round((reserved / totalSeats) * 100) : 0;
+    return `${reserved}/${totalSeats} (${percentage}%)`;
   }
 
   getReservationClass(eventId: string): string {

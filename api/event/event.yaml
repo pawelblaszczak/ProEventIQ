@@ -11,6 +11,8 @@ Event:
       type: string
     venueName:
       type: string
+    venueNumberOfSeats:
+      type: integer      
     city:
       type: string
       description: City where the venue is located

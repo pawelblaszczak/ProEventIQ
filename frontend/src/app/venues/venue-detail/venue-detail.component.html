@@ -96,200 +96,27 @@
   </mat-card>
 </div>
 
-<mat-card appearance="outlined" class="venue-map-card mat-elevation-z3">  <div class="card-header-banner">
-    <div class="header-content">
-      <div class="title-with-icon">
-        <mat-icon class="title-icon">map</mat-icon>
-        <div>
-          <h2 class="banner-title">Venue Map</h2>
-          <p class="banner-subtitle">Interactive venue visualization</p>
-        </div>
-      </div>
-    </div>
-    <div class="header-actions">
-      <button mat-stroked-button color="primary" class="edit-map-btn" [routerLink]="['/venues', venue()?.venueId, 'map-edit']" aria-label="Edit venue map">
+<!-- Venue Map Preview -->
+<div *ngIf="venue()" class="venue-map-preview-section animate-fade-in">
+  <mat-card appearance="outlined" class="venue-map-card mat-elevation-z3">
+    <div class="participants-header-row">
+      <h3 class="section-title" style="display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
+        <span style="display: flex; align-items: center; gap: 0.5rem;">
+          <mat-icon class="title-icon">map</mat-icon>
+          Venue Map
+        </span>
+        <span class="banner-subtitle">Interactive venue layout preview</span>
+      </h3>
+      <button mat-raised-button color="primary" class="edit-map-btn" [routerLink]="['/venues', venue()?.venueId, 'map-edit']" aria-label="Edit venue map">
         <mat-icon>edit</mat-icon>
         Edit Map
       </button>
     </div>
-  </div>
-  
-  <mat-card-content class="map-content">
-    <div class="controls-container">
-      <div class="zoom-controls">
-        <button mat-mini-fab color="primary" (click)="zoomOut()" aria-label="Zoom out" class="zoom-button">
-          <mat-icon>zoom_out</mat-icon>
-        </button>
-        <div class="zoom-badge">
-          <span class="zoom-level">{{ zoom() | number:'1.1-2' }}x</span>
-        </div>
-        <button mat-mini-fab color="primary" (click)="zoomIn()" aria-label="Zoom in" class="zoom-button">
-          <mat-icon>zoom_in</mat-icon>
-        </button>
-      </div>
-    </div>
-    <div class="venue-canvas-container" style="height: 600px;">
-      <ko-stage [config]="{ width: canvasWidth, height: canvasHeight, draggable: true, scaleX: zoom(), scaleY: zoom() }">
-        <ko-layer>
-          <ng-container *ngIf="venue() && venue()?.sectors">            <!-- Zoomed out view - show sectors as boxes -->            @if (!showSeats()) {
-              <ko-group *ngFor="let sector of venue()?.sectors || []; let i = index" 
-                       [config]="{ x: getSectorPositionValue(sector, 'x'), y: getSectorPositionValue(sector, 'y'), draggable: false }">
-                <ko-rect [config]="{ 
-                  width: 100, 
-                  height: 60, 
-                  fill: '#90caf9', 
-                  stroke: '#1976d2', 
-                  strokeWidth: 2, 
-                  cornerRadius: 8 
-                }"></ko-rect>
-                <ko-text [config]="{ 
-                  text: sector.name, 
-                  x: 10, 
-                  y: 20, 
-                  fontSize: 16, 
-                  fill: '#0d47a1', 
-                  fontStyle: 'bold' 
-                }"></ko-text>
-                <ko-text [config]="{ 
-                  text: 'Seats: ' + (sector.numberOfSeats || 0), 
-                  x: 10, 
-                  y: 40, 
-                  fontSize: 12, 
-                  fill: '#333' 
-                }"></ko-text>
-              </ko-group>
-            } @else {              <!-- Zoomed in view - show detailed seats -->
-              @for (sector of venue()?.sectors || []; track sector.sectorId) {
-                @if (sector.position) {
-                  <ko-group [config]="{ x: getSectorPositionValue(sector, 'x'), y: getSectorPositionValue(sector, 'y'), draggable: false }">
-                    <!-- Sector label -->
-                    <ko-text [config]="{ 
-                      text: sector.name, 
-                      x: 0, 
-                      y: 0, 
-                      fontSize: 14, 
-                      fill: '#0d47a1', 
-                      fontStyle: 'bold' 
-                    }"></ko-text>
-                    
-                    <!-- No rows message -->
-                    @if (!sector.rows || sector.rows.length === 0) {
-                      <ko-text [config]="{
-                        text: 'No rows available for this sector',
-                        x: 0,
-                        y: 30,
-                        fontSize: 12,
-                        fill: '#f44336'
-                      }"></ko-text>
-                    }
-                    
-                    <!-- Show rows if available -->
-                    @for (row of sector.rows || []; track row.seatRowId) {
-                      <ko-group>                        <!-- Row label -->
-                        <ko-text [config]="{ 
-                          text: row.name || 'Row', 
-                          x: -20, 
-                          y: getRowLabelPosition(row), 
-                          fontSize: 10, 
-                          fill: '#333' 
-                        }"></ko-text>
-                          <!-- No seats message -->
-                        @if (!row.seats || row.seats.length === 0) {
-                          <ko-text [config]="{
-                            text: 'No seats available for this row',
-                            x: 0,
-                            y: 30,
-                            fontSize: 12,
-                            fill: '#f44336'
-                          }"></ko-text>
-                        }
-                        
-                        <!-- Show seats if available -->
-                        @for (seat of row.seats || []; track seat.seatId) {
-                          @if (seat.position) {
-                            <ko-rect 
-                              [config]="{
-                                x: getSeatPositionValue(seat, 'x'),
-                                y: getSeatPositionValue(seat, 'y'),
-                                width: 8,
-                                height: 8,
-                                fill: getSeatColor(seat),
-                                stroke: '#333',
-                                strokeWidth: 1,
-                                cornerRadius: 2
-                              }"
-                              (mouseover)="onSeatHover($event, seat, row.name)"
-                              onFocus>
-                            </ko-rect>
-                            
-                            <!-- Seat number label -->
-                            <ko-text 
-                              [config]="{ 
-                                text: (seat.orderNumber || '').toString(),
-                                x: getSeatPositionValue(seat, 'x'),
-                                y: getSeatPositionValue(seat, 'y') + 5,
-                                fontSize: 6,
-                                fill: '#000',
-                                align: 'center',
-                                width: 8
-                              }">
-                            </ko-text>
-                          }
-                        }
-                      </ko-group>
-                    }
-                  </ko-group>
-                }
-              }
-            }
-          </ng-container>
-        </ko-layer>
-      </ko-stage>
-    </div>    <div class="map-instructions">
-      <div class="instruction-card" *ngIf="!showSeats()">
-        <div class="instruction-icon">
-          <mat-icon>touch_app</mat-icon>
-        </div>
-        <div class="instruction-content">
-          <h4>Tip: Zoom In for Details</h4>
-          <p>Zoom in (>1.5x) to see individual seats within each sector.</p>
-        </div>
-      </div>
-      
-      <div class="instruction-card" *ngIf="showSeats()">
-        <div class="instruction-icon">
-          <mat-icon>zoom_out_map</mat-icon>
-        </div>
-        <div class="instruction-content">
-          <h4>Detailed Seat View</h4>
-          <p>Currently showing all seats. Zoom out (<1.5x) to see sector overview.</p>
-        </div>
-      </div>
-      
-      <div *ngIf="venue()?.sectors?.length && !hasCompleteData()" class="warning-card">
-        <div class="warning-icon">
-          <mat-icon color="warn">warning</mat-icon>
-        </div>
-        <div class="warning-content">
-          <h4>Limited Data Available</h4>
-          <p>Some sectors or seats may not be displayed due to missing position data.</p>
-        </div>
-      </div>
-    </div>
-      <div *ngIf="showSeats()" class="legend-container">
-      <div class="legend-header">
-        <mat-icon>format_color_fill</mat-icon>
-        <h3>Seat Legend</h3>
-      </div>
-      <div class="seat-legend">
-        <div class="legend-item">
-          <div class="color-box active"></div>
-          <span>Active seat</span>
-        </div>
-        <div class="legend-item">
-          <div class="color-box inactive"></div>
-          <span>Inactive seat</span>
-        </div>
-      </div>    </div>
-  </mat-card-content>
-</mat-card>
+    <mat-card-content class="map-preview-content">
+      <app-venue-map-edit 
+        [previewMode]="true" 
+        [venueData]="venue()">
+      </app-venue-map-edit>
+    </mat-card-content>
+  </mat-card>
+</div>

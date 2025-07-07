@@ -811,3 +811,74 @@ mat-card-content p {
   opacity: 0.5;
   pointer-events: none;
 }
+
+// Participants-style header row for map card
+.participants-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem 0.5rem 1.5rem;
+  background: none;
+  color: inherit;
+  margin-bottom: 0;
+
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.25rem;
+    font-weight: 500;
+    color: rgba(0, 0, 0, 0.8);
+    margin: 0;
+    
+    mat-icon.title-icon {
+      color: $primary-color;
+      background: none;
+      font-size: 2rem;
+      width: 2rem;
+      height: 2rem;
+      margin-right: 0.5rem;
+      border-radius: 0;
+      padding: 0;
+    }
+    .banner-subtitle {
+      font-weight: normal;
+      font-size: 0.95em;
+      margin-left: 8px;
+      color: #757575;
+      opacity: 0.9;
+    }
+  }
+
+  .edit-map-btn {
+    min-width: 120px;
+    height: 40px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: $primary-color;
+    color: white;
+    box-shadow: 0 2px 8px rgba(25, 118, 210, 0.08);
+    transition: $transition-standard;
+    
+    mat-icon {
+      font-size: 1.2rem;
+      height: 1.2rem;
+      width: 1.2rem;
+    }
+    &:hover:not(:disabled) {
+      background-color: darken($primary-color, 10%);
+      box-shadow: 0 4px 12px rgba($primary-color, 0.18);
+    }
+  }
+}
+
+// Remove old .card-header-banner padding for map card if present
+.venue-map-card .card-header-banner {
+  padding: 0;
+  background: none;
+  box-shadow: none;
+}

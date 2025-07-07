@@ -2,7 +2,7 @@
   <div class="loading-icon-wrapper">
     <mat-progress-spinner color="primary" mode="indeterminate" diameter="50"></mat-progress-spinner>
   </div>
-  <p class="loading-text">Loading venue for editing...</p>
+  <p class="loading-text">{{ previewMode ? 'Loading venue map...' : 'Loading venue for editing...' }}</p>
 </div>
 
 <div *ngIf="error()" class="error-container animate-fade-in">
@@ -21,7 +21,7 @@
 
 <div *ngIf="venue()" class="venue-map-editor animate-fade-in">
   <!-- Header with venue info and actions -->
-  <div class="editor-header">
+  <div class="editor-header" *ngIf="!previewMode">
     <div class="venue-info">
       <h1 class="venue-name">
         <mat-icon>edit</mat-icon>
@@ -63,8 +63,8 @@
     <!-- Toolbar -->
     <mat-card class="toolbar-card">
       <mat-card-content class="toolbar-content">
-        <!-- Sector Actions -->
-        <div class="tool-group">
+        <!-- Sector Actions (only in edit mode) -->
+        <div class="tool-group" *ngIf="!previewMode">
           <h3 class="tool-group-title">
             <mat-icon>grid_view</mat-icon>
             Sectors
@@ -104,8 +104,8 @@
           </div>
         </div>
 
-        <!-- Rotation Controls -->
-        <div class="tool-group" *ngIf="selectedSectors().length > 0">
+        <!-- Rotation Controls (only in edit mode) -->
+        <div class="tool-group" *ngIf="!previewMode && selectedSectors().length > 0">
           <h3 class="tool-group-title">
             <mat-icon>rotate_right</mat-icon>
             Rotate
@@ -126,7 +126,7 @@
 
         <div class="spacer"></div>
 
-        <!-- Zoom Controls -->
+        <!-- Zoom Controls (always visible) -->
         <div class="tool-group">
           <h3 class="tool-group-title">
             <mat-icon>zoom_in</mat-icon>
@@ -152,13 +152,15 @@
               Reset
             </button>
           </div>
-        </div>        <!-- View Options -->
+        </div>
+        <!-- View Options (always visible) -->
         <div class="tool-group">
           <h3 class="tool-group-title">
             <mat-icon>visibility</mat-icon>
             View
           </h3>
-          <div class="view-toggles">            <button mat-stroked-button 
+          <div class="view-toggles">
+            <button mat-stroked-button 
                     [class.active]="showGrid()"
                     [color]="showGrid() ? 'primary' : 'basic'"
                     (click)="toggleGridDebug()"
@@ -192,7 +194,7 @@
         </div>
 
         <!-- Selection Info Panel - Moved to bottom -->
-        <div class="selection-panel" *ngIf="selectedSectors().length > 0">
+        <div class="selection-panel" *ngIf="selectedSectors().length > 0 && !previewMode">
           <div class="selection-info">
             @if (selectedSectors().length === 1) {
               <h4>
@@ -255,7 +257,7 @@
         </div>
 
         <!-- Instructions -->
-        <div class="instructions-panel">
+        <div class="instructions-panel" *ngIf="!previewMode">
           <div class="instruction-card">
             <mat-icon>info</mat-icon>
             <div class="instruction-content">

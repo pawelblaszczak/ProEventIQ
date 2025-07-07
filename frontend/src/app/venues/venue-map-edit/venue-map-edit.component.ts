@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject, signal, ViewChild, ElementRef, AfterViewInit, OnDestroy, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, signal, ViewChild, ElementRef, AfterViewInit, OnDestroy, OnInit, untracked, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
@@ -49,7 +49,10 @@ interface EditableSector extends Sector {
   styleUrls: ['./venue-map-edit.component.scss'],
   changeDetection: ChangeDetectionStrategy.Default,
 })
-export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewChild('canvasContainer', { static: false }) canvasContainer!: ElementRef<HTMLDivElement>;
+export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
+  @ViewChild('canvasContainer', { static: false }) canvasContainer!: ElementRef<HTMLDivElement>;
+  @Input() previewMode = false; // Add preview mode input
+  @Input() venueData: Venue | null = null; // Allow venue data to be passed in
   
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -99,14 +102,6 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
   private htmlPanStart = { x: 0, y: 0 };
   private htmlScrollStart = { left: 0, top: 0 };
   constructor() {
-    this.route.paramMap.subscribe(params => {
-      const venueId = params.get('venueId');
-      this.venueId.set(venueId);
-      if (venueId) {
-        this.fetchVenue(venueId);
-      }
-    });
-    
     // Resize canvas initially and on window resize
     this.resizeCanvas();
     window.addEventListener('resize', this.resizeHandler);
@@ -195,6 +190,30 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
     setTimeout(() => {
       this.resizeCanvas();
     }, 500);
+  }
+
+  ngOnInit() {
+    // Initialize venue data based on mode
+    if (this.previewMode && this.venueData) {
+      // Preview mode: use passed venue data
+      this.venue.set(this.venueData);
+      this.loading.set(false);
+      this.initializeEditableSectors(this.venueData);
+    } else {
+      // Edit mode: fetch venue from route parameter
+      this.route.paramMap.subscribe(params => {
+        const id = params.get('venueId'); // Changed from 'id' to 'venueId' to match route
+        this.venueId.set(id);
+        console.log('Edit mode - venue ID from route:', id);
+        if (id) {
+          this.fetchVenue(id);
+        } else {
+          console.error('No venue ID found in route parameters');
+          this.error.set('No venue ID specified');
+          this.loading.set(false);
+        }
+      });
+    }
   }
 
   private initializeKonva() {
@@ -320,14 +339,17 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
   };
 
   private fetchVenue(id: string) {
+    console.log('Fetching venue with ID:', id);
     this.loading.set(true);
     this.venueApi.getVenue(id).subscribe({
       next: (venue: Venue) => {
+        console.log('Venue fetched successfully:', venue);
         this.venue.set(venue);
         this.initializeEditableSectors(venue);
         this.loading.set(false);
       },
       error: (err: any) => {
+        console.error('Error fetching venue:', err);
         this.error.set('Failed to load venue.');
         this.loading.set(false);
         console.error('Error loading venue data:', err);
@@ -437,10 +459,7 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
     this.layer.batchDraw();
     console.log('Finished rendering sectors');
   }  private createSectorGroup(sector: EditableSector): Konva.Group | null {
-    if (!this.layer) {
-      console.log('No layer available for creating sector group');
-      return null;
-    }
+    if (!this.layer) return null;
 
     console.log('Creating sector group for:', sector.name, 'with position:', sector.position);
 
@@ -448,8 +467,7 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
       x: sector.position?.x ?? 100,
       y: sector.position?.y ?? 100,
       rotation: sector.rotation || 0,
-      draggable: this.editMode() === 'move' || this.editMode() === 'select',
-      // Fix: ensure drag starts from pointer position
+      draggable: !this.previewMode && (this.editMode() === 'move' || this.editMode() === 'select'), // Disable dragging in preview mode
       dragBoundFunc: (pos) => pos
     });
     // Remove pointer offset logic from dragstart
@@ -797,7 +815,8 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
   }
   
   onCanvasMouseDown(event: MouseEvent) {
-    if (event.button === 0 && event.altKey && this.canvasContainer) {
+    // Allow panning in preview mode (no Alt required)
+    if (this.previewMode && event.button === 0 && this.canvasContainer) {
       this.isHtmlPanning = true;
       this.htmlPanStart = { x: event.clientX, y: event.clientY };
       const container = this.canvasContainer.nativeElement.parentElement;
@@ -878,9 +897,11 @@ export class VenueMapEditComponent implements AfterViewInit, OnDestroy {  @ViewC
     event.cancelBubble = true;
     event.evt?.stopPropagation();
     
+    // Don't allow selection in preview mode
+    if (this.previewMode) return;
+    
     if (this.editMode() === 'select' || this.editMode() === 'move') {
-      const ctrlPressed = event.evt?.ctrlKey ?? event.evt?.metaKey ?? false;
-      this.selectSector(sector, ctrlPressed);
+      this.selectSector(sector, event.evt?.ctrlKey || event.evt?.metaKey);
     }
   }
 

@@ -57,4 +57,7 @@ public interface EventRepository extends JpaRepository<EventEntity, Long> {
                                              @Param("dateTo") LocalDateTime dateTo,
                                              @Param("search") String search,
                                              Pageable pageable);
+
+    @Query(value = "SELECT get_event_ticket_count(:eventId)", nativeQuery = true)
+    Integer getEventTicketCount(@Param("eventId") String eventId);
 }

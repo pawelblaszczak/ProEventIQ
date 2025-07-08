@@ -1,0 +1,47 @@
+<div class="add-multiple-rows-dialog">
+  <div class="dialog-header">
+    <div class="dialog-icon">
+      <mat-icon color="primary">view_headline</mat-icon>
+    </div>
+    <h2 mat-dialog-title class="dialog-title">Add Multiple Rows</h2>
+  </div>
+  
+  <mat-dialog-content class="dialog-content">
+    <form [formGroup]="addRowsForm" class="add-rows-form">
+      <mat-form-field appearance="outline" class="form-field">
+        <mat-label>Number of Rows</mat-label>
+        <input matInput type="number" formControlName="rowCount" min="1" max="50" required>
+        <mat-error *ngIf="addRowsForm.get('rowCount')?.hasError('required')">Number of rows is required</mat-error>
+        <mat-error *ngIf="addRowsForm.get('rowCount')?.hasError('min')">Minimum 1 row</mat-error>
+        <mat-error *ngIf="addRowsForm.get('rowCount')?.hasError('max')">Maximum 50 rows</mat-error>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="form-field">
+        <mat-label>Number of Seats in a Row</mat-label>
+        <input matInput type="number" formControlName="seatCount" min="1" max="50" required>
+        <mat-error *ngIf="addRowsForm.get('seatCount')?.hasError('required')">Seat count is required</mat-error>
+        <mat-error *ngIf="addRowsForm.get('seatCount')?.hasError('min')">Minimum 1 seat</mat-error>
+        <mat-error *ngIf="addRowsForm.get('seatCount')?.hasError('max')">Maximum 50 seats</mat-error>
+      </mat-form-field>
+    </form>
+  </mat-dialog-content>
+  
+  <mat-dialog-actions class="dialog-actions" align="end">
+    <button mat-stroked-button 
+            type="button" 
+            (click)="onCancel()" 
+            class="cancel-button">
+      <mat-icon>close</mat-icon>
+      Cancel
+    </button>
+    
+    <button mat-raised-button 
+            color="primary" 
+            type="button" 
+            (click)="onConfirm()" 
+            [disabled]="addRowsForm.invalid"
+            class="confirm-button">
+      <mat-icon>check</mat-icon>
+      Add Rows
+    </button>
+  </mat-dialog-actions>
+</div>

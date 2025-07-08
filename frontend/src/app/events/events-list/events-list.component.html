@@ -114,9 +114,9 @@
             </div>
             
             <div class="seat-status">
-              <div class="seat-indicator" [ngClass]="getReservationClass(event.eventId ?? '1')">
-                <mat-icon>event_seat</mat-icon>
-                <span class="seat-text">{{ getSeatStatusText(event) }}</span>
+              <div class="seat-indicator" [ngClass]="getReservationClass(event.eventId ?? '1')" style="background: #f3f3f3; border-radius: 999px; padding: 0 12px; display: inline-flex; align-items: center; gap: 4px; min-height: 28px;">
+                <mat-icon [style.color]="getSeatStatusColor(event)">event_seat</mat-icon>
+                <span class="seat-text" [style.color]="getSeatStatusColor(event)">{{ getSeatStatusText(event) }}</span>
               </div>
             </div>
             

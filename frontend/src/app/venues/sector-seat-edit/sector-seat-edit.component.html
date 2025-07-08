@@ -105,6 +105,11 @@
               <mat-icon>add</mat-icon>
             </button>
             <button mat-icon-button 
+                    (click)="addMultipleRows()"
+                    matTooltip="Add Multiple Rows">
+              <mat-icon>library_add</mat-icon>
+            </button>
+            <button mat-icon-button 
                     (click)="editSelectedRowName()"
                     [disabled]="selectedRows().length !== 1"
                     matTooltip="Edit Row Name">
@@ -191,7 +196,9 @@
              role="application"
              aria-label="Sector seat editor canvas">
           <div #canvasContainer 
-               class="konva-canvas">
+               class="konva-canvas"
+               style="width: 100%; height: 100%; min-height: 600px;">
+            <!-- Konva canvas will be inserted here -->
           </div>
         </div>
 

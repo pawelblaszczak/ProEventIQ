@@ -315,8 +315,14 @@ export class EventsListComponent implements OnInit {
 
   getSeatStatusText(event: ApiEvent): string {
     const totalSeats = event.venueNumberOfSeats ?? this.getReservedSeats(event.eventId ?? '').total;
-    const reserved = Math.floor(totalSeats * 0.5); // Placeholder: 50% reserved, replace with real data if available
-    const percentage = totalSeats > 0 ? Math.round((reserved / totalSeats) * 100) : 0;
+    const reserved = event.numberOfTickets ?? 0;
+    let percentage = totalSeats > 0 ? Math.floor((reserved / totalSeats) * 100) : 0;
+    // Only show 100% if reserved exactly equals total and total > 0
+    if (totalSeats > 0 && reserved === totalSeats) {
+      percentage = 100;
+    } else if (percentage === 100) {
+      percentage = 99;
+    }
     return `${reserved}/${totalSeats} (${percentage}%)`;
   }
 
@@ -331,6 +337,30 @@ export class EventsListComponent implements OnInit {
     } else {
       return 'high-reservation';
     }
+  }
+
+  /**
+   * Returns a color string for the seat status text based on reserved percentage.
+   * 0% = red, 50% = yellow, 100% = green (smooth gradient)
+   */
+  public getSeatStatusColor(event: ApiEvent): string {
+    // Use real seat data if available, else fallback to mock
+    let reserved = event.numberOfTickets ?? 0;
+    let total = event.venueNumberOfSeats ?? this.getReservedSeats(event.eventId ?? '').total;
+    let percentage = total > 0 ? reserved / total : 0;
+    // Clamp between 0 and 1
+    percentage = Math.max(0, Math.min(1, percentage));
+    // Interpolate hue: 0 (red) -> 60 (yellow) -> 120 (green)
+    // 0%: h=0, 50%: h=60, 100%: h=120
+    let hue: number;
+    if (percentage <= 0.5) {
+      // Red to yellow
+      hue = 0 + (percentage / 0.5) * 60;
+    } else {
+      // Yellow to green
+      hue = 60 + ((percentage - 0.5) / 0.5) * 60;
+    }
+    return `hsl(${hue}, 90%, 40%)`;
   }
 
   // Call this when user changes page

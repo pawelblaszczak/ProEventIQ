@@ -93,11 +93,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
   showGrid = signal(true);
   gridSize = 20;
   
-  // Panning state for canvas scrolling
-  private isPanning = false;
-  private lastPanPoint = { x: 0, y: 0 };
-  private panStartPoint = { x: 0, y: 0 };
-  // --- PAN/SCROLL LOGIC FOR HTML CONTAINER ---
+  // HTML container panning state (used for both preview and edit mode Alt+drag)
   private isHtmlPanning = false;
   private htmlPanStart = { x: 0, y: 0 };
   private htmlScrollStart = { left: 0, top: 0 };
@@ -779,9 +775,11 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Canvas panning and scrolling methods
   onCanvasWheel(event: WheelEvent) {
-    event.preventDefault();
     if (!this.stage) return;
+    
     if (event.ctrlKey) {
+      // Zoom functionality with Ctrl+scroll
+      event.preventDefault();
       const scaleBy = 1.1;
       const stage = this.stage;
       const oldScale = stage.scaleX();
@@ -801,46 +799,27 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
       const boundedPos = this.applyPanBounds(newPos);
       stage.position(boundedPos);
       stage.batchDraw();
-    } else {
-      const deltaX = event.deltaX;
-      const deltaY = event.deltaY;
-      const newPos = {
-        x: this.stage.x() - deltaX,
-        y: this.stage.y() - deltaY
-      };
-      const boundedPos = this.applyPanBounds(newPos);
-      this.stage.position(boundedPos);
-      this.stage.batchDraw();
     }
+    // For regular scroll without Ctrl, allow natural HTML container scrolling
+    // Don't prevent default - let the browser handle it naturally
   }
   
   onCanvasMouseDown(event: MouseEvent) {
-    // Allow panning in preview mode (no Alt required)
-    if (this.previewMode && event.button === 0 && this.canvasContainer) {
-      this.isHtmlPanning = true;
-      this.htmlPanStart = { x: event.clientX, y: event.clientY };
-      const container = this.canvasContainer.nativeElement.parentElement;
-      if (container) {
-        this.htmlScrollStart = { left: container.scrollLeft, top: container.scrollTop };
-        container.style.cursor = 'grabbing';
-      }
-      event.preventDefault();
-      return;
-    }
-    // Konva panning logic
-    if (!this.stage) return;
-    // Allow panning at any zoom level if Alt is pressed and left mouse button
-    if (event.button === 0 && event.altKey) {
-      const konvaEvent = this.stage.getPointerPosition();
-      if (konvaEvent) {
-        this.isPanning = true;
-        this.panStartPoint = { x: event.clientX, y: event.clientY };
-        this.lastPanPoint = { x: this.stage.x(), y: this.stage.y() };
-        if (this.canvasContainer) {
-          this.canvasContainer.nativeElement.style.cursor = 'grabbing';
+    // Allow panning in preview mode (no Alt required) OR in edit mode with Alt+drag
+    if ((this.previewMode && event.button === 0) || (!this.previewMode && event.button === 0 && event.altKey)) {
+      if (this.canvasContainer) {
+        this.isHtmlPanning = true;
+        this.htmlPanStart = { x: event.clientX, y: event.clientY };
+        const container = this.canvasContainer.nativeElement.parentElement;
+        if (container) {
+          this.htmlScrollStart = { left: container.scrollLeft, top: container.scrollTop };
+          container.style.cursor = 'grabbing';
         }
+        event.preventDefault();
+        return;
       }
     }
+    // No more Konva-based panning - all panning is now HTML scroll-based
   }
   
   onCanvasMouseMove(event: MouseEvent) {
@@ -855,24 +834,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
       event.preventDefault();
       return;
     }
-    if (!this.stage || !this.isPanning) return;
-    // Only allow panning if Alt key is still pressed
-    if (!event.altKey) {
-      this.isPanning = false;
-      if (this.canvasContainer) {
-        this.canvasContainer.nativeElement.style.cursor = this.zoom() > 1 ? 'grab' : 'default';
-      }
-      return;
-    }
-    const deltaX = event.clientX - this.panStartPoint.x;
-    const deltaY = event.clientY - this.panStartPoint.y;
-    const newPos = {
-      x: this.lastPanPoint.x + deltaX,
-      y: this.lastPanPoint.y + deltaY
-    };
-    const boundedPos = this.applyPanBounds(newPos);
-    this.stage.position(boundedPos);
-    this.stage.batchDraw();
+    // No more Konva-based panning logic needed
   }
   
   onCanvasMouseUp(event: MouseEvent) {
@@ -885,7 +847,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
       event.preventDefault();
       return;
     }
-    this.isPanning = false;
+    // No more Konva-based panning state to reset
     
     // Reset cursor
     if (this.canvasContainer) {
@@ -1163,18 +1125,42 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
   // Delete sector
   deleteSector() {
     const selectedSectors = this.selectedSectors();
+    console.log('deleteSector called, selectedSectors:', selectedSectors);
     if (selectedSectors.length === 0) return;
 
     this.confirmationDialog.confirmDelete(selectedSectors.length === 1 ? selectedSectors[0].name ?? 'this sector' : `${selectedSectors.length} sectors`, 'sector')
-      .subscribe(confirmed => {
+      .subscribe(async confirmed => {
+        console.log('Confirmation dialog result:', confirmed);
         if (confirmed) {
           const sectors = this.editableSectors();
           const selectedIds = selectedSectors.map(s => s.sectorId);
+          const venueId = this.venueId();
+          let errorOccurred = false;
+          for (const sector of selectedSectors) {
+            // Only call API for persisted sectors (not temp ones)
+            if (venueId && sector.sectorId && !sector.sectorId.startsWith('temp-')) {
+              try {
+                await firstValueFrom(this.venueApi.deleteSector(venueId, sector.sectorId));
+                console.log('Deleted sector from API:', sector.sectorId);
+              } catch (err) {
+                errorOccurred = true;
+                console.error('Failed to delete sector from API:', sector.sectorId, err);
+              }
+            }
+          }
+          // Remove from local state regardless (optimistic update)
           const updatedSectors = sectors.filter(s => !selectedIds.includes(s.sectorId));
           this.editableSectors.set(updatedSectors);
           this.selectedSectors.set([]);
           this.selectedSector.set(null);
           this.hasChanges.set(true);
+          this.renderSectors(); // Force canvas update after deletion
+          console.log('Sector(s) deleted:', selectedIds);
+          if (errorOccurred) {
+            this.snackBar.open('Some sectors could not be deleted from the server.', 'Close', { duration: 4000, horizontalPosition: 'center', verticalPosition: 'top' });
+          } else {
+            this.snackBar.open('Sector(s) deleted successfully.', 'Close', { duration: 2000, horizontalPosition: 'center', verticalPosition: 'top' });
+          }
         }
       });
   }

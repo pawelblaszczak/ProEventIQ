@@ -217,6 +217,13 @@ public class EventService {
                 dto.setVenueNumberOfSeats(0);
             }
         }
+        // Set numberOfTickets using DB function
+        if (entity.getEventId() != null) {
+            Integer ticketCount = eventRepository.getEventTicketCount(entity.getEventId().toString());
+            dto.setNumberOfTickets(ticketCount != null ? ticketCount : 0);
+        } else {
+            dto.setNumberOfTickets(0);
+        }
         return dto;
     }
 

@@ -76,7 +76,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
   private konvaInitialized = false;
   
   // Canvas and zoom settings
-  zoom = signal(1);
+  zoom = signal(0.8); // Start with a slightly zoomed out view for better overview
   canvasWidth = 1200;
   canvasHeight = 800;
   private resizeObserver: ResizeObserver | null = null;
@@ -471,8 +471,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
       this.onSectorDragStart(sector);
     });
     // --- Dynamic sector shape based on seats layout ---
-    const seatRadius = 8;
-    const seatSpacing = 6;
+    // Use smaller scale for venue overview - seats should appear smaller
+    const seatRadius = 3; // Reduced from 8 to 3 for overview
+    const seatSpacing = 2; // Reduced from 6 to 2 for overview
     let seatPositions: {x: number, y: number}[] = [];
     let maxRowLength = 0;
     let totalRows = 0;
@@ -482,14 +483,20 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
         if (row.seats && Array.isArray(row.seats)) {
           maxRowLength = Math.max(maxRowLength, row.seats.length);
           row.seats.forEach((seat, seatIdx) => {
+            // Scale factor for venue overview - make sectors smaller to see more
+            const scaleFactor = 0.4;
+            
             // Use explicit seat position if available, otherwise fallback to calculated
             if (seat.position && typeof seat.position.x === 'number' && typeof seat.position.y === 'number') {
-              seatPositions.push({ x: seat.position.x, y: seat.position.y });
+              seatPositions.push({ 
+                x: seat.position.x * scaleFactor, 
+                y: seat.position.y * scaleFactor 
+              });
             } else if (row.seats) {
-              // Fallback: calculate position as before
-              const rowY = rowIdx * (seatRadius * 2 + seatSpacing);
-              const rowOffset = (maxRowLength - row.seats.length) * (seatRadius + seatSpacing/2);
-              const x = seatIdx * (seatRadius * 2 + seatSpacing) + rowOffset;
+              // Fallback: calculate position as before but scaled down
+              const rowY = rowIdx * (seatRadius * 2 + seatSpacing) * scaleFactor;
+              const rowOffset = (maxRowLength - row.seats.length) * (seatRadius + seatSpacing/2) * scaleFactor;
+              const x = (seatIdx * (seatRadius * 2 + seatSpacing) + rowOffset) * scaleFactor;
               const y = rowY;
               seatPositions.push({x, y});
             }
@@ -547,8 +554,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     }
 
-    // Only show seat circles if zoom > 2.0
-    if (this.zoom() > 2.0) {
+    // Only show seat circles if zoom > 1.5 (adjusted for smaller overview scale)
+    if (this.zoom() > 1.5) {
       seatPositions.forEach(pos => {
         const seatCircle = new Konva.Circle({
           x: pos.x,
@@ -556,8 +563,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
           radius: seatRadius,
           fill: '#fff',
           stroke: this.getSectorColor(sector),
-          strokeWidth: 2,
-          opacity: 0.9,
+          strokeWidth: 1.5, // Slightly thinner for overview
+          opacity: 0.8,
           listening: false
         });
         group.add(seatCircle);
@@ -569,14 +576,14 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
       this.addSelectionIndicators(group);
     }
 
-    // Calculate bounding box width for label centering
-    let labelWidth = 120; // fallback
+    // Calculate bounding box width for label centering - ensure labels are visible even at smaller scale
+    let labelWidth = 140; // Increased from 120 for better visibility
     let minX = 0, maxX = 0, minY = 0;
     if (seatPositions.length > 0) {
       minX = Math.min(...seatPositions.map(p => p.x));
       maxX = Math.max(...seatPositions.map(p => p.x));
       minY = Math.min(...seatPositions.map(p => p.y));
-      labelWidth = Math.max(80, maxX - minX + seatRadius * 2);
+      labelWidth = Math.max(100, maxX - minX + seatRadius * 4); // Ensure minimum readable width
     }
 
     // Calculate centroid for label placement inside the sector
@@ -607,14 +614,14 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     }
 
-    // Add sector name and seat count labels inside the sector
+    // Add sector name and seat count labels inside the sector - maintain readable size
     const nameText = new Konva.Text({
       text: sector.name ?? 'Unnamed Sector',
-      x: centroidX - 60, // Center label horizontally (width 120)
-      y: centroidY - 18, // Slightly above center
-      width: 120,
+      x: centroidX - (labelWidth / 2), // Center label horizontally
+      y: centroidY - 20, // Slightly above center
+      width: labelWidth,
       align: 'center',
-      fontSize: 14,
+      fontSize: 16, // Increased from 14 for better visibility at smaller scale
       fill: '#000', // Pure black font color
       fontStyle: 'bold',
       listening: true // Enable clicking on labels
@@ -638,11 +645,11 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const seatsText = new Konva.Text({
       text: `Seats: ${sector.numberOfSeats ?? 0}`,
-      x: centroidX - 60,
-      y: centroidY + 2, // Slightly below center
-      width: 120,
+      x: centroidX - (labelWidth / 2),
+      y: centroidY + 4, // Slightly below center
+      width: labelWidth,
       align: 'center',
-      fontSize: 12,
+      fontSize: 14, // Increased from 12 for better visibility
       fill: '#000', // Pure black font color
       opacity: 0.85,
       listening: true // Enable clicking on labels
@@ -733,7 +740,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   resetZoom() {
-    this.zoom.set(1);
+    this.zoom.set(0.8); // Reset to the default overview zoom level
     if (this.stage) {
       const boundedPos = this.applyPanBounds({ x: 0, y: 0 });
       this.stage.position(boundedPos);

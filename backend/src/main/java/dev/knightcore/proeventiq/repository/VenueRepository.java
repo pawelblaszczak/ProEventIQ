@@ -21,6 +21,6 @@ public interface VenueRepository extends JpaRepository<VenueEntity, Long> {
     @EntityGraph(attributePaths = {"sectors"})
     java.util.Optional<VenueEntity> findWithSectorsByVenueId(Long venueId);
 
-    @Query(value = "SELECT get_seat_count_for_venue(:venueId)", nativeQuery = true)
-    Integer getSeatCountForVenue(@Param("venueId") Long venueId);
+    @Query(value = "SELECT get_venue_seat_count(:venueId)", nativeQuery = true)
+    Integer getVenueSeatCount(@Param("venueId") Long venueId);
 }

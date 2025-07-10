@@ -136,13 +136,15 @@
             <button mat-mini-fab 
                     color="primary" 
                     (click)="zoomOut()" 
+                    [disabled]="getCurrentZoom() <= minZoomValue"
                     matTooltip="Zoom Out">
               <mat-icon>zoom_out</mat-icon>
             </button>
-            <div class="zoom-display">{{ zoom() | number:'1.1-2' }}x</div>
+            <div class="zoom-display">{{ (getCurrentZoom() * 100) | number:'1.0-0' }}%</div>
             <button mat-mini-fab 
                     color="primary" 
                     (click)="zoomIn()" 
+                    [disabled]="getCurrentZoom() >= maxZoomValue"
                     matTooltip="Zoom In">
               <mat-icon>zoom_in</mat-icon>
             </button>
@@ -178,7 +180,6 @@
       <mat-card-content class="canvas-content">
         <!-- Canvas -->
         <div class="venue-canvas-container custom-scroll-canvas" 
-             [class.zoomed-in]="zoom() > 1"
              (keydown)="$event.key === 'Escape' && deselectAll()"
              (wheel)="onCanvasWheel($event)"
              (mousedown)="onCanvasMouseDown($event)"
@@ -188,8 +189,7 @@
              role="application"
              aria-label="Venue map editor canvas">
           <div #canvasContainer 
-               class="konva-canvas fixed-canvas-size"
-               [class.zoomed]="zoom() > 1">
+               class="konva-canvas">
           </div>
         </div>
 

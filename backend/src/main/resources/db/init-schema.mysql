@@ -122,3 +122,46 @@ CREATE TABLE participant (
 -- Create indexes for participant table
 CREATE INDEX idx_participant_event_id ON participant(event_id);
 
+DELIMITER $$
+
+CREATE FUNCTION get_event_ticket_count(eventId VARCHAR(255)) RETURNS int
+    DETERMINISTIC
+BEGIN
+  DECLARE total INT;
+  SELECT SUM(number_of_tickets) INTO total
+  FROM participant
+  WHERE event_id = eventId;
+  RETURN IFNULL(total, 0);
+END$$
+
+CREATE FUNCTION get_venue_seat_count(p_venue_id INT) RETURNS int
+    READS SQL DATA
+    DETERMINISTIC
+BEGIN
+    DECLARE seat_count INT;
+    SELECT COUNT(s.seat_id)
+      INTO seat_count
+      FROM seat s
+      JOIN seat_row sr ON s.seat_row_id = sr.seat_row_id
+      JOIN sector sec ON sr.sector_id = sec.sector_id
+     WHERE sec.venue_id = p_venue_id;
+    RETURN seat_count;
+END$$
+
+CREATE FUNCTION get_sector_seat_count(p_sector_id INT) RETURNS INT
+    READS SQL DATA
+    DETERMINISTIC
+BEGIN
+    DECLARE seat_count INT;
+    SELECT COUNT(s.seat_id)
+      INTO seat_count
+      FROM seat s
+      JOIN seat_row sr ON s.seat_row_id = sr.seat_row_id
+     WHERE sr.sector_id = p_sector_id;
+    RETURN seat_count;
+END$$
+
+DELIMITER ;
+
+
+

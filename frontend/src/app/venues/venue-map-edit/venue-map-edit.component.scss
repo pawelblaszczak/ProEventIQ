@@ -226,11 +226,15 @@ $border-radius: 12px;
         gap: 0.5rem;
         
         .zoom-display {
-          min-width: 50px;
+          min-width: 60px;
           text-align: center;
           font-weight: 500;
           font-size: 0.9rem;
           color: $primary-color;
+          padding: 0.25rem 0.5rem;
+          background-color: rgba($primary-color, 0.1);
+          border-radius: 4px;
+          border: 1px solid rgba($primary-color, 0.2);
         }
       }
       
@@ -264,13 +268,44 @@ $border-radius: 12px;
 .canvas-card {
   box-shadow: $card-shadow;
   border-radius: $border-radius;
-  min-height: 700px;
-  
+  display: flex;
+  flex-direction: column;
+  height: 700px;
+
   .canvas-content {
-    padding: 0 !important;
     display: flex;
     flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
     height: 100%;
+
+    mat-card-content {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 auto;
+      min-height: 0;
+      height: 100%;
+    }
+
+    .venue-canvas-container {
+      flex: 1 1 auto;
+      min-height: 0;
+      height: 100%;
+      max-height: unset;
+      position: relative;
+      overflow: auto; /* Enable scrollbars */
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      display: block;
+      flex-direction: unset;
+      
+      &:focus {
+        outline: 2px solid $primary-color;
+        outline-offset: -2px;
+      }
+      
+      // Smooth scrolling
+      scroll-behavior: smooth;
+    }
   }
   
   .selection-panel {
@@ -328,31 +363,6 @@ $border-radius: 12px;
             }
           }
         }
-      }
-    }
-  }
-  
-  .venue-canvas-container {
-    position: relative;
-    overflow: auto;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    min-height: 0; /* allow to shrink if needed */
-    width: 100%;
-    height: 600px;
-    display: block;
-    flex-direction: unset;
-    
-    &:focus {
-      outline: 2px solid $primary-color;
-      outline-offset: -2px;
-    }
-    
-    // When zoomed in, show scrollbars
-    &.zoomed-in {
-      cursor: grab;
-      
-      &:active {
-        cursor: grabbing;
       }
     }
   }
@@ -416,11 +426,10 @@ $border-radius: 12px;
   border-radius: 8px;
   background-color: white;
   cursor: default;
-  width: 100% !important;
-  height: 100% !important;
-  min-height: 600px;
+  min-width: 100%;
+  min-height: 100%;
   box-sizing: border-box;
-  transition: transform 0.1s ease-out;
+  transition: width 0.2s ease, height 0.2s ease; /* Smooth transition when resizing */
   
   // Ensure the canvas element inside takes full size
   canvas {
@@ -434,30 +443,13 @@ $border-radius: 12px;
     outline: 2px solid $primary-color;
     outline-offset: 2px;
   }
-  
-  // When zoomed, allow for larger canvas size
-  &.zoomed {
-    width: auto !important;
-    height: auto !important;
-    min-width: 100%;
-    min-height: 100%;
-  }
 }
 
-// Custom scroll canvas
+// Custom scroll canvas - remove fixed size restriction
 .custom-scroll-canvas {
   overflow: auto;
   width: 100%;
   height: 600px;
-}
-
-.fixed-canvas-size {
-  width: 2000px !important;
-  height: 1200px !important;
-  min-width: 2000px !important;
-  min-height: 1200px !important;
-  max-width: none !important;
-  max-height: none !important;
 }
 
 // Responsive design

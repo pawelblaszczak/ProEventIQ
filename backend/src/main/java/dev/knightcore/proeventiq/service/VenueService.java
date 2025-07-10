@@ -25,9 +25,11 @@ import org.slf4j.LoggerFactory;
 public class VenueService {
     private static final Logger log = LoggerFactory.getLogger(VenueService.class);
     private final VenueRepository venueRepository;
+    private final dev.knightcore.proeventiq.repository.SectorRepository sectorRepository;
 
-    public VenueService(VenueRepository venueRepository) {
+    public VenueService(VenueRepository venueRepository, dev.knightcore.proeventiq.repository.SectorRepository sectorRepository) {
         this.venueRepository = venueRepository;
+        this.sectorRepository = sectorRepository;
     }
 
     @Transactional(readOnly = true)
@@ -148,7 +150,7 @@ public class VenueService {
         mapVenueSectors(entity, dto);
         // Set numberOfSeats using DB function
         if (entity.getVenueId() != null) {
-            Integer seatCount = venueRepository.getSeatCountForVenue(entity.getVenueId());
+            Integer seatCount = venueRepository.getVenueSeatCount(entity.getVenueId());
             dto.setNumberOfSeats(seatCount != null ? seatCount : 0);
         } else {
             dto.setNumberOfSeats(0);
@@ -181,10 +183,16 @@ public class VenueService {
             List<Sector> sectorDtos = new ArrayList<>();
             for (var sectorEntity : entity.getSectors()) {
                 Sector sectorDto = mapSectorToDto(sectorEntity);
+                // Set numberOfSeats using DB function
+                if (sectorEntity.getSectorId() != null) {
+                    int seatCount = sectorRepository.getSeatCountForSector(sectorEntity.getSectorId());
+                    sectorDto.setNumberOfSeats(seatCount);
+                } else {
+                    sectorDto.setNumberOfSeats(0);
+                }
                 sectorDtos.add(sectorDto);
             }
             dto.setSectors(sectorDtos);
-            // numberOfSeats is now set in toDto using DB function
         }
     }
 

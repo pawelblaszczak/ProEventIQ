@@ -76,9 +76,14 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
   private konvaInitialized = false;
   
   // Canvas and zoom settings
-  zoom = signal(0.8); // Start with a slightly zoomed out view for better overview
-  canvasWidth = 1200;
-  canvasHeight = 800;
+  canvasWidth = 3000;
+  canvasHeight = 1500;
+  private readonly baseCanvasWidth = 3000;
+  private readonly baseCanvasHeight = 1500;
+  private readonly zoomLevel = signal(1);
+  private readonly maxZoom = 5;
+  private readonly minZoom = 0.5;
+  private readonly zoomIncrement = 0.2;
   private resizeObserver: ResizeObserver | null = null;
   private readonly resizeHandler = () => {
     this.resizeCanvas();
@@ -119,28 +124,6 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
         }
         // Otherwise, don't re-render during drag operations to prevent flicker
       }
-    });
-
-    effect(() => {
-      // Ensure we track the zoom signal
-      const scale = this.zoom();
-      untracked(() => {
-        if (this.stage) {
-          // Apply Konva scaling for zoom
-          this.stage.scale({ x: scale, y: scale });
-          this.stage.batchDraw();
-          // Optionally, adjust container size if you want to keep the visible area the same
-          if (this.canvasContainer) {
-            const canvasElement = this.canvasContainer.nativeElement.querySelector('canvas');
-            if (canvasElement) {
-              canvasElement.style.transform = '';
-              canvasElement.style.transformOrigin = '';
-              canvasElement.style.width = `${this.canvasWidth}px`;
-              canvasElement.style.height = `${this.canvasHeight}px`;
-            }
-          }
-        }
-      });
     });
 
     effect(() => {
@@ -299,9 +282,6 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
   private resizeCanvas() {
-    // Always use the fixed canvas size for the stage
-    this.canvasWidth = 2000;
-    this.canvasHeight = 1200;
 
     // Update stage size if it exists
     if (this.stage) {
@@ -326,9 +306,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly handleBeforeUnload = (event: BeforeUnloadEvent) => {
     if (this.hasChanges()) {
       event.preventDefault();
-      event.returnValue = '';
-      // Native dialogs only: browsers ignore custom dialogs in beforeunload
-      // This will show the default browser dialog
+      // Modern browsers will show their own dialog message
       return '';
     }
     return undefined;
@@ -389,12 +367,18 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     this.clearGrid();
     if (!this.showGrid()) return;
 
-    // Create vertical lines
-    for (let i = 0; i <= Math.ceil(this.canvasWidth / this.gridSize); i++) {
+    // Use the current zoom level to calculate grid coverage
+    const currentZoom = this.zoomLevel();
+    const effectiveGridSize = this.gridSize / currentZoom;
+    const gridWidth = this.baseCanvasWidth;
+    const gridHeight = this.baseCanvasHeight;
+
+    // Create vertical lines - use base canvas dimensions but adjust grid spacing for zoom
+    for (let i = 0; i <= Math.ceil(gridWidth / effectiveGridSize); i++) {
       const line = new Konva.Line({
-        points: [i * this.gridSize, 0, i * this.gridSize, this.canvasHeight],
+        points: [i * effectiveGridSize, 0, i * effectiveGridSize, gridHeight],
         stroke: '#ddd',
-        strokeWidth: 1,
+        strokeWidth: 1 / currentZoom, // Adjust stroke width for zoom
         opacity: 0.7,
         listening: false,
         name: 'grid-line'
@@ -402,12 +386,12 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
       this.layer.add(line);
     }
 
-    // Create horizontal lines
-    for (let i = 0; i <= Math.ceil(this.canvasHeight / this.gridSize); i++) {
+    // Create horizontal lines - use base canvas dimensions but adjust grid spacing for zoom
+    for (let i = 0; i <= Math.ceil(gridHeight / effectiveGridSize); i++) {
       const line = new Konva.Line({
-        points: [0, i * this.gridSize, this.canvasWidth, i * this.gridSize],
+        points: [0, i * effectiveGridSize, gridWidth, i * effectiveGridSize],
         stroke: '#ddd',
-        strokeWidth: 1,
+        strokeWidth: 1 / currentZoom, // Adjust stroke width for zoom
         opacity: 0.7,
         listening: false,
         name: 'grid-line'
@@ -416,7 +400,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.layer.batchDraw();
-    console.log('Grid rendered with', this.layer.find('.grid-line').length, 'lines');
+    console.log('Grid rendered with', this.layer.find('.grid-line').length, 'lines at zoom:', currentZoom);
     this.fixLayerZOrder();
   }
 
@@ -454,7 +438,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     
     this.layer.batchDraw();
     console.log('Finished rendering sectors');
-  }  private createSectorGroup(sector: EditableSector): Konva.Group | null {
+  }
+
+  private createSectorGroup(sector: EditableSector): Konva.Group | null {
     if (!this.layer) return null;
 
     console.log('Creating sector group for:', sector.name, 'with position:', sector.position);
@@ -470,6 +456,18 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     group.on('dragstart', () => {
       this.onSectorDragStart(sector);
     });
+
+    // Extracted sector shape drawing logic
+    this.drawSectorShape(group, sector);
+
+    // Add to layer
+    this.layer.add(group);
+    console.log('Added sector group to layer');
+    return group;
+  }
+
+  // Extracted: Draw the sector shape, outline, seats, labels, and selection indicators
+  private drawSectorShape(group: Konva.Group, sector: EditableSector) {
     // --- Dynamic sector shape based on seats layout ---
     // Use smaller scale for venue overview - seats should appear smaller
     const seatRadius = 3; // Reduced from 8 to 3 for overview
@@ -554,22 +552,20 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     }
 
-    // Only show seat circles if zoom > 1.5 (adjusted for smaller overview scale)
-    if (this.zoom() > 1.5) {
-      seatPositions.forEach(pos => {
-        const seatCircle = new Konva.Circle({
-          x: pos.x,
-          y: pos.y,
-          radius: seatRadius,
-          fill: '#fff',
-          stroke: this.getSectorColor(sector),
-          strokeWidth: 1.5, // Slightly thinner for overview
-          opacity: 0.8,
-          listening: false
-        });
-        group.add(seatCircle);
+    // Only show seat circles if zoom > 1.5 (removed zoom dependency, always show for now)
+    /*seatPositions.forEach(pos => {
+      const seatCircle = new Konva.Circle({
+        x: pos.x,
+        y: pos.y,
+        radius: seatRadius,
+        fill: '#fff',
+        stroke: this.getSectorColor(sector),
+        strokeWidth: 1.5, // Slightly thinner for overview
+        opacity: 0.8,
+        listening: false
       });
-    }
+      group.add(seatCircle);
+    });*/
 
     // Add selection indicators if selected
     if (sector.isSelected) {
@@ -697,9 +693,6 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
       this.onSectorDragEnd(sector, group);
     });
 
-    // Add to layer
-    this.layer.add(group);
-    console.log('Added sector group to layer');
     return group;
   }
 
@@ -726,39 +719,6 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
   }
 
-  // Zoom controls
-  zoomIn() {
-    const newZoom = Math.min(this.zoom() * 1.2, 3);
-    this.zoom.set(newZoom);
-    this.applyZoomBounds();
-  }
-
-  zoomOut() {
-    const newZoom = Math.max(this.zoom() / 1.2, 0.5);
-    this.zoom.set(newZoom);
-    this.applyZoomBounds();
-  }
-
-  resetZoom() {
-    this.zoom.set(0.8); // Reset to the default overview zoom level
-    if (this.stage) {
-      const boundedPos = this.applyPanBounds({ x: 0, y: 0 });
-      this.stage.position(boundedPos);
-      requestAnimationFrame(() => {
-        this.stage?.batchDraw();
-      });
-    }
-  }
-
-  private applyZoomBounds() {
-    if (this.stage) {
-      const currentPos = this.stage.position();
-      const boundedPos = this.applyPanBounds(currentPos);
-      this.stage.position(boundedPos);
-      this.stage.batchDraw();
-    }
-  }
-
   // Restrict canvas panning so the grid always covers the visible area
   private applyPanBounds(position: { x: number; y: number }): { x: number; y: number } {
     if (!this.stage) return position;
@@ -766,12 +726,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     const container = this.canvasContainer?.nativeElement;
     const containerWidth = container?.clientWidth || 0;
     const containerHeight = container?.clientHeight || 0;
-    // Use the fixed canvas size
-    const canvasWidth = 2000;
-    const canvasHeight = 1200;
     // Allow panning so any part of the canvas can be visible
-    const minX = Math.min(0, containerWidth - canvasWidth);
-    const minY = Math.min(0, containerHeight - canvasHeight);
+    const minX = Math.min(0, containerWidth - this.canvasWidth);
+    const minY = Math.min(0, containerHeight - this.canvasHeight);
     const maxX = 0;
     const maxY = 0;
     return {
@@ -787,25 +744,13 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     if (event.ctrlKey) {
       // Zoom functionality with Ctrl+scroll
       event.preventDefault();
-      const scaleBy = 1.1;
-      const stage = this.stage;
-      const oldScale = stage.scaleX();
-      const pointer = stage.getPointerPosition();
-      if (!pointer) return;
-      const mousePointTo = {
-        x: (pointer.x - stage.x()) / oldScale,
-        y: (pointer.y - stage.y()) / oldScale,
-      };
-      let newScale = event.deltaY > 0 ? oldScale / scaleBy : oldScale * scaleBy;
-      newScale = Math.max(0.5, Math.min(3, newScale));
-      this.zoom.set(newScale);
-      const newPos = {
-        x: pointer.x - mousePointTo.x * newScale,
-        y: pointer.y - mousePointTo.y * newScale,
-      };
-      const boundedPos = this.applyPanBounds(newPos);
-      stage.position(boundedPos);
-      stage.batchDraw();
+      
+      // Determine zoom direction
+      if (event.deltaY < 0) {
+        this.zoomIn();
+      } else {
+        this.zoomOut();
+      }
     }
     // For regular scroll without Ctrl, allow natural HTML container scrolling
     // Don't prevent default - let the browser handle it naturally
@@ -858,7 +803,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     
     // Reset cursor
     if (this.canvasContainer) {
-      this.canvasContainer.nativeElement.style.cursor = this.zoom() > 1 ? 'grab' : 'default';
+      this.canvasContainer.nativeElement.style.cursor = 'default';
     }
   }
   onSectorRectClick(sector: EditableSector, event: any) {
@@ -980,7 +925,6 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
 
   onSectorDragMove(draggedSector: EditableSector, draggedGroup: Konva.Group) {
     // Only move other selected groups, not the dragged group itself
-    const scale = this.zoom();
     const draggedPos = draggedGroup.position();
     const initialDraggedPos = this.initialDragPositions.get(draggedSector.sectorId!);
     if (!initialDraggedPos) return;
@@ -1442,4 +1386,74 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     });
   }
+
+  zoomIn() {
+    if (this.zoomLevel() < this.maxZoom) {
+      this.zoomLevel.update(level => level + this.zoomIncrement);
+      this.applyZoom();
+    }
+  }
+  
+  zoomOut() {
+    if (this.zoomLevel() > this.minZoom) {
+      this.zoomLevel.update(level => level - this.zoomIncrement);
+      this.applyZoom();
+    }
+  }
+  
+  resetZoom() {
+    this.zoomLevel.set(1);
+    this.applyZoom();
+  }
+
+  private applyZoom(): void {
+    if (!this.stage || !this.canvasContainer) return;
+
+    const currentZoom = this.zoomLevel();
+    
+    // Update both the visual scale (Konva) and physical canvas size
+    this.stage.scale({ x: currentZoom, y: currentZoom });
+    
+    // Calculate new canvas dimensions
+    const newWidth = this.baseCanvasWidth * currentZoom;
+    const newHeight = this.baseCanvasHeight * currentZoom;
+    
+    // Update canvas dimensions
+    this.canvasWidth = newWidth;
+    this.canvasHeight = newHeight;
+    
+    // Update the stage size
+    this.stage.width(newWidth);
+    this.stage.height(newHeight);
+    
+    // Update the canvas container size
+    const canvasElement = this.canvasContainer.nativeElement;
+    canvasElement.style.width = `${newWidth}px`;
+    canvasElement.style.height = `${newHeight}px`;
+    
+    // Update background rectangle size if it exists
+    if (this.layer) {
+      const background = this.layer.findOne('.canvas-background') as Konva.Rect;
+      if (background) {
+        background.width(newWidth);
+        background.height(newHeight);
+      }
+    }
+    
+    // Re-render grid if it's enabled - this will now properly cover the canvas at any zoom level
+    if (this.showGrid()) {
+      this.renderGrid();
+    }
+    
+    this.stage.batchDraw();
+    
+    console.log('Zoom applied:', currentZoom, 'New canvas size:', newWidth, 'x', newHeight);
+  }
+
+  // Expose zoom properties for template access
+  get minZoomValue() { return this.minZoom; }
+  get maxZoomValue() { return this.maxZoom; }
+  
+  // Expose zoomLevel signal for template access
+  getCurrentZoom() { return this.zoomLevel(); }
 }

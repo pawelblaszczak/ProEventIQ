@@ -211,7 +211,7 @@ public class EventService {
             dto.setCountry(entity.getVenue().getCountry());
             // Set venueNumberOfSeats using DB function
             if (entity.getVenue().getVenueId() != null) {
-                Integer seatCount = venueRepository.getSeatCountForVenue(entity.getVenue().getVenueId());
+                Integer seatCount = venueRepository.getVenueSeatCount(entity.getVenue().getVenueId());
                 dto.setVenueNumberOfSeats(seatCount != null ? seatCount : 0);
             } else {
                 dto.setVenueNumberOfSeats(0);

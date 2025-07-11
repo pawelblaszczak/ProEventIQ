@@ -425,6 +425,23 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     this.fixLayerZOrder();
   }
 
+  // Add new method to update seat visibility based on zoom level
+  private updateSeatsVisibility(zoomLevel: number): void {
+    // Show seats only when zoom level is >= 1.8 (180%)
+    // Using a slightly lower threshold (1.79) to account for potential floating point precision issues
+    const threshold = 1.79; // Using 1.79 instead of 1.8 to handle any floating-point precision issues
+    const seatsVisible = zoomLevel >= threshold;
+    
+    // Iterate through all cached seats and update visibility
+    this.sectorSeats.forEach((seats) => {
+        seats.forEach(seat => {
+            seat.visible(seatsVisible);
+        });
+    });
+    
+    console.log(`Seats visibility set to ${seatsVisible} at zoom level ${zoomLevel.toFixed(3)}, threshold: ${threshold} (exact comparison: ${zoomLevel} >= ${threshold})`);
+  }
+
   private clearGrid() {
     if (!this.layer) return;
     
@@ -743,6 +760,12 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     // Check if we already have seats for this sector
     let existingSeats = this.sectorSeats.get(sectorId);
     
+    // Determine if seats should be visible based on current zoom level
+    const threshold = 1.79; // Using 1.79 instead of 1.8 to handle any floating-point precision issues
+    const currentZoom = this.zoomLevel();
+    const seatsVisible = currentZoom >= threshold;
+    console.log(`Seat creation visibility: ${seatsVisible} at zoom ${currentZoom.toFixed(3)}, threshold: ${threshold}`);
+    
     if (!existingSeats) {
       // Create seats for the first time - like KonvaTest
       existingSeats = [];
@@ -756,6 +779,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
           stroke: '#37474F',
           strokeWidth: 0.5,
           name: `seat-${index}`,
+          visible: seatsVisible, // Set initial visibility based on zoom
           listening: true
         });
 
@@ -794,6 +818,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
           if (seat.x() !== pos.x || seat.y() !== pos.y) {
             seat.position(pos);
           }
+          // Always update visibility when rendering
+          seat.visible(seatsVisible);
         }
       });
     }
@@ -1493,14 +1519,20 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
 
   zoomIn() {
     if (this.zoomLevel() < this.maxZoom) {
+      const oldZoom = this.zoomLevel();
       this.zoomLevel.update(level => level + this.zoomIncrement);
+      const newZoom = this.zoomLevel();
+      console.log(`Zoom increased: ${oldZoom.toFixed(3)} → ${newZoom.toFixed(3)} (increment: ${this.zoomIncrement})`);
       this.applyZoom();
     }
   }
   
   zoomOut() {
     if (this.zoomLevel() > this.minZoom) {
+      const oldZoom = this.zoomLevel();
       this.zoomLevel.update(level => level - this.zoomIncrement);
+      const newZoom = this.zoomLevel();
+      console.log(`Zoom decreased: ${oldZoom.toFixed(3)} → ${newZoom.toFixed(3)} (decrement: ${this.zoomIncrement})`);
       this.applyZoom();
     }
   }
@@ -1548,6 +1580,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.showGrid()) {
       this.renderGrid();
     }
+    
+    // Update seat visibility based on zoom level
+    this.updateSeatsVisibility(currentZoom);
     
     this.stage.batchDraw();
     

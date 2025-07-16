@@ -112,7 +112,6 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
   editableSectors = signal<EditableSector[]>([]);
   selectedSectors = signal<EditableSector[]>([]);
   selectedSector = signal<EditableSector | null>(null); // Keep for backward compatibility
-  editMode = signal<'select' | 'add' | 'move' | 'rotate'>('select');
   hasChanges = signal(false);  // Grid settings
   showGrid = signal(true);
   gridSize = 20;
@@ -138,6 +137,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
       if (this.editableSectors().length > 0 && this.layer) {
         // Only do a full re-render if no sectors are currently being dragged
         const hasDraggingSectors = this.editableSectors().some(s => s.isDragging);
+        
         if (!hasDraggingSectors && this.needsFullRender) {
           this.renderSectors();
           this.needsFullRender = false;
@@ -320,7 +320,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
       this.stage.batchDraw();
     }
 
-    console.log('Canvas resized to:', this.canvasWidth, 'x', this.canvasHeight);
+
   }
 
   private readonly handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -421,7 +421,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.layer.batchDraw();
-    console.log('Grid rendered with', this.layer.find('.grid-line').length, 'lines at zoom:', currentZoom);
+
     this.fixLayerZOrder();
   }
 
@@ -439,24 +439,20 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
         });
     });
     
-    console.log(`Seats visibility set to ${seatsVisible} at zoom level ${zoomLevel.toFixed(3)}, threshold: ${threshold} (exact comparison: ${zoomLevel} >= ${threshold})`);
+
   }
 
   private clearGrid() {
     if (!this.layer) return;
     
     const gridLines = this.layer.find('.grid-line');
-    console.log('Clearing', gridLines.length, 'grid lines');
     gridLines.forEach(line => line.destroy());
     this.layer.batchDraw();
   }
   private renderSectors() {
     if (!this.layer) {
-      console.log('No layer available for rendering sectors');
       return;
     }
-
-    console.log('Rendering sectors:', this.editableSectors().length);
 
     const currentSectors = this.editableSectors();
     const existingSectorIds = new Set(Array.from(this.sectorGroups.keys()));
@@ -472,7 +468,23 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     // Add or update sectors
     currentSectors.forEach(sector => {
       const sectorId = sector.sectorId!;
-      if (!this.sectorGroups.has(sectorId)) {
+      
+      // IMPORTANT FIX: Always recreate the group when selection state changes
+      const existingGroup = this.sectorGroups.get(sectorId);
+      if (existingGroup) {
+        // Check if we need to recreate due to selection change
+        const existingSector = existingGroup.getAttr('sector');
+        const selectionChanged = existingSector?.isSelected !== sector.isSelected;
+        
+        if (selectionChanged) {
+          existingGroup.destroy();
+          this.sectorGroups.delete(sectorId);
+          const group = this.createSectorGroup(sector);
+          if (group) {
+            this.sectorGroups.set(sectorId, group);
+          }
+        }
+      } else if (!this.sectorGroups.has(sectorId)) {
         // Create new sector
         const group = this.createSectorGroup(sector);
         if (group) {
@@ -487,7 +499,6 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     
     // Single draw call at the end - like KonvaTest
     this.layer.batchDraw();
-    console.log('Finished rendering sectors');
   }
 
   private removeSector(sectorId: string) {
@@ -506,16 +517,31 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
   private createSectorGroup(sector: EditableSector): Konva.Group | null {
     if (!this.layer) return null;
 
-    console.log('Creating sector group for:', sector.name, 'with position:', sector.position);
-
     const group = new Konva.Group({
       x: sector.position?.x ?? 100,
       y: sector.position?.y ?? 100,
       rotation: sector.rotation || 0,
-      draggable: !this.previewMode && (this.editMode() === 'move' || this.editMode() === 'select'), // Disable dragging in preview mode
-      dragBoundFunc: (pos) => pos
+      draggable: false, // Only enable dragging when LMB is held
+      dragBoundFunc: (pos) => pos,
+      // Store the sector data including selection state for comparison later
+      sector: {
+        sectorId: sector.sectorId,
+        isSelected: sector.isSelected
+      }
     });
-    // Remove pointer offset logic from dragstart
+
+    // Enable dragging only while LMB is pressed (mousedown), disable on mouseup/dragend
+    group.on('mousedown', (e) => {
+      if (!this.previewMode && e.evt.button === 0) {
+        group.draggable(true);
+      }
+    });
+    group.on('mouseup', () => {
+      group.draggable(false);
+    });
+    group.on('dragend', () => {
+      group.draggable(false);
+    });
     group.on('dragstart', () => {
       this.onSectorDragStart(sector);
     });
@@ -525,7 +551,6 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Add to layer
     this.layer.add(group);
-    console.log('Added sector group to layer');
     return group;
   }
 
@@ -584,12 +609,15 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
       const hull = this.getConvexHull(seatPositions);
       if (hull.length > 2) {
         const points = hull.flatMap(p => [p.x, p.y]);
+        const strokeColor = this.getSectorStrokeColor(sector);
+        const fillColor = this.getSectorColor(sector) + '33'; // semi-transparent fill
+        
         outline = new Konva.Line({
           points,
           closed: true,
-          stroke: this.getSectorStrokeColor(sector),
+          stroke: strokeColor,
           strokeWidth: sector.isSelected ? 3 : 2,
-          fill: this.getSectorColor(sector) + '33', // semi-transparent fill
+          fill: fillColor, // semi-transparent fill
           shadowColor: sector.isSelected ? 'rgba(33, 150, 243, 0.5)' : 'rgba(0, 0, 0, 0.3)',
           shadowBlur: sector.isSelected ? 20 : 10,
           shadowOffsetX: 5,
@@ -603,9 +631,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
           this.onSectorRectClick(sector, e);
         });
         outline.on('mouseenter', () => {
-          if (this.editMode() === 'move' || this.editMode() === 'select') {
-            this.stage!.container().style.cursor = 'grab';
-          }
+          this.stage!.container().style.cursor = 'grab';
         });
         outline.on('mouseleave', () => {
           this.stage!.container().style.cursor = 'default';
@@ -680,9 +706,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
       this.onSectorRectClick(sector, e);
     });
     nameText.on('mouseenter', () => {
-      if (this.editMode() === 'move' || this.editMode() === 'select') {
-        this.stage!.container().style.cursor = 'grab';
-      }
+      this.stage!.container().style.cursor = 'grab';
     });
     nameText.on('mouseleave', () => {
       this.stage!.container().style.cursor = 'default';
@@ -708,9 +732,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
       this.onSectorRectClick(sector, e);
     });
     seatsText.on('mouseenter', () => {
-      if (this.editMode() === 'move' || this.editMode() === 'select') {
         this.stage!.container().style.cursor = 'grab';
-      }
     });
     seatsText.on('mouseleave', () => {
       this.stage!.container().style.cursor = 'default';
@@ -724,9 +746,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
       this.onSectorRectClick(sector, e);
     });
     group.on('mouseenter', () => {
-      if (this.editMode() === 'move' || this.editMode() === 'select') {
         this.stage!.container().style.cursor = 'grab';
-      }
     });
     group.on('mouseleave', () => {
       this.stage!.container().style.cursor = 'default';
@@ -764,7 +784,6 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     const threshold = 1.79; // Using 1.79 instead of 1.8 to handle any floating-point precision issues
     const currentZoom = this.zoomLevel();
     const seatsVisible = currentZoom >= threshold;
-    console.log(`Seat creation visibility: ${seatsVisible} at zoom ${currentZoom.toFixed(3)}, threshold: ${threshold}`);
     
     if (!existingSeats) {
       // Create seats for the first time - like KonvaTest
@@ -936,27 +955,21 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
   onSectorRectClick(sector: EditableSector, event: any) {
-    console.log('Sector rect clicked:', sector.name, 'Edit mode:', this.editMode());
     event.cancelBubble = true;
     event.evt?.stopPropagation();
     
     // Don't allow selection in preview mode
     if (this.previewMode) return;
     
-    if (this.editMode() === 'select' || this.editMode() === 'move') {
-      this.selectSector(sector, event.evt?.ctrlKey || event.evt?.metaKey);
-    }
+    this.selectSector(sector, event.evt?.ctrlKey || event.evt?.metaKey);
   }
 
   onSectorHover(sector: EditableSector, event: any) {
     const stage = event.target.getStage();
-    if (stage) {
-      if (this.editMode() === 'move' || this.editMode() === 'select') {
-        stage.container().style.cursor = 'grab';
-      } else {
-        stage.container().style.cursor = 'default';
-      }
-    }
+
+    if (this.previewMode) return;
+
+    stage.container().style.cursor = 'grab';
   }
 
   onSectorMouseLeave(event: any) {
@@ -965,12 +978,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
       stage.container().style.cursor = 'default';
     }
   }
-  // Edit mode controls
-  setEditMode(mode: 'select' | 'add' | 'move' | 'rotate') {
-    console.log('Setting edit mode to:', mode);
-    this.editMode.set(mode);
-    this.selectedSector.set(null);
-  }  // Sector selection
+  // Sector selection
   selectSector(sector: EditableSector, addToSelection = false) {
     console.log('Selecting sector:', sector.name, 'Add to selection:', addToSelection);
     const sectors = this.editableSectors();
@@ -1005,8 +1013,13 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     }));
     this.editableSectors.set(updatedSectors);
     
+    // Add this line to trigger a redraw
+    this.markNeedsFullRender();
+    
     console.log('Selected sectors count:', this.selectedSectors().length);
-  }  deselectAll() {
+  }  
+  
+  deselectAll() {
     console.log('Deselecting all sectors');
     const sectors = this.editableSectors();
     const updatedSectors = sectors.map(s => ({
@@ -1016,6 +1029,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     this.editableSectors.set(updatedSectors);
     this.selectedSectors.set([]);
     this.selectedSector.set(null);
+    
+    // Add this line to trigger a redraw
+    this.markNeedsFullRender();
   }
 
   // Sector movement
@@ -1453,11 +1469,11 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  private addSelectionIndicators(group: Konva.Group) {
+  private addSelectionIndicators(group: Konva.Group) { console.log("addSelectionIndicators");
     // Find all seat circles in the group
     const seatNodes = group.getChildren(node => node.className === 'Circle') as Konva.Circle[];
     if (!seatNodes || seatNodes.length === 0) return;
-
+console.log("addSelectionIndicators2");
     // Calculate bounding box of all seats
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     seatNodes.forEach(seat => {

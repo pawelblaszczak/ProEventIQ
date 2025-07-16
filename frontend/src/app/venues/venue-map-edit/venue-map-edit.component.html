@@ -180,12 +180,6 @@
       <mat-card-content class="canvas-content">
         <!-- Canvas -->
         <div class="venue-canvas-container custom-scroll-canvas" 
-             (keydown)="$event.key === 'Escape' && deselectAll()"
-             (wheel)="onCanvasWheel($event)"
-             (mousedown)="onCanvasMouseDown($event)"
-             (mousemove)="onCanvasMouseMove($event)"
-             (mouseup)="onCanvasMouseUp($event)"
-             (mouseleave)="onCanvasMouseUp($event)"
              role="application"
              aria-label="Venue map editor canvas">
           <div #canvasContainer 

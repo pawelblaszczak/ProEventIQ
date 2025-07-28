@@ -7,11 +7,15 @@ import dev.knightcore.proeventiq.api.model.PaginatedEvents;
 import dev.knightcore.proeventiq.api.model.Participant;
 import dev.knightcore.proeventiq.api.model.ParticipantInput;
 import dev.knightcore.proeventiq.service.EventService;
+import dev.knightcore.proeventiq.service.ReportService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.validation.annotation.Validated;
 import org.slf4j.Logger;
@@ -27,9 +31,11 @@ public class EventController implements EventsApi {
     private static final Logger log = LoggerFactory.getLogger(EventController.class);
     private static final String INVALID_EVENT_ID_FORMAT = "Invalid event ID format: {}";
     private final EventService eventService;
+    private final ReportService reportService;
     
-    public EventController(EventService eventService) {
+    public EventController(EventService eventService, ReportService reportService) {
         this.eventService = eventService;
+        this.reportService = reportService;
     }
 
     @Override
@@ -223,6 +229,32 @@ public class EventController implements EventsApi {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             log.error("Error deleting participant: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    public ResponseEntity<org.springframework.core.io.Resource> eventsEventIdParticipantsParticipantIdReportGet(String eventId, String participantId) {
+        log.info("Generating participant report for participant {} in event ID: {}", participantId, eventId);
+        try {
+            Long eid = Long.parseLong(eventId);
+            return reportService.generateParticipantReport(eid, participantId)
+                    .map(reportBytes -> {
+                        HttpHeaders headers = new HttpHeaders();
+                        headers.setContentType(MediaType.APPLICATION_PDF);
+                        headers.set(HttpHeaders.CONTENT_DISPOSITION, 
+                            "attachment; filename=participant_report_" + participantId + "_event_" + eid + ".pdf");
+                        
+                        org.springframework.core.io.Resource resource = new ByteArrayResource(reportBytes);
+                        return ResponseEntity.ok()
+                                .headers(headers)
+                                .body(resource);
+                    })
+                    .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+        } catch (NumberFormatException e) {
+            log.error(INVALID_EVENT_ID_FORMAT, eventId);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (Exception e) {
+            log.error("Error generating participant report: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

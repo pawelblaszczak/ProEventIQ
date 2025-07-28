@@ -163,6 +163,49 @@ export class EventDetailComponent implements OnInit {
     });
   }
 
+  public onGenerateReport(participantId: string) {
+    const eventId = this.eventId();
+    if (!eventId) return;
+
+    // Show loading state or disable button
+    console.log('Generating report for participant:', participantId);
+
+    this.eventApi.eventsEventIdParticipantsParticipantIdReportGet(eventId, participantId).subscribe({
+      next: (response: Blob) => {
+        // Create a blob URL and trigger download
+        const blob = new Blob([response], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `participant_report_${participantId}_event_${eventId}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      },
+      error: (err) => {
+        console.error('Error generating participant report:', err);
+        // Enhanced error handling with user-friendly messages
+        let errorMessage = 'Failed to generate report. ';
+        
+        if (err.status === 404) {
+          errorMessage += 'Participant or event not found.';
+        } else if (err.status === 500) {
+          errorMessage += 'Server error occurred. Please try again later.';
+        } else if (err.error && typeof err.error === 'string') {
+          errorMessage += err.error;
+        } else {
+          errorMessage += 'Please try again or contact support.';
+        }
+        
+        // Here you can add a snackbar notification or alert
+        // For now, we'll use console error and could add a toast notification
+        console.error('User-friendly error:', errorMessage);
+        alert(errorMessage); // Temporary - should be replaced with proper UI notification
+      }
+    });
+  }
+
   public onAddParticipant() {
     const currentParticipants = this.participants();
     const newParticipant: Participant = {

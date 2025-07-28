@@ -138,3 +138,33 @@ participantById:
         description: Participant successfully deleted
       '404':
         description: Event or participant not found
+
+participantReport:
+  get:
+    tags:
+      - ProEventIQ
+    summary: Generate PDF report for a participant's event reservation
+    description: Generate and download a PDF report containing event and seat reservation details for a specific participant.
+    parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: ID of the event
+      - name: participantId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: ID of the participant
+    responses:
+      '200':
+        description: PDF report generated successfully
+        content:
+          application/pdf:
+            schema:
+              type: string
+              format: binary
+      '404':
+        description: Event or participant not found

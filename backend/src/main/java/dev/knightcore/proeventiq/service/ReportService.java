@@ -14,6 +14,9 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import org.apache.pdfbox.pdmodel.font.PDType0Font;
+import org.apache.pdfbox.pdmodel.font.PDFont;
+import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -89,10 +92,34 @@ public class ReportService {
             document.addPage(page);
             
             try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
-                // Set up fonts
-                PDType1Font titleFont = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
-                PDType1Font headerFont = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
-                PDType1Font bodyFont = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
+                // Set up fonts with Unicode support for Polish characters
+                PDFont titleFont;
+                PDFont headerFont;
+                PDFont bodyFont;
+                
+                try {
+                    // Try to load Arial fonts from Windows system using PDType0Font for full Unicode support
+                    java.io.File arialBoldFile = new java.io.File("C:/Windows/Fonts/arialbd.ttf");
+                    java.io.File arialFile = new java.io.File("C:/Windows/Fonts/arial.ttf");
+                    
+                    // Check if font files exist
+                    if (!arialBoldFile.exists() || !arialFile.exists()) {
+                        throw new IOException("Arial font files not found in Windows/Fonts directory");
+                    }
+                    
+                    // Load fonts using PDType0Font for full Unicode support
+                    titleFont = PDType0Font.load(document, arialBoldFile);
+                    headerFont = PDType0Font.load(document, arialBoldFile);
+                    bodyFont = PDType0Font.load(document, arialFile);
+                    
+                    log.info("Successfully loaded Arial fonts with PDType0Font and full Unicode support");
+                } catch (Exception e) {
+                    // Fallback to standard fonts without Polish support
+                    log.warn("Could not load Unicode fonts, falling back to standard fonts. Polish characters will be converted to ASCII equivalents: {}", e.getMessage());
+                    titleFont = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
+                    headerFont = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
+                    bodyFont = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
+                }
                 
                 float margin = 50;
                 float yPosition = page.getMediaBox().getHeight() - margin;
@@ -109,8 +136,8 @@ public class ReportService {
                 // Participant Information
                 yPosition = addSection(contentStream, headerFont, bodyFont, margin, yPosition, lineHeight,
                     "PARTICIPANT INFORMATION", new String[]{
-                        "Name: " + sanitizeText(participant.getName()),
-                        "Participant ID: " + sanitizeText(participant.getParticipantId()),
+                        "Name: " + (participant.getName() != null ? participant.getName() : "N/A"),
+                        "Participant ID: " + (participant.getParticipantId() != null ? participant.getParticipantId() : "N/A"),
                         "Number of Tickets: " + participant.getNumberOfTickets(),
                         "Registration Date: " + (participant.getCreatedAt() != null ? 
                             participant.getCreatedAt().format(DATE_TIME_FORMATTER) : "N/A")
@@ -124,22 +151,16 @@ public class ReportService {
                             event.getDateTime().format(DATE_TIME_FORMATTER) : "N/A")
                     });
                 
-                // Show Information
-                yPosition = addSection(contentStream, headerFont, bodyFont, margin, yPosition, lineHeight,
-                    "SHOW INFORMATION", new String[]{
-                        "Show Name: " + (show.getName() != null ? sanitizeText(show.getName()) : "N/A"),
-                        "Description: " + (show.getDescription() != null ? 
-                            sanitizeText(truncateText(show.getDescription(), 80)) : "N/A"),
-                        "Age Range: " + formatAgeRange(show.getAgeFrom(), show.getAgeTo())
-                    });
+                // Show Information with thumbnail layout
+                yPosition = addShowSection(document, contentStream, headerFont, bodyFont, margin, yPosition, lineHeight, show);
                 
                 // Venue Information
                 yPosition = addSection(contentStream, headerFont, bodyFont, margin, yPosition, lineHeight,
                     "VENUE INFORMATION", new String[]{
-                        "Venue Name: " + (venue.getName() != null ? sanitizeText(venue.getName()) : "N/A"),
-                        "Address: " + sanitizeText(formatAddress(venue)),
+                        "Venue Name: " + (venue.getName() != null ? venue.getName() : "N/A"),
+                        "Address: " + formatAddress(venue),
                         "Description: " + (venue.getDescription() != null ? 
-                            sanitizeText(truncateText(venue.getDescription(), 80)) : "N/A")
+                            truncateText(venue.getDescription(), 80) : "N/A")
                     });
                 
                 // Footer
@@ -165,7 +186,7 @@ public class ReportService {
     }
     
     @SuppressWarnings("java:S107") // More than 7 parameters
-    private float addSection(PDPageContentStream contentStream, PDType1Font headerFont, PDType1Font bodyFont,
+    private float addSection(PDPageContentStream contentStream, PDFont headerFont, PDFont bodyFont,
                            float margin, float yPosition, float lineHeight, String title, String[] lines) throws IOException {
         
         // Section title
@@ -185,6 +206,177 @@ public class ReportService {
         return yPosition - 10; // Extra spacing between sections
     }
     
+    private float addShowSection(PDDocument document, PDPageContentStream contentStream, 
+                               PDFont headerFont, PDFont bodyFont,
+                               float margin, float yPosition, float lineHeight, ShowEntity show) throws IOException {
+        
+        // Section title
+        contentStream.setFont(headerFont, 14);
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin, yPosition);
+        safeShowText(contentStream, "SHOW INFORMATION");
+        contentStream.endText();
+        yPosition -= lineHeight + 10;
+        
+        float thumbnailSize = 80;
+        float thumbnailX = margin + 20;
+        float contentX = thumbnailX + thumbnailSize + 20;
+        
+        // Draw thumbnail placeholder (rectangle with "THUMBNAIL" text)
+        if (show.getThumbnail() != null && show.getThumbnail().length > 0) {
+            try {
+                PDImageXObject thumbnail = PDImageXObject.createFromByteArray(document, show.getThumbnail(), "thumbnail");
+                contentStream.drawImage(thumbnail, thumbnailX, yPosition - thumbnailSize, thumbnailSize, thumbnailSize);
+            } catch (Exception e) {
+                log.warn("Could not load show thumbnail, using placeholder: {}", e.getMessage());
+                drawThumbnailPlaceholder(contentStream, thumbnailX, yPosition - thumbnailSize, thumbnailSize);
+            }
+        } else {
+            drawThumbnailPlaceholder(contentStream, thumbnailX, yPosition - thumbnailSize, thumbnailSize);
+        }
+        
+        // Show name (larger font, to the right of thumbnail)
+        contentStream.setFont(headerFont, 16);
+        contentStream.beginText();
+        contentStream.newLineAtOffset(contentX, yPosition - 20);
+        safeShowText(contentStream, show.getName() != null ? show.getName() : "N/A");
+        contentStream.endText();
+        
+        // Show description (smaller font, below show name)
+        contentStream.setFont(bodyFont, 10);
+        float descriptionY = yPosition - 45;
+        String description = show.getDescription() != null ? show.getDescription() : "No description available";
+        
+        // Word wrap description to fit in available space
+        float availableWidth = 400; // Approximate available width
+        String[] wrappedLines = wrapText(description, availableWidth, bodyFont, 10);
+        
+        for (String line : wrappedLines) {
+            contentStream.beginText();
+            contentStream.newLineAtOffset(contentX, descriptionY);
+            safeShowText(contentStream, line);
+            contentStream.endText();
+            descriptionY -= 12;
+            
+            // Stop if we've used up the thumbnail space
+            if (descriptionY < yPosition - thumbnailSize + 10) {
+                break;
+            }
+        }
+        
+        // Age range (below thumbnail or description, whichever is lower)
+        float ageRangeY = Math.min(yPosition - thumbnailSize - 10, descriptionY - 10);
+        contentStream.setFont(bodyFont, 12);
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin + 20, ageRangeY);
+        safeShowText(contentStream, "Age Range: " + formatAgeRange(show.getAgeFrom(), show.getAgeTo()));
+        contentStream.endText();
+        
+        return ageRangeY - 20; // Extra spacing between sections
+    }
+    
+    private void drawThumbnailPlaceholder(PDPageContentStream contentStream, float x, float y, float size) throws IOException {
+        // Draw border
+        contentStream.setStrokingColor(0.8f, 0.8f, 0.8f);
+        contentStream.setLineWidth(1);
+        contentStream.addRect(x, y, size, size);
+        contentStream.stroke();
+        
+        // Add "THUMBNAIL" text
+        contentStream.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 8);
+        contentStream.beginText();
+        contentStream.newLineAtOffset(x + 15, y + size/2 - 4);
+        contentStream.showText("THUMBNAIL");
+        contentStream.endText();
+    }
+    
+    private String[] wrapText(String text, float maxWidth, PDFont font, int fontSize) {
+        if (text == null || text.isEmpty()) {
+            return new String[]{"No description available"};
+        }
+        
+        // For width calculation, we need to use sanitized text
+        // But we want to return the original text split properly
+        String sanitizedForCalculation = replacePolishCharacters(sanitizeText(text));
+        
+        try {
+            String[] originalWords = text.split("\\s+");
+            String[] sanitizedWords = sanitizedForCalculation.split("\\s+");
+            
+            // Make sure both arrays have the same length (they should)
+            if (originalWords.length != sanitizedWords.length) {
+                log.warn("Word count mismatch after sanitization, using fallback");
+                return splitTextIntoChunks(text, 80);
+            }
+            
+            java.util.List<String> lines = new java.util.ArrayList<>();
+            StringBuilder currentOriginalLine = new StringBuilder();
+            StringBuilder currentSanitizedLine = new StringBuilder();
+            
+            for (int i = 0; i < originalWords.length; i++) {
+                String originalWord = originalWords[i];
+                String sanitizedWord = sanitizedWords[i];
+                
+                String testSanitizedLine = currentSanitizedLine.length() > 0 ? 
+                    currentSanitizedLine + " " + sanitizedWord : sanitizedWord;
+                String testOriginalLine = currentOriginalLine.length() > 0 ? 
+                    currentOriginalLine + " " + originalWord : originalWord;
+                
+                float textWidth = font.getStringWidth(testSanitizedLine) / 1000 * fontSize;
+                
+                if (textWidth <= maxWidth) {
+                    currentSanitizedLine = new StringBuilder(testSanitizedLine);
+                    currentOriginalLine = new StringBuilder(testOriginalLine);
+                } else {
+                    if (currentOriginalLine.length() > 0) {
+                        lines.add(currentOriginalLine.toString());
+                        currentSanitizedLine = new StringBuilder(sanitizedWord);
+                        currentOriginalLine = new StringBuilder(originalWord);
+                    } else {
+                        // Word is too long, add it anyway
+                        lines.add(originalWord);
+                    }
+                }
+            }
+            
+            if (currentOriginalLine.length() > 0) {
+                lines.add(currentOriginalLine.toString());
+            }
+            
+            return lines.toArray(new String[0]);
+        } catch (IOException e) {
+            log.warn("Error calculating text width for wrapping: {}", e.getMessage());
+            // Fallback: split text into chunks of reasonable length
+            return splitTextIntoChunks(text, 80);
+        }
+    }
+    
+    private String[] splitTextIntoChunks(String text, int maxChunkLength) {
+        if (text == null || text.isEmpty()) {
+            return new String[]{"No description available"};
+        }
+        
+        java.util.List<String> chunks = new java.util.ArrayList<>();
+        int start = 0;
+        
+        while (start < text.length()) {
+            int end = Math.min(start + maxChunkLength, text.length());
+            
+            // Try to break at a word boundary if possible
+            if (end < text.length()) {
+                int lastSpace = text.lastIndexOf(' ', end);
+                if (lastSpace > start) {
+                    end = lastSpace;
+                }
+            }
+            
+            chunks.add(text.substring(start, end).trim());
+            start = end + (end < text.length() && text.charAt(end) == ' ' ? 1 : 0);
+        }
+        
+        return chunks.toArray(new String[0]);
+    }
+    
     private float addTextLine(PDPageContentStream contentStream, float xPosition, float yPosition, 
                              String text, float lineHeight) throws IOException {
         contentStream.beginText();
@@ -195,19 +387,40 @@ public class ReportService {
     }
     
     private void safeShowText(PDPageContentStream contentStream, String text) throws IOException {
+        if (text == null) {
+            contentStream.showText("");
+            return;
+        }
+        
         try {
+            // With proper Unicode fonts loaded, try the original text first
             contentStream.showText(text);
+            // If we get here, the text was successfully displayed with Polish characters!
         } catch (IllegalArgumentException e) {
-            // If text contains unsupported characters, sanitize and try again
-            log.warn("Text contains unsupported characters, sanitizing: {}", e.getMessage());
-            contentStream.showText(sanitizeText(text));
+            log.warn("Unicode text failed: '{}', trying quote sanitization: {}", text, e.getMessage());
+            // If original text fails, try with basic quote sanitization only
+            try {
+                String basicSanitized = sanitizeText(text);
+                contentStream.showText(basicSanitized);
+            } catch (IllegalArgumentException e2) {
+                log.warn("Quote sanitized text failed: '{}', trying Polish character replacement: {}", text, e2.getMessage());
+                // If still failing, try Polish character replacement
+                String polishReplaced = replacePolishCharacters(sanitizeText(text));
+                try {
+                    contentStream.showText(polishReplaced);
+                } catch (IllegalArgumentException e3) {
+                    // Final fallback: aggressive sanitization
+                    log.warn("All text encoding methods failed for: '{}', using aggressive sanitization", text);
+                    String aggressivelySanitized = polishReplaced.replaceAll("[^\\x00-\\x7F]", "?");
+                    contentStream.showText(aggressivelySanitized);
+                }
+            }
         }
     }
     
-    private String sanitizeText(String text) {
+    private String replacePolishCharacters(String text) {
         if (text == null) return "";
         
-        // Replace Polish and other special characters with ASCII equivalents
         return text
             .replace("ą", "a").replace("Ą", "A")
             .replace("ć", "c").replace("Ć", "C")
@@ -217,20 +430,35 @@ public class ReportService {
             .replace("ó", "o").replace("Ó", "O")
             .replace("ś", "s").replace("Ś", "S")
             .replace("ź", "z").replace("Ź", "Z")
-            .replace("ż", "z").replace("Ż", "Z")
-            // Add other common special characters
-            .replace("€", "EUR")
-            .replace("£", "GBP")
-            .replace("¥", "JPY")
-            .replace("©", "(c)")
-            .replace("®", "(r)")
-            .replace("™", "(tm)")
-            .replace("\u201C", "\"").replace("\u201D", "\"") // Smart quotes
-            .replace("\u2018", "'").replace("\u2019", "'") // Smart apostrophes
-            .replace("\u2014", "-").replace("\u2013", "-") // Em and en dashes
-            .replace("\u2026", "...") // Ellipsis
-            // Remove any remaining characters that might cause issues
-            .replaceAll("[^\\x00-\\x7F]", "?"); // Replace non-ASCII characters with ?
+            .replace("ż", "z").replace("Ż", "Z");
+    }
+    
+    private String sanitizeText(String text) {
+        if (text == null) return "";
+        
+        // First, handle specific problematic Unicode characters
+        String sanitized = text
+            // Smart quotes - both opening and closing
+            .replace("\u201C", "\"").replace("\u201D", "\"") // Double quotes
+            .replace("\u2018", "'").replace("\u2019", "'")   // Single quotes
+            .replace("\u201E", "\"").replace("\u201F", "\"") // Other quote variants
+            .replace("\u00AB", "\"").replace("\u00BB", "\"") // Guillemets
+            // Dashes
+            .replace("\u2014", "-").replace("\u2013", "-")   // Em and en dashes
+            .replace("\u2015", "-")                          // Horizontal bar
+            // Other common symbols
+            .replace("\u2026", "...")                        // Ellipsis
+            .replace("\u00A0", " ")                          // Non-breaking space
+            .replace("\u2022", "-")                          // Bullet point
+            .replace("\u00B7", "-")                          // Middle dot
+            // Currency symbols
+            .replace("€", "EUR").replace("£", "GBP").replace("¥", "JPY")
+            // Copyright and trademark
+            .replace("©", "(c)").replace("®", "(r)").replace("™", "(tm)");
+        
+        // For Polish characters, let's try to preserve them first, and only replace if they cause issues
+        // We'll handle this in the safeShowText method instead
+        return sanitized;
     }
     
     private String formatAddress(VenueEntity venue) {

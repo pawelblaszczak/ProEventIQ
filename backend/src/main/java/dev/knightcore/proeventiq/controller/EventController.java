@@ -16,6 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.validation.annotation.Validated;
 import org.slf4j.Logger;
@@ -241,8 +242,10 @@ public class EventController implements EventsApi {
                     .map(reportBytes -> {
                         HttpHeaders headers = new HttpHeaders();
                         headers.setContentType(MediaType.APPLICATION_PDF);
+                        // Use centralized filename generation from ReportService
+                        String filename = reportService.generateParticipantReportFilename(eid, participantId);
                         headers.set(HttpHeaders.CONTENT_DISPOSITION, 
-                            "attachment; filename=participant_report_" + participantId + "_event_" + eid + ".pdf");
+                            "attachment; filename=" + filename);
                         
                         org.springframework.core.io.Resource resource = new ByteArrayResource(reportBytes);
                         return ResponseEntity.ok()
@@ -255,6 +258,35 @@ public class EventController implements EventsApi {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             log.error("Error generating participant report: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Override
+    public ResponseEntity<Resource> eventsEventIdParticipantsReportsZipGet(String eventId) {
+        log.info("Generating ZIP of all participant reports for event ID: {}", eventId);
+        try {
+            Long eid = Long.parseLong(eventId);
+            return reportService.generateAllParticipantReportsZip(eid)
+                    .map(zipBytes -> {
+                        HttpHeaders headers = new HttpHeaders();
+                        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+                        // Use centralized filename generation from ReportService
+                        String filename = reportService.generateParticipantReportsZipFilename(eid);
+                        headers.set(HttpHeaders.CONTENT_DISPOSITION, 
+                            "attachment; filename=" + filename);
+                        
+                        Resource resource = new ByteArrayResource(zipBytes);
+                        return ResponseEntity.ok()
+                                .headers(headers)
+                                .body(resource);
+                    })
+                    .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+        } catch (NumberFormatException e) {
+            log.error(INVALID_EVENT_ID_FORMAT, eventId);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (Exception e) {
+            log.error("Error generating ZIP of participant reports: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

@@ -170,14 +170,17 @@ export class EventDetailComponent implements OnInit {
     // Show loading state or disable button
     console.log('Generating report for participant:', participantId);
 
-    this.eventApi.eventsEventIdParticipantsParticipantIdReportGet(eventId, participantId).subscribe({
-      next: (response: Blob) => {
+    this.eventApi.eventsEventIdParticipantsParticipantIdReportGet(eventId, participantId, 'response').subscribe({
+      next: (response: any) => {
+        // Extract filename from Content-Disposition header
+        const filename = this.getFilenameFromContentDisposition(response) || `participant_report_${participantId}.pdf`;
+        
         // Create a blob URL and trigger download
-        const blob = new Blob([response], { type: 'application/pdf' });
+        const blob = new Blob([response.body], { type: 'application/pdf' });
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `participant_report_${participantId}_event_${eventId}.pdf`;
+        link.download = filename;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -190,6 +193,60 @@ export class EventDetailComponent implements OnInit {
         
         if (err.status === 404) {
           errorMessage += 'Participant or event not found.';
+        } else if (err.status === 500) {
+          errorMessage += 'Server error occurred. Please try again later.';
+        } else if (err.error && typeof err.error === 'string') {
+          errorMessage += err.error;
+        } else {
+          errorMessage += 'Please try again or contact support.';
+        }
+        
+        // Here you can add a snackbar notification or alert
+        // For now, we'll use console error and could add a toast notification
+        console.error('User-friendly error:', errorMessage);
+        alert(errorMessage); // Temporary - should be replaced with proper UI notification
+      }
+    });
+  }
+
+  public onGenerateAllReports() {
+    const eventId = this.eventId();
+    if (!eventId) return;
+
+    const participantCount = this.participants().length;
+    if (participantCount === 0) {
+      alert('No participants found for this event.');
+      return;
+    }
+
+    // Show loading state or disable button
+    console.log('Generating ZIP file with all participant reports for event:', eventId);
+
+    this.eventApi.eventsEventIdParticipantsReportsZipGet(eventId, 'response').subscribe({
+      next: (response: any) => {
+        // Extract filename from Content-Disposition header
+        const filename = this.getFilenameFromContentDisposition(response) || `participant_reports_event_${eventId}.zip`;
+        
+        // Create a blob URL and trigger download
+        const blob = new Blob([response.body], { type: 'application/zip' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        console.log(`Successfully downloaded ZIP file with ${participantCount} participant reports`);
+      },
+      error: (err) => {
+        console.error('Error generating ZIP file with participant reports:', err);
+        // Enhanced error handling with user-friendly messages
+        let errorMessage = 'Failed to generate reports ZIP file. ';
+        
+        if (err.status === 404) {
+          errorMessage += 'Event not found or no participants registered.';
         } else if (err.status === 500) {
           errorMessage += 'Server error occurred. Please try again later.';
         } else if (err.error && typeof err.error === 'string') {
@@ -367,5 +424,39 @@ export class EventDetailComponent implements OnInit {
     if (venueId) {
       this.router.navigate(['/venues', venueId]);
     }
+  }
+
+  /**
+   * Extracts filename from Content-Disposition header in HTTP response
+   * @param response HTTP response with headers
+   * @returns extracted filename or null if not found
+   */
+  private getFilenameFromContentDisposition(response: any): string | null {
+    // Debug: log the response object
+    console.debug('getFilenameFromContentDisposition: response', response);
+    const contentDisposition = response.headers?.get?.('content-disposition') || 
+                              response.headers?.get?.('Content-Disposition');
+    // Debug: log the extracted header
+    console.debug('Content-Disposition header:', contentDisposition);
+    
+    if (!contentDisposition) {
+      console.warn('No Content-Disposition header found');
+      return null;
+    }
+
+    // Parse Content-Disposition header to extract filename
+    // Expected format: attachment; filename="some_file.pdf" or attachment; filename=some_file.pdf
+    const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+    // Debug: log the regex match result
+    console.debug('Filename regex match:', filenameMatch);
+    if (filenameMatch?.[1]) {
+      // Remove quotes if present
+      const extracted = filenameMatch[1].replace(/['"]/g, '');
+      console.debug('Extracted filename:', extracted);
+      return extracted;
+    }
+
+    console.warn('Filename not found in Content-Disposition header');
+    return null;
   }
 }

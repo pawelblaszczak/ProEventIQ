@@ -25,7 +25,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Optional;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 @Service
 public class ReportService {
@@ -458,6 +461,36 @@ public class ReportService {
         return sanitized;
     }
     
+    /**
+     * Sanitizes text for use in filenames by removing Polish characters and replacing spaces/special chars with underscores
+     * @param text the text to sanitize
+     * @return sanitized filename-safe text
+     */
+    private String sanitizeFilename(String text) {
+        if (text == null || text.trim().isEmpty()) {
+            return "unknown";
+        }
+        
+        // Replace Polish characters first
+        String sanitized = replacePolishCharacters(text.trim());
+        
+        // Replace spaces and special characters with underscores
+        sanitized = sanitized.replaceAll("[^a-zA-Z0-9.-]", "_");
+        
+        // Remove multiple consecutive underscores
+        sanitized = sanitized.replaceAll("_{2,}", "_");
+        
+        // Remove leading/trailing underscores
+        sanitized = sanitized.replaceAll("^_+|_+$", "");
+        
+        // If empty after sanitization, return default
+        if (sanitized.isEmpty()) {
+            return "unknown";
+        }
+        
+        return sanitized;
+    }
+    
     private String formatAddress(VenueEntity venue) {
         StringBuilder address = new StringBuilder();
         if (venue.getAddress() != null) {
@@ -489,5 +522,132 @@ public class ReportService {
         if (text == null) return "N/A";
         if (text.length() <= maxLength) return text;
         return text.substring(0, maxLength - 3) + "...";
+    }
+    
+    @Transactional(readOnly = true)
+    public Optional<byte[]> generateAllParticipantReportsZip(Long eventId) {
+        log.info("Generating ZIP file with all participant reports for event {}", eventId);
+        
+        try {
+            // Check if event exists
+            Optional<EventEntity> eventOpt = eventRepository.findById(eventId);
+            if (eventOpt.isEmpty()) {
+                log.warn("Event not found with ID: {}", eventId);
+                return Optional.empty();
+            }
+            
+            // Get all participants for the event
+            List<ParticipantEntity> participants = participantRepository.findByEventId(eventId);
+            if (participants.isEmpty()) {
+                log.warn("No participants found for event {}", eventId);
+                return Optional.empty();
+            }
+            
+            // Create ZIP file in memory
+            ByteArrayOutputStream zipOutput = new ByteArrayOutputStream();
+            try (ZipOutputStream zipStream = new ZipOutputStream(zipOutput)) {
+                
+                for (ParticipantEntity participant : participants) {
+                    try {
+                        // Generate individual participant report
+                        Optional<byte[]> reportBytes = generateParticipantReport(eventId, participant.getParticipantId());
+                        
+                        if (reportBytes.isPresent()) {
+                            // Create ZIP entry for this participant report using centralized filename logic
+                            String fileName = generateParticipantReportFilename(eventId, participant.getParticipantId());
+                            ZipEntry zipEntry = new ZipEntry(fileName);
+                            zipStream.putNextEntry(zipEntry);
+                            zipStream.write(reportBytes.get());
+                            zipStream.closeEntry();
+                            
+                            log.debug("Added report for participant {} to ZIP", participant.getParticipantId());
+                        } else {
+                            log.warn("Failed to generate report for participant {}", participant.getParticipantId());
+                        }
+                    } catch (Exception e) {
+                        log.error("Error generating report for participant {}: {}", participant.getParticipantId(), e.getMessage());
+                        // Continue with other participants even if one fails
+                    }
+                }
+            }
+            
+            byte[] zipBytes = zipOutput.toByteArray();
+            log.info("Successfully generated ZIP file with {} participants for event {}", participants.size(), eventId);
+            return Optional.of(zipBytes);
+            
+        } catch (Exception e) {
+            log.error("Error generating ZIP file of participant reports for event {}: {}", eventId, e.getMessage(), e);
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Generates a standardized filename for a single participant report
+     * @param eventId the event ID
+     * @param participantId the participant ID
+     * @return formatted filename for the participant report
+     */
+    public String generateParticipantReportFilename(Long eventId, String participantId) {
+        try {
+            // Fetch all required data for filename generation
+            Optional<EventEntity> eventOpt = eventRepository.findById(eventId);
+            Optional<ParticipantEntity> participantOpt = participantRepository.findByParticipantIdAndEventId(participantId, eventId);
+            
+            if (eventOpt.isEmpty() || participantOpt.isEmpty()) {
+                log.warn("Event or participant not found for filename generation - eventId: {}, participantId: {}", eventId, participantId);
+                return String.format("participant_report_%s_event_%d.pdf", participantId, eventId);
+            }
+            
+            EventEntity event = eventOpt.get();
+            ParticipantEntity participant = participantOpt.get();
+            
+            Optional<ShowEntity> showOpt = showRepository.findById(event.getShowId());
+            if (showOpt.isEmpty()) {
+                log.warn("Show not found for filename generation - eventId: {}", eventId);
+                return String.format("participant_report_%s_event_%d.pdf", participantId, eventId);
+            }
+            
+            ShowEntity show = showOpt.get();
+            
+            // Generate filename: participant_name_date_show_name.pdf
+            String participantName = sanitizeFilename(participant.getName() != null ? participant.getName() : "unknown");
+            String showName = sanitizeFilename(show.getName() != null ? show.getName() : "unknown_show");
+            String date = event.getDateTime() != null ? 
+                event.getDateTime().format(DateTimeFormatter.ofPattern("yyyy_MM_dd")) : "unknown_date";
+            
+            return String.format("%s_%s_%s.pdf", participantName, date, showName);
+            
+        } catch (Exception e) {
+            log.error("Error generating filename for participant report: {}", e.getMessage());
+            // Fallback to simple format
+            return String.format("participant_report_%s_event_%d.pdf", participantId, eventId);
+        }
+    }
+
+    /**
+     * Generates a standardized filename for the ZIP file containing all participant reports
+     * @param eventId the event ID
+     * @return formatted filename for the ZIP file
+     */
+    public String generateParticipantReportsZipFilename(Long eventId) {
+        try {
+            // Fetch event and show
+            Optional<EventEntity> eventOpt = eventRepository.findById(eventId);
+            if (eventOpt.isEmpty()) {
+                log.warn("Event not found for ZIP filename generation - eventId: {}", eventId);
+                return String.format("event_%d.zip", eventId);
+            }
+            EventEntity event = eventOpt.get();
+            Optional<ShowEntity> showOpt = showRepository.findById(event.getShowId());
+            String showName = showOpt.isPresent() ? showOpt.get().getName() : "unknown_show";
+            String date = event.getDateTime() != null ?
+                event.getDateTime().format(java.time.format.DateTimeFormatter.ofPattern("yyyy_MM_dd")) : "unknown_date";
+            // Remove Polish chars and replace spaces with underscores
+            String sanitizedShowName = sanitizeFilename(showName);
+            return String.format("%s_%s.zip", date, sanitizedShowName);
+        } catch (Exception e) {
+            log.error("Error generating ZIP filename: {}", e.getMessage());
+            return String.format("event_%d.zip", eventId);
+        }
     }
 }

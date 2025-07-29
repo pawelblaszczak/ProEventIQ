@@ -507,53 +507,80 @@ $border-radius: 12px;
     box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
   }
 
-  .participants-header-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
-    padding: 1.5rem 1.5rem 0;
-
-    .section-title {
+    .participants-header-row {
       display: flex;
+      justify-content: space-between;
       align-items: center;
-      gap: 0.5rem;
-      margin: 0;
-      font-size: 1.25rem;
-      font-weight: 500;
-      color: rgba(0, 0, 0, 0.8);
+      margin-bottom: 1.5rem;
+      padding: 1.5rem 1.5rem 0;
 
-      mat-icon {
-        color: $primary-color;
-        font-size: 1.5rem;
-        width: 1.5rem;
-        height: 1.5rem;
-      }
-    }
+      .section-title {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 500;
+        color: rgba(0, 0, 0, 0.8);
 
-    .add-participant-btn {
-      background: linear-gradient(135deg, $primary-color, #1565c0);
-      color: white;
-      font-weight: 600;
-      padding: 0 1.5rem;
-      height: 44px;
-      border-radius: 8px;
-      transition: $transition-standard;
-      box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
-
-      &:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(25, 118, 210, 0.4);
+        mat-icon {
+          color: $primary-color;
+          font-size: 1.5rem;
+          width: 1.5rem;
+          height: 1.5rem;
+        }
       }
 
-      mat-icon {
-        margin-right: 0.5rem;
-        font-size: 1.2rem;
-      }
-    }
-  }
+      .participants-actions {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
 
-  .participants-table {
+        button {
+          min-width: 120px;
+          height: 48px;
+          font-weight: 600;
+          letter-spacing: 0.5px;
+          border-radius: 8px;
+          transition: $transition-standard;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+
+          mat-icon {
+            font-size: 1.2rem;
+            height: 1.2rem;
+            width: 1.2rem;
+          }
+
+          &:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+          }
+        }
+      }
+
+      .add-participant-btn {
+        background: linear-gradient(135deg, $primary-color, #1565c0);
+        color: white;
+        font-weight: 600;
+        padding: 0 1.5rem;
+        height: 44px;
+        border-radius: 8px;
+        transition: $transition-standard;
+        box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+
+        &:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(25, 118, 210, 0.4);
+        }
+
+        mat-icon {
+          margin-right: 0.5rem;
+          font-size: 1.2rem;
+        }
+      }
+    }  .participants-table {
     width: 100%;
     background: white;
     border-radius: 8px;

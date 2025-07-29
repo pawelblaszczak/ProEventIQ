@@ -1,0 +1,13 @@
+<div class="error-container animate-fade-in" [class]="cssClass()">
+  <mat-card appearance="outlined" class="error-card">
+    <mat-card-content>
+      <div class="error-icon-container">
+        <mat-icon color="warn">{{ icon() }}</mat-icon>
+      </div>
+      <div class="error-message">
+        <h3>{{ title() }}</h3>
+        <p>{{ error() }}</p>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

@@ -1,0 +1,56 @@
+.error-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  min-height: 200px;
+
+  &.animate-fade-in {
+    animation: fadeIn 0.3s ease-in;
+  }
+}
+
+.error-card {
+  max-width: 500px;
+  width: 100%;
+  text-align: center;
+  
+  mat-card-content {
+    padding: 2rem;
+  }
+}
+
+.error-icon-container {
+  margin-bottom: 1rem;
+  
+  mat-icon {
+    font-size: 3rem;
+    height: 3rem;
+    width: 3rem;
+  }
+}
+
+.error-message {
+  h3 {
+    margin: 0 0 1rem 0;
+    color: var(--mat-sys-on-surface);
+    font-weight: 500;
+  }
+
+  p {
+    margin: 0;
+    color: var(--mat-sys-on-surface-variant);
+    line-height: 1.5;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -47,6 +47,25 @@
       <mat-spinner diameter="48"></mat-spinner>
       <p class="loading-text">Loading venues...</p>
     </div>
+  } @else if (error()) {
+    <div class="error-section">
+      <app-error-display 
+        [error]="error()!" 
+        title="Failed to Load Venues" 
+        icon="stadium"
+        cssClass="venues-error">
+      </app-error-display>
+      <div class="error-actions">
+        <button mat-raised-button color="primary" (click)="retry()">
+          <mat-icon>refresh</mat-icon>
+          Retry
+        </button>
+        <button mat-stroked-button (click)="resetFilters()">
+          <mat-icon>filter_list_off</mat-icon>
+          Reset Filters
+        </button>
+      </div>
+    </div>
   } @else if (venues().length === 0) {
     <mat-card class="empty-state">
       <mat-card-content>

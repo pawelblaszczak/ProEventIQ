@@ -8,11 +8,12 @@ import { ProEventIQService } from '../../api/api/pro-event-iq.service';
 import { Venue } from '../../api/model/venue';
 import { Subject } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
+import { ErrorDisplayComponent } from '../../shared/components/error-display';
 
 @Component({
   selector: 'app-venues-list',
   standalone: true,
-  imports: [CommonModule, MaterialModule, FormsModule, ReactiveFormsModule, RouterModule, MatProgressSpinnerModule],
+  imports: [CommonModule, MaterialModule, FormsModule, ReactiveFormsModule, RouterModule, MatProgressSpinnerModule, ErrorDisplayComponent],
   templateUrl: './venues-list.component.html',
   styleUrl: './venues-list.component.scss'
 })
@@ -22,6 +23,7 @@ export class VenuesListComponent implements OnInit, OnDestroy {
 
   venues = signal<Venue[]>([]);
   isLoading = signal(false);
+  error = signal<string | null>(null);
 
   // Pagination state
   page = signal(1); // 1-based
@@ -35,10 +37,10 @@ export class VenuesListComponent implements OnInit, OnDestroy {
   minSeats = signal<number | null>(null);
 
   // Debounce subjects for filters
-  private searchSubject = new Subject<string>();
-  private countrySubject = new Subject<string>();
-  private citySubject = new Subject<string>();
-  private minSeatsSubject = new Subject<number | null>();
+  private readonly searchSubject = new Subject<string>();
+  private readonly countrySubject = new Subject<string>();
+  private readonly citySubject = new Subject<string>();
+  private readonly minSeatsSubject = new Subject<number | null>();
 
   // Effect to watch for filter or pagination changes
   private readonly filterEffect = effect(() => {
@@ -52,8 +54,7 @@ export class VenuesListComponent implements OnInit, OnDestroy {
   });
 
   constructor() {
-    // Prevent effect from being tree-shaken
-    this.filterEffect;
+    // Effect is automatically tracked by Angular when declared as readonly
   }
 
   ngOnInit() {
@@ -88,6 +89,7 @@ export class VenuesListComponent implements OnInit, OnDestroy {
 
   private loadVenues(page: number = this.page(), size: number = this.pageSize()): void {
     this.isLoading.set(true);
+    this.error.set(null);
     const search = this.search();
     const country = this.country();
     const city = this.city();
@@ -110,7 +112,7 @@ export class VenuesListComponent implements OnInit, OnDestroy {
       error: (error: any) => {
         console.error('Error loading venues from API:', error);
         this.isLoading.set(false);
-        this.loadMockData();
+        this.error.set('Failed to load venues. Please try again later.');
       }
     });
   }
@@ -141,6 +143,11 @@ export class VenuesListComponent implements OnInit, OnDestroy {
     this.page.set(1);
   }
 
+  retry(): void {
+    this.error.set(null);
+    this.loadVenues();
+  }
+
   onMatPage(event: any): void {
     if (event.pageSize !== this.pageSize()) {
       this.pageSize.set(event.pageSize);
@@ -152,43 +159,5 @@ export class VenuesListComponent implements OnInit, OnDestroy {
 
   addVenue(): void {
     this.router.navigate(['/venues/add']);
-  }
-
-  private loadMockData() {
-    console.log('Loading mock data as fallback - API calls configured with /api prefix');
-    const mockVenues: Venue[] = [
-      {
-        venueId: '1',
-        name: 'Metropolitan Opera House',
-        country: 'USA',
-        city: 'New York',
-        address: '30 Lincoln Center Plaza, New York, NY 10023',
-        thumbnail: '',
-        description: 'The Metropolitan Opera House is a world-renowned opera house located at Lincoln Center in New York City.',
-        numberOfSeats: 3800
-      },
-      {
-        venueId: '2',
-        name: 'Royal Albert Hall',
-        country: 'UK',
-        city: 'London',
-        address: 'Kensington Gore, South Kensington, London SW7 2AP',
-        thumbnail: '',
-        description: 'The Royal Albert Hall is a concert hall on the northern edge of South Kensington, London.',
-        numberOfSeats: 5272
-      },
-      {
-        venueId: '3',
-        name: 'Sydney Opera House',
-        country: 'Australia',
-        city: 'Sydney',
-        address: 'Bennelong Point, Sydney NSW 2000',
-        thumbnail: '',
-        description: 'The Sydney Opera House is a multi-venue performing arts centre in Sydney, Australia.',
-        numberOfSeats: 5738
-      }
-    ];
-    this.venues.set(mockVenues);
-    this.totalItems.set(mockVenues.length);
   }
 }

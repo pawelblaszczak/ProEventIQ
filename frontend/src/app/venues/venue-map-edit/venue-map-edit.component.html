@@ -2,26 +2,18 @@
   <div class="loading-icon-wrapper">
     <mat-progress-spinner color="primary" mode="indeterminate" diameter="50"></mat-progress-spinner>
   </div>
-  <p class="loading-text">{{ previewMode ? 'Loading venue map...' : 'Loading venue for editing...' }}</p>
+  <p class="loading-text">{{ mode === 'preview' ? 'Loading venue map...' : 'Loading venue for editing...' }}</p>
 </div>
 
-<div *ngIf="error()" class="error-container animate-fade-in">
-  <mat-card appearance="outlined" class="error-card">
-    <mat-card-content>
-      <div class="error-icon-container">
-        <mat-icon color="warn">error_outline</mat-icon>
-      </div>
-      <div class="error-message">
-        <h3>Error Loading Venue</h3>
-        <p>{{ error() }}</p>
-      </div>
-    </mat-card-content>
-  </mat-card>
-</div>
+<app-error-display 
+  *ngIf="error()" 
+  [error]="error()!" 
+  title="Error Loading Venue">
+</app-error-display>
 
 <div *ngIf="venue()" class="venue-map-editor animate-fade-in">
   <!-- Header with venue info and actions -->
-  <div class="editor-header" *ngIf="!previewMode">
+  <div class="editor-header" *ngIf="mode === 'edit'">
     <div class="venue-info">
       <h1 class="venue-name">
         <mat-icon>edit</mat-icon>
@@ -64,7 +56,7 @@
     <mat-card class="toolbar-card">
       <mat-card-content class="toolbar-content">
         <!-- Sector Actions (only in edit mode) -->
-        <div class="tool-group" *ngIf="!previewMode">
+        <div class="tool-group" *ngIf="mode === 'edit'">
           <h3 class="tool-group-title">
             <mat-icon>grid_view</mat-icon>
             Sectors
@@ -105,7 +97,7 @@
         </div>
 
         <!-- Rotation Controls (only in edit mode) -->
-        <div class="tool-group" *ngIf="!previewMode && selectedSectors().length > 0">
+        <div class="tool-group" *ngIf="mode === 'edit' && selectedSectors().length > 0">
           <h3 class="tool-group-title">
             <mat-icon>rotate_right</mat-icon>
             Rotate
@@ -188,7 +180,7 @@
         </div>
 
         <!-- Selection Info Panel - Moved to bottom -->
-        <div class="selection-panel" *ngIf="selectedSectors().length > 0 && !previewMode">
+        <div class="selection-panel" *ngIf="selectedSectors().length > 0 && mode === 'edit'">
           <div class="selection-info">
             @if (selectedSectors().length === 1) {
               <h4>
@@ -251,7 +243,7 @@
         </div>
 
         <!-- Instructions -->
-        <div class="instructions-panel" *ngIf="!previewMode">
+        <div class="instructions-panel" *ngIf="mode === 'edit'">
           <div class="instruction-card">
             <mat-icon>info</mat-icon>
             <div class="instruction-content">

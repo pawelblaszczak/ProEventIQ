@@ -11,11 +11,12 @@ import { VenueOption } from '../../api/model/venue-option';
 import { OrderByNamePipe } from '../../shared/order-by-name.pipe';
 import { debounceTime } from 'rxjs/operators';
 import { Subject } from 'rxjs';
+import { ErrorDisplayComponent } from '../../shared/components/error-display';
 
 @Component({
   selector: 'app-events-list',
   standalone: true,
-  imports: [CommonModule, MaterialModule, FormsModule, ReactiveFormsModule, RouterModule, MatProgressSpinnerModule, OrderByNamePipe],
+  imports: [CommonModule, MaterialModule, FormsModule, ReactiveFormsModule, RouterModule, MatProgressSpinnerModule, OrderByNamePipe, ErrorDisplayComponent],
   templateUrl: './events-list.component.html',
   styleUrl: './events-list.component.scss'
 })
@@ -26,6 +27,7 @@ export class EventsListComponent implements OnInit {
   events = signal<ApiEvent[]>([]);
   filteredEvents = signal<ApiEvent[]>([]);
   isLoading = signal(false);
+  error = signal<string | null>(null);
   shows = signal<ShowOption[]>([]);
   venues = signal<VenueOption[]>([]);
   showInputValue = '';
@@ -89,6 +91,7 @@ export class EventsListComponent implements OnInit {
 
   private loadEvents(page: number = this.page(), size: number = this.pageSize()): void {
     this.isLoading.set(true);
+    this.error.set(null);
     // Use filter values for API call
     const showId = this.selectedShowId();
     const venueId = this.selectedVenueId();
@@ -118,57 +121,14 @@ export class EventsListComponent implements OnInit {
       error: (error: any) => {
         console.error('Error loading events from API:', error);
         this.isLoading.set(false);
-        this.loadMockData();
+        this.error.set('Failed to load events. Please try again later.');
       }
     });
   }
 
-  private loadMockData() {
-    console.log('Loading mock data as fallback - API calls configured with /api prefix');
-    const mockEvents: ApiEvent[] = [
-      {
-        eventId: '1',
-        showId: '1',
-        venueId: '1',
-        showName: 'Hamlet - The Classic Drama',
-        venueName: 'Metropolitan Opera House',
-        dateTime: '2025-07-15T19:30:00.000Z'
-      },
-      {
-        eventId: '2',
-        showId: '2',
-        venueId: '2',
-        showName: 'Swan Lake Ballet',
-        venueName: 'Royal Albert Hall',
-        dateTime: '2025-07-22T20:00:00.000Z'
-      },
-      {
-        eventId: '3',
-        showId: '3',
-        venueId: '3',
-        showName: 'La Bohème Opera',
-        venueName: 'Sydney Opera House',
-        dateTime: '2025-08-05T19:00:00.000Z'
-      },
-      {
-        eventId: '4',
-        showId: '1',
-        venueId: '2',
-        showName: 'Hamlet - The Classic Drama',
-        venueName: 'Royal Albert Hall',
-        dateTime: '2025-08-12T19:30:00.000Z'
-      },
-      {
-        eventId: '5',
-        showId: '4',
-        venueId: '1',
-        showName: 'The Nutcracker',
-        venueName: 'Metropolitan Opera House',
-        dateTime: '2025-12-15T15:00:00.000Z'
-      }
-    ];
-    this.events.set(mockEvents);
-    this.filteredEvents.set(mockEvents);
+  retry(): void {
+    this.error.set(null);
+    this.loadEvents();
   }
 
   private loadShows() {

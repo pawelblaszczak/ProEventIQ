@@ -8,11 +8,12 @@ import { ProEventIQService } from '../../api/api/pro-event-iq.service';
 import { Show } from '../../api/model/show';
 import { Subject } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
+import { ErrorDisplayComponent } from '../../shared/components/error-display';
 
 @Component({
   selector: 'app-shows-list',
   standalone: true,
-  imports: [CommonModule, MaterialModule, FormsModule, ReactiveFormsModule, RouterModule, MatProgressSpinnerModule],
+  imports: [CommonModule, MaterialModule, FormsModule, ReactiveFormsModule, RouterModule, MatProgressSpinnerModule, ErrorDisplayComponent],
   templateUrl: './shows-list.component.html',
   styleUrl: './shows-list.component.scss'
 })
@@ -23,6 +24,7 @@ export class ShowsListComponent implements OnInit {
   shows = signal<Show[]>([]);
   filteredShows = signal<Show[]>([]);
   isLoading = signal(false);
+  error = signal<string | null>(null);
 
   // Filter state
   public search = signal('');
@@ -35,12 +37,12 @@ export class ShowsListComponent implements OnInit {
   public totalItems = signal(0);
 
   // Debounce subjects
-  private searchSubject = new Subject<string>();
-  private ageFromSubject = new Subject<string>();
-  private ageToSubject = new Subject<string>();
+  private readonly searchSubject = new Subject<string>();
+  private readonly ageFromSubject = new Subject<string>();
+  private readonly ageToSubject = new Subject<string>();
 
   // Effect for all filters and pagination (must be a field, not in ngOnInit)
-  private filterEffect = effect(() => {
+  private readonly filterEffect = effect(() => {
     const _search = this.search();
     const _ageFrom = this.ageFrom();
     const _ageTo = this.ageTo();
@@ -69,6 +71,7 @@ export class ShowsListComponent implements OnInit {
 
   private loadShows(): void {
     this.isLoading.set(true);
+    this.error.set(null);
     // Prepare filter params
     const search = this.search();
     const ageFrom = this.ageFrom();
@@ -82,66 +85,27 @@ export class ShowsListComponent implements OnInit {
       page,
       size,
       search || undefined
-    ).subscribe((response: any) => {
-      const shows = response?.items ?? [];
-      const total = response?.totalItems ?? shows.length;
-      this.shows.set(shows);
-      this.filteredShows.set(shows);
-      this.totalItems.set(total);
-      this.isLoading.set(false);
-    }, (error: any) => {
-      console.error('Error loading shows from API:', error);
-      this.isLoading.set(false);
-      this.loadMockData();
+    ).subscribe({
+      next: (response: any) => {
+        const shows = response?.items ?? [];
+        const total = response?.totalItems ?? shows.length;
+        this.shows.set(shows);
+        this.filteredShows.set(shows);
+        this.totalItems.set(total);
+        this.isLoading.set(false);
+      },
+      error: (error: any) => {
+        console.error('Error loading shows from API:', error);
+        this.isLoading.set(false);
+        this.error.set('Failed to load shows. Please try again later.');
+      }
     });
   }
 
-  private loadMockData() {
-    console.log('Loading mock data as fallback - API calls configured with /api prefix');
-    const mockShows: Show[] = [
-      {
-        showId: '1',
-        name: 'The Lion King',
-        thumbnail: 'https://via.placeholder.com/300x200?text=The+Lion+King',
-        description: 'Experience the Circle of Life unfold before your eyes as Simba\'s story comes alive through stunning visuals, heart-stirring music and soul-stirring dance.',
-        ageFrom: 6,
-        ageTo: 99
-      },
-      {
-        showId: '2',
-        name: 'Hamilton',
-        thumbnail: 'https://via.placeholder.com/300x200?text=Hamilton',
-        description: 'The story of America then, told by America now. Hamilton is the epic saga that follows the rise of Founding Father Alexander Hamilton.',
-        ageFrom: 10,
-        ageTo: 99
-      },
-      {
-        showId: '3',
-        name: 'Phantom of the Opera',
-        thumbnail: 'https://via.placeholder.com/300x200?text=Phantom+of+the+Opera',
-        description: 'The haunting love story set in the mysterious depths of the Paris Opera House, featuring Andrew Lloyd Webber\'s timeless music.',
-        ageFrom: 8,
-        ageTo: 99
-      },
-      {
-        showId: '4',
-        name: 'Chicago',
-        thumbnail: 'https://via.placeholder.com/300x200?text=Chicago',
-        description: 'A dazzling and satirical look at fame, justice, and the media machine. Set in 1920s Chicago with sultry jazz music and spectacular dance numbers.',
-        ageFrom: 12,
-        ageTo: 99
-      },
-      {
-        showId: '5',
-        name: 'Mamma Mia!',
-        thumbnail: 'https://via.placeholder.com/300x200?text=Mamma+Mia',
-        description: 'The ultimate feel-good musical featuring the timeless songs of ABBA. A heartwarming tale of love, laughter and friendship.',
-        ageFrom: 3,
-        ageTo: 99
-      }
-    ];
-    this.shows.set(mockShows);
-    this.filteredShows.set(mockShows);
+
+  retry(): void {
+    this.error.set(null);
+    this.loadShows();
   }
 
   applyFilter(event: Event): void {

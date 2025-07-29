@@ -16,7 +16,7 @@ import { Venue } from '../../api/model/venue';
 import { Sector } from '../../api/model/sector';
 import { SectorSeatsInput } from '../../api/model/sector-seats-input';
 import { ProEventIQService } from '../../api/api/pro-event-iq.service';
-import { ConfirmationDialogService } from '../../shared';
+import { ConfirmationDialogService, ErrorDisplayComponent } from '../../shared';
 import { firstValueFrom } from 'rxjs';
 import { ChangeSectorNameDialogComponent } from './change-sector-name-dialog/change-sector-name-dialog.component';
 import { canDeactivateVenueMapEdit } from './can-deactivate-venue-map-edit.guard';
@@ -35,6 +35,8 @@ import { canDeactivateVenueMapEdit } from './can-deactivate-venue-map-edit.guard
  * These optimizations are inspired by the fast KonvaTest implementation that renders
  * 10,000 objects efficiently by creating objects once and minimizing redraws.
  */
+
+
 
 interface EditableSector extends Sector {
   isSelected: boolean;
@@ -58,7 +60,8 @@ interface EditableSector extends Sector {
     MatToolbarModule,
     MatTooltipModule,
     RouterModule,
-    ChangeSectorNameDialogComponent
+    ChangeSectorNameDialogComponent,
+    ErrorDisplayComponent
   ],
   templateUrl: './venue-map-edit.component.html',
   styleUrls: ['./venue-map-edit.component.scss'],
@@ -66,7 +69,7 @@ interface EditableSector extends Sector {
 })
 export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('canvasContainer', { static: false }) canvasContainer!: ElementRef<HTMLDivElement>;
-  @Input() previewMode = false; // Add preview mode input
+  @Input() mode: 'preview' | 'edit' = 'edit'; // Use simple string for mode
   @Input() venueData: Venue | null = null; // Allow venue data to be passed in
   
   private readonly route = inject(ActivatedRoute);
@@ -193,7 +196,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit() {
     // Initialize venue data based on mode
-    if (this.previewMode && this.venueData) {
+    if (this.mode === 'preview' && this.venueData) {
       // Preview mode: use passed venue data
       this.venue.set(this.venueData);
       this.loading.set(false);
@@ -532,7 +535,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Enable dragging only while LMB is pressed (mousedown), disable on mouseup/dragend
     group.on('mousedown', (e) => {
-      if (!this.previewMode && e.evt.button === 0) {
+      if (this.mode === 'edit' && e.evt.button === 0) {
         group.draggable(true);
       }
     });
@@ -906,7 +909,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
   
   onCanvasMouseDown(event: MouseEvent) {
     // Allow panning in preview mode (no Alt required) OR in edit mode with Alt+drag
-    if ((this.previewMode && event.button === 0) || (!this.previewMode && event.button === 0 && event.altKey)) {
+    if ((this.mode === 'preview' && event.button === 0) || (this.mode === 'edit' && event.button === 0 && event.altKey)) {
       if (this.canvasContainer) {
         this.isHtmlPanning = true;
         this.htmlPanStart = { x: event.clientX, y: event.clientY };
@@ -959,7 +962,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     event.evt?.stopPropagation();
     
     // Don't allow selection in preview mode
-    if (this.previewMode) return;
+    if (this.mode === 'preview') return;
     
     this.selectSector(sector, event.evt?.ctrlKey || event.evt?.metaKey);
   }
@@ -967,7 +970,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
   onSectorHover(sector: EditableSector, event: any) {
     const stage = event.target.getStage();
 
-    if (this.previewMode) return;
+    if (this.mode === 'preview') return;
 
     stage.container().style.cursor = 'grab';
   }

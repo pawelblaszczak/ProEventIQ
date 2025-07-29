@@ -124,44 +124,47 @@ public class ReportService {
                 float margin = 50;
                 float yPosition = page.getMediaBox().getHeight() - margin;
                 float lineHeight = 20;
-                
-                // Title
-                contentStream.setFont(titleFont, 24);
+
+                // Centered title: Reservation confirmation
+                String reportTitle = "Reservation confirmation";
+                contentStream.setFont(headerFont, 20);
+                float titleWidth = headerFont.getStringWidth(reportTitle) / 1000 * 20;
+                float pageWidth = page.getMediaBox().getWidth();
+                float titleX = (pageWidth - titleWidth) / 2;
+                contentStream.beginText();
+                contentStream.newLineAtOffset(titleX, yPosition);
+                safeShowText(contentStream, reportTitle);
+                contentStream.endText();
+                yPosition -= lineHeight + 15;
+
+                // Reservation holder label and name
+                contentStream.setFont(headerFont, 14);
                 contentStream.beginText();
                 contentStream.newLineAtOffset(margin, yPosition);
-                safeShowText(contentStream, "ProEventIQ - Event Participation Report");
+                safeShowText(contentStream, "Reservation holder");
                 contentStream.endText();
-                yPosition -= 40;
+                yPosition -= lineHeight + 5;
+
+                contentStream.setFont(bodyFont, 14);
+                contentStream.beginText();
+                contentStream.newLineAtOffset(margin + 20, yPosition);
+                safeShowText(contentStream, participant.getName() != null ? participant.getName() : "N/A");
+                contentStream.endText();
+                yPosition -= lineHeight + 10;
+
+                // Removed PARTICIPANT INFORMATION section as requested
                 
-                // Participant Information
+                // Date & location section
                 yPosition = addSection(contentStream, headerFont, bodyFont, margin, yPosition, lineHeight,
-                    "PARTICIPANT INFORMATION", new String[]{
-                        "Name: " + (participant.getName() != null ? participant.getName() : "N/A"),
-                        "Participant ID: " + (participant.getParticipantId() != null ? participant.getParticipantId() : "N/A"),
-                        "Number of Tickets: " + participant.getNumberOfTickets(),
-                        "Registration Date: " + (participant.getCreatedAt() != null ? 
-                            participant.getCreatedAt().format(DATE_TIME_FORMATTER) : "N/A")
+                    "Date & location", new String[]{
+                        "Date & Time: " + (event.getDateTime() != null ? event.getDateTime().format(DATE_TIME_FORMATTER) : "N/A"),
+                        "Venue: " + (venue.getName() != null ? venue.getName() : "N/A"),
+                        "Address: " + formatAddress(venue)
                     });
                 
-                // Event Information
-                yPosition = addSection(contentStream, headerFont, bodyFont, margin, yPosition, lineHeight,
-                    "EVENT INFORMATION", new String[]{
-                        "Event ID: " + event.getEventId(),
-                        "Event Date & Time: " + (event.getDateTime() != null ? 
-                            event.getDateTime().format(DATE_TIME_FORMATTER) : "N/A")
-                    });
-                
-                // Show Information with thumbnail layout
+                // Show information with thumbnail layout
                 yPosition = addShowSection(document, contentStream, headerFont, bodyFont, margin, yPosition, lineHeight, show);
-                
-                // Venue Information
-                yPosition = addSection(contentStream, headerFont, bodyFont, margin, yPosition, lineHeight,
-                    "VENUE INFORMATION", new String[]{
-                        "Venue Name: " + (venue.getName() != null ? venue.getName() : "N/A"),
-                        "Address: " + formatAddress(venue),
-                        "Description: " + (venue.getDescription() != null ? 
-                            truncateText(venue.getDescription(), 80) : "N/A")
-                    });
+                // Removed VENUE INFORMATION section as requested
                 
                 // Footer
                 yPosition -= 30;
@@ -189,7 +192,7 @@ public class ReportService {
     private float addSection(PDPageContentStream contentStream, PDFont headerFont, PDFont bodyFont,
                            float margin, float yPosition, float lineHeight, String title, String[] lines) throws IOException {
         
-        // Section title
+        // Section title (all section titles same font and size)
         contentStream.setFont(headerFont, 14);
         contentStream.beginText();
         contentStream.newLineAtOffset(margin, yPosition);
@@ -210,11 +213,11 @@ public class ReportService {
                                PDFont headerFont, PDFont bodyFont,
                                float margin, float yPosition, float lineHeight, ShowEntity show) throws IOException {
         
-        // Section title
+        // Section title (all section titles same font and size)
         contentStream.setFont(headerFont, 14);
         contentStream.beginText();
         contentStream.newLineAtOffset(margin, yPosition);
-        safeShowText(contentStream, "SHOW INFORMATION");
+        safeShowText(contentStream, "Show information");
         contentStream.endText();
         yPosition -= lineHeight + 10;
         
@@ -264,15 +267,9 @@ public class ReportService {
             }
         }
         
-        // Age range (below thumbnail or description, whichever is lower)
-        float ageRangeY = Math.min(yPosition - thumbnailSize - 10, descriptionY - 10);
-        contentStream.setFont(bodyFont, 12);
-        contentStream.beginText();
-        contentStream.newLineAtOffset(margin + 20, ageRangeY);
-        safeShowText(contentStream, "Age Range: " + formatAgeRange(show.getAgeFrom(), show.getAgeTo()));
-        contentStream.endText();
-        
-        return ageRangeY - 20; // Extra spacing between sections
+        // Removed Age Range data as requested
+        float sectionEndY = Math.min(yPosition - thumbnailSize - 10, descriptionY - 10);
+        return sectionEndY - 20; // Extra spacing between sections
     }
     
     private void drawThumbnailPlaceholder(PDPageContentStream contentStream, float x, float y, float size) throws IOException {

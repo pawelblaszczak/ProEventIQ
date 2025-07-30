@@ -12,6 +12,7 @@ import { OrderByNamePipe } from '../../shared/order-by-name.pipe';
 import { debounceTime } from 'rxjs/operators';
 import { Subject } from 'rxjs';
 import { ErrorDisplayComponent } from '../../shared/components/error-display';
+import { EventService } from '../event.service';
 
 @Component({
   selector: 'app-events-list',
@@ -23,6 +24,7 @@ import { ErrorDisplayComponent } from '../../shared/components/error-display';
 export class EventsListComponent implements OnInit {
   private readonly apiService = inject(ProEventIQService);
   private readonly router = inject(Router);
+  private readonly eventService = inject(EventService);
   
   events = signal<ApiEvent[]>([]);
   filteredEvents = signal<ApiEvent[]>([]);
@@ -276,27 +278,12 @@ export class EventsListComponent implements OnInit {
   getSeatStatusText(event: ApiEvent): string {
     const totalSeats = event.venueNumberOfSeats ?? this.getReservedSeats(event.eventId ?? '').total;
     const reserved = event.numberOfTickets ?? 0;
-    let percentage = totalSeats > 0 ? Math.floor((reserved / totalSeats) * 100) : 0;
-    // Only show 100% if reserved exactly equals total and total > 0
-    if (totalSeats > 0 && reserved === totalSeats) {
-      percentage = 100;
-    } else if (percentage === 100) {
-      percentage = 99;
-    }
-    return `${reserved}/${totalSeats} (${percentage}%)`;
+    return this.eventService.getSeatStatusText(reserved, totalSeats);
   }
 
   getReservationClass(eventId: string): string {
     const seatInfo = this.getReservedSeats(eventId);
-    const percentage = seatInfo.percentage;
-    
-    if (percentage <= 35) {
-      return 'low-reservation';
-    } else if (percentage <= 65) {
-      return 'medium-reservation';
-    } else {
-      return 'high-reservation';
-    }
+    return this.eventService.getReservationClass(seatInfo.reserved, seatInfo.total);
   }
 
   /**
@@ -305,22 +292,9 @@ export class EventsListComponent implements OnInit {
    */
   public getSeatStatusColor(event: ApiEvent): string {
     // Use real seat data if available, else fallback to mock
-    let reserved = event.numberOfTickets ?? 0;
-    let total = event.venueNumberOfSeats ?? this.getReservedSeats(event.eventId ?? '').total;
-    let percentage = total > 0 ? reserved / total : 0;
-    // Clamp between 0 and 1
-    percentage = Math.max(0, Math.min(1, percentage));
-    // Interpolate hue: 0 (red) -> 60 (yellow) -> 120 (green)
-    // 0%: h=0, 50%: h=60, 100%: h=120
-    let hue: number;
-    if (percentage <= 0.5) {
-      // Red to yellow
-      hue = 0 + (percentage / 0.5) * 60;
-    } else {
-      // Yellow to green
-      hue = 60 + ((percentage - 0.5) / 0.5) * 60;
-    }
-    return `hsl(${hue}, 90%, 40%)`;
+    const reserved = event.numberOfTickets ?? 0;
+    const total = event.venueNumberOfSeats ?? this.getReservedSeats(event.eventId ?? '').total;
+    return this.eventService.getSeatStatusColor(reserved, total);
   }
 
   // Call this when user changes page

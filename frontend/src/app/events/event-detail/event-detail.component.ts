@@ -12,9 +12,12 @@ import { MatTableModule } from '@angular/material/table';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { Event as ApiEvent } from '../../api/model/event';
+import { Venue } from '../../api/model/venue';
 import { ProEventIQService } from '../../api/api/pro-event-iq.service';
 import { ConfirmationDialogService } from '../../shared';
 import { Participant } from '../../api/model/participant';
+import { VenueMapEditComponent } from '../../venues/venue-map-edit/venue-map-edit.component';
+import { EventService } from '../event.service';
 
 @Component({
   selector: 'app-event-detail',
@@ -31,7 +34,8 @@ import { Participant } from '../../api/model/participant';
     MatTableModule,
     MatFormFieldModule,
     MatInputModule,
-    FormsModule
+    FormsModule,
+    VenueMapEditComponent
   ],
   templateUrl: './event-detail.component.html',
   styleUrls: ['./event-detail.component.scss'],
@@ -42,13 +46,41 @@ export class EventDetailComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly eventApi = inject(ProEventIQService);
   private readonly confirmationDialog = inject(ConfirmationDialogService);
+  private readonly eventService = inject(EventService);
 
   private readonly eventId = signal<string | null>(null);
   public event = signal<ApiEvent | null>(null);
+  public venue = signal<Venue | null>(null);
   public loading = signal(true);
   public error = signal<string | null>(null);
   public participants = signal<Participant[]>([]);
   public editingParticipant = signal<string | null>(null);
+
+  /** Returns the sum of numberOfTickets for all participants */
+  public getTotalTickets(): number {
+    const list = this.participants();
+    return Array.isArray(list) ? list.reduce((sum, p) => sum + (p.numberOfTickets || 0), 0) : 0;
+  }
+
+  /** Returns the seat status text in format: "reserved/total (percentage%)" */
+  public getSeatStatusText(): string {
+    const venue = this.venue();
+    if (!venue) return '0/0 (0%)';
+    
+    const totalSeats = venue.numberOfSeats ?? 0;
+    const reserved = this.getTotalTickets();
+    return this.eventService.getSeatStatusText(reserved, totalSeats);
+  }
+
+  /** Returns a color string for the seat status based on reserved percentage */
+  public getSeatStatusColor(): string {
+    const venue = this.venue();
+    if (!venue) return 'hsl(0, 90%, 40%)';
+    
+    const reserved = this.getTotalTickets();
+    const total = venue.numberOfSeats ?? 0;
+    return this.eventService.getSeatStatusColor(reserved, total);
+  }
 
   ngOnInit() {
     this.route.paramMap.subscribe(params => {
@@ -69,12 +101,16 @@ export class EventDetailComponent implements OnInit {
     this.eventApi.getEventById(eventId).subscribe({
       next: (event: ApiEvent) => {
         this.event.set(event);
-        this.loading.set(false);
+        // Load venue data if venueId is available
+        if (event.venueId) {
+          this.loadVenue(event.venueId);
+        } else {
+          this.loading.set(false);
+        }
       },
       error: (error: any) => {
         console.error('Error loading event from API:', error);
         console.log('Falling back to mock data');
-        this.loading.set(false);
         this.loadMockEvent(eventId);
       }
     });
@@ -128,9 +164,30 @@ export class EventDetailComponent implements OnInit {
     const foundEvent = mockEvents.find(e => e.eventId === eventId);
     if (foundEvent) {
       this.event.set(foundEvent);
+      // Load venue data if venueId is available
+      if (foundEvent.venueId) {
+        this.loadVenue(foundEvent.venueId);
+      } else {
+        this.loading.set(false);
+      }
     } else {
       this.error.set('Event not found');
+      this.loading.set(false);
     }
+  }
+
+  private loadVenue(venueId: string) {
+    this.eventApi.getVenue(venueId).subscribe({
+      next: (venue: Venue) => {
+        this.venue.set(venue);
+        this.loading.set(false);
+      },
+      error: (error: any) => {
+        console.error('Error loading venue data:', error);
+        // Don't set error for venue loading failure, just continue without venue map
+        this.loading.set(false);
+      }
+    });
   }
 
   private loadParticipants(eventId: string) {

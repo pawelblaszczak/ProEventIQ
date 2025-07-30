@@ -881,3 +881,163 @@ $border-radius: 12px;
     }
   }
 }
+
+// Seat Reservation Card Styles (copied from venue map card styles)
+.venue-map-preview-section {
+  margin: 0 0 2rem; // Remove max-width constraint to allow full width
+}
+
+.venue-map-card {
+  width: 100%;
+  margin-top: 1.5rem;
+  overflow: visible;
+  
+  .participants-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem 0.5rem 1.5rem;
+    background: none;
+    color: inherit;
+    margin-bottom: 0;
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 1.25rem;
+      font-weight: 500;
+      color: rgba(0, 0, 0, 0.8);
+      margin: 0;
+      
+      mat-icon.title-icon {
+        color: $primary-color;
+        background: none;
+        font-size: 2rem;
+        width: 2rem;
+        height: 2rem;
+        margin-right: 0.5rem;
+        border-radius: 0;
+        padding: 0;
+      }
+      
+      .banner-subtitle {
+        font-weight: normal;
+        font-size: 0.95em;
+        margin-left: 8px;
+        color: #757575;
+        opacity: 0.9;
+      }
+    }
+
+    .edit-map-btn {
+      min-width: 120px;
+      height: 40px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background-color: $primary-color;
+      color: white;
+      box-shadow: 0 2px 8px rgba(25, 118, 210, 0.08);
+      transition: $transition-standard;
+      
+      mat-icon {
+        font-size: 1.2rem;
+        height: 1.2rem;
+        width: 1.2rem;
+      }
+      
+      &:hover:not(:disabled) {
+        background-color: darken($primary-color, 10%);
+        box-shadow: 0 4px 12px rgba($primary-color, 0.18);
+      }
+    }
+  }
+  
+  .map-preview-content {
+    padding: 0;
+  }
+}
+
+.seat-reservation-section {
+  max-width: 1200px;
+  margin: 0 auto 2rem;
+}
+
+.seat-reservation-card {
+  width: 100%;
+  margin-top: 1.5rem;
+  overflow: visible;
+  
+  .participants-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem 0.5rem 1.5rem;
+    background: none;
+    color: inherit;
+    margin-bottom: 0;
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 1.25rem;
+      font-weight: 500;
+      color: rgba(0, 0, 0, 0.8);
+      margin: 0;
+      
+      mat-icon.title-icon {
+        color: $primary-color;
+        background: none;
+        font-size: 2rem;
+        width: 2rem;
+        height: 2rem;
+        margin-right: 0.5rem;
+        border-radius: 0;
+        padding: 0;
+      }
+      
+      .banner-subtitle {
+        font-weight: normal;
+        font-size: 0.95em;
+        margin-left: 8px;
+        color: #757575;
+        opacity: 0.9;
+      }
+    }
+
+    .edit-map-btn {
+      min-width: 120px;
+      height: 40px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background-color: $primary-color;
+      color: white;
+      box-shadow: 0 2px 8px rgba(25, 118, 210, 0.08);
+      transition: $transition-standard;
+      
+      mat-icon {
+        font-size: 1.2rem;
+        height: 1.2rem;
+        width: 1.2rem;
+      }
+      
+      &:hover:not(:disabled) {
+        background-color: darken($primary-color, 10%);
+        box-shadow: 0 4px 12px rgba($primary-color, 0.18);
+      }
+    }
+  }
+  
+  .map-preview-content {
+    padding: 0;
+  }
+}

@@ -156,6 +156,8 @@ public class EventService {
         entity.setParticipantId(participantId);
         entity.setEventId(eventId);
         entity.setName(input.getName());
+        entity.setAddress(input.getAddress());
+        entity.setSeatColor(input.getSeatColor());
         entity.setNumberOfTickets(input.getNumberOfTickets());
         entity.setCreatedAt(LocalDateTime.now());
         entity.setUpdatedAt(LocalDateTime.now());
@@ -175,6 +177,8 @@ public class EventService {
         log.info("Updating participant {} for event {}", participantId, eventId);
         return participantRepository.findByParticipantIdAndEventId(participantId, eventId).map(entity -> {
             if (input.getName() != null) entity.setName(input.getName());
+            if (input.getAddress() != null) entity.setAddress(input.getAddress());
+            if (input.getSeatColor() != null) entity.setSeatColor(input.getSeatColor());
             if (input.getNumberOfTickets() != null && input.getNumberOfTickets() >= 1) {
                 entity.setNumberOfTickets(input.getNumberOfTickets());
             }
@@ -273,11 +277,14 @@ public class EventService {
     }
 
     private Participant toParticipantDto(ParticipantEntity entity) {
-        Participant dto = new Participant();
-        dto.setParticipantId(entity.getParticipantId());
-        dto.setEventId(entity.getEventId().toString());
-        dto.setName(entity.getName());
-        dto.setNumberOfTickets(entity.getNumberOfTickets());
+        Participant dto = new Participant(
+            entity.getParticipantId(),
+            entity.getEventId().toString(),
+            entity.getName(),
+            entity.getNumberOfTickets()
+        );
+        dto.setAddress(entity.getAddress());
+        dto.setSeatColor(entity.getSeatColor());
         return dto;
     }
 }

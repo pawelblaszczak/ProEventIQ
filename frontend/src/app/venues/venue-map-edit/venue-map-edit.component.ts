@@ -96,6 +96,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
   private initialDragPositions = new Map<string, { x: number; y: number }>();
   private konvaInitialized = false;
   private needsFullRender = false; // Flag to control when full re-render is needed
+  private seatTooltip: Konva.Label | null = null; // Tooltip for seat information
   
   // Canvas and zoom settings
   canvasWidth = 3000;
@@ -384,6 +385,11 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     const gridLines = this.layer.find('.grid-line');
     gridLines.forEach(line => { if (background) line.moveUp(); });
     this.sectorGroups.forEach(group => { group.moveToTop(); });
+    
+    // Ensure tooltip is always at the top if it exists
+    if (this.seatTooltip) {
+      this.seatTooltip.moveToTop();
+    }
   }
 
   private renderGrid() {
@@ -444,6 +450,40 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     
 
   }
+  
+  // Create or ensure the seat tooltip exists
+  private ensureSeatTooltip() {
+    if (!this.layer) return;
+    if (!this.seatTooltip) {
+      this.seatTooltip = new Konva.Label({
+        listening: false
+      });
+      this.seatTooltip.add(new Konva.Tag({
+        fill: 'rgba(0, 0, 0, 0.75)',
+        pointerDirection: 'down',
+        pointerWidth: 8,
+        pointerHeight: 6,
+        lineJoin: 'round',
+        cornerRadius: 4,
+        shadowColor: '#000',
+        shadowBlur: 4,
+        shadowOffset: { x: 2, y: 2 },
+        shadowOpacity: 0.3
+      }));
+      this.seatTooltip.add(new Konva.Text({
+        text: '',
+        fontSize: 12,
+        padding: 6,
+        fill: '#fff',
+        fontFamily: 'Roboto, Arial, sans-serif'
+      }));
+      this.layer.add(this.seatTooltip);
+      this.seatTooltip.visible(false);
+      
+      // Ensure tooltip is always on top of all other elements
+      this.seatTooltip.moveToTop();
+    }
+  }
 
   private clearGrid() {
     if (!this.layer) return;
@@ -499,6 +539,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Ensure proper z-index ordering: background -> grid -> sectors
     this.fixLayerZOrder();
+    
+    // Update seat tooltip handlers for all seats
+    this.updateSeatTooltipHandlers();
     
     // Single draw call at the end - like KonvaTest
     this.layer.batchDraw();
@@ -809,13 +852,44 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
         seat.on('mouseover', () => {
           this.stage!.container().style.cursor = 'pointer';
           seat.fill('#66BB6A'); // Hover color
-          this.layer!.batchDraw();
+          
+          // Show tooltip with seat information when zoom level is sufficient (≥ 180%)
+          if (this.zoomLevel() >= 1.79) {
+            this.ensureSeatTooltip();
+            if (!this.seatTooltip) return;
+            
+            // Get seat info (row name and seat number)
+            const { rowName, seatNumber } = this.getSeatInfoFromIndex(sector, index);
+            
+            // Set tooltip text with sector name, row name, and seat number
+            const tooltipText = `Sector: ${sector.name || 'Unknown'}\nRow: ${rowName}\nSeat: ${seatNumber}`;
+            const labelText = this.seatTooltip.findOne('Text') as Konva.Text;
+            labelText.text(tooltipText);
+            
+            // Position tooltip above the seat, adjusted for zoom
+            const absPos = seat.getAbsolutePosition();
+            const zoom = this.zoomLevel();
+            this.seatTooltip.position({
+              x: absPos.x / zoom,
+              y: absPos.y / zoom - 10
+            });
+            
+            this.seatTooltip.visible(true);
+            // Always move tooltip to the top of the layer to ensure it's visible
+            this.seatTooltip.moveToTop();
+            this.layer!.batchDraw();
+          }
         });
 
         seat.on('mouseout', () => {
           this.stage!.container().style.cursor = 'default';
           seat.fill('#90A4AE'); // Reset color
-          this.layer!.batchDraw();
+          
+          // Hide tooltip
+          if (this.seatTooltip) {
+            this.seatTooltip.visible(false);
+            this.layer!.batchDraw();
+          }
         });
 
         seat.on('click', (e) => {
@@ -847,7 +921,94 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  // --- Convex hull algorithm for sector outline ---
+  // Helper function to get seat info (row name, seat number) based on index within a sector
+  private getSeatInfoFromIndex(sector: EditableSector, seatIndex: number): { rowName: string, seatNumber: number } {
+    let currentIndex = 0;
+    let result = { rowName: 'Unknown', seatNumber: 0 };
+    
+    if (sector.rows) {
+      for (const row of sector.rows) {
+        if (row.seats) {
+          if (seatIndex >= currentIndex && seatIndex < currentIndex + row.seats.length) {
+            // Found the row containing this seat
+            const seatIndexInRow = seatIndex - currentIndex;
+            const seat = row.seats[seatIndexInRow];
+            result = {
+              rowName: row.name || `Row ${row.orderNumber || '?'}`,
+              seatNumber: seat.orderNumber || seatIndexInRow + 1
+            };
+            break;
+          }
+          currentIndex += row.seats.length;
+        }
+      }
+    }
+    
+    return result;
+  }
+
+  // Update seat tooltip handlers for all seats
+  private updateSeatTooltipHandlers(): void {
+    if (!this.layer) return;
+    
+    // Iterate through all sectors
+    this.editableSectors().forEach(sector => {
+      const sectorId = sector.sectorId!;
+      const existingSeats = this.sectorSeats.get(sectorId);
+      
+      if (existingSeats) {
+        existingSeats.forEach((seat, index) => {
+          // Clear existing event handlers and add new ones
+          seat.off('mouseover');
+          seat.off('mouseout');
+          
+          // Add tooltip event handlers
+          seat.on('mouseover', () => {
+            this.stage!.container().style.cursor = 'pointer';
+            seat.fill('#66BB6A'); // Hover color
+            
+            // Show tooltip with seat information when zoom level is sufficient (≥ 180%)
+            if (this.zoomLevel() >= 1.79) {
+              this.ensureSeatTooltip();
+              if (!this.seatTooltip) return;
+              
+              // Get seat info (row name and seat number)
+              const { rowName, seatNumber } = this.getSeatInfoFromIndex(sector, index);
+              
+              // Set tooltip text with sector name, row name, and seat number
+              const tooltipText = `Sector: ${sector.name || 'Unknown'}\nRow: ${rowName}\nSeat: ${seatNumber}`;
+              const labelText = this.seatTooltip.findOne('Text') as Konva.Text;
+              labelText.text(tooltipText);
+              
+              // Position tooltip above the seat, adjusted for zoom
+              const absPos = seat.getAbsolutePosition();
+              const zoom = this.zoomLevel();
+              this.seatTooltip.position({
+                x: absPos.x / zoom,
+                y: absPos.y / zoom - 10
+              });
+              
+              this.seatTooltip.visible(true);
+              // Always move tooltip to the top of the layer to ensure it's visible
+              this.seatTooltip.moveToTop();
+              this.layer!.batchDraw();
+            }
+          });
+          
+          seat.on('mouseout', () => {
+            this.stage!.container().style.cursor = 'default';
+            seat.fill('#90A4AE'); // Reset color
+            
+            // Hide tooltip
+            if (this.seatTooltip) {
+              this.seatTooltip.visible(false);
+              this.layer!.batchDraw();
+            }
+          });
+        });
+      }
+    });
+  }
   private getConvexHull(points: {x: number, y: number}[]): {x: number, y: number}[] {
     // Andrew's monotone chain algorithm
     const sorted = [...points].sort((a, b) => a.x - b.x || a.y - b.y);
@@ -1602,6 +1763,14 @@ console.log("addSelectionIndicators2");
     
     // Update seat visibility based on zoom level
     this.updateSeatsVisibility(currentZoom);
+    
+    // Update seat tooltip handlers
+    this.updateSeatTooltipHandlers();
+    
+    // Hide tooltip when zooming to avoid incorrect positioning
+    if (this.seatTooltip) {
+      this.seatTooltip.visible(false);
+    }
     
     this.stage.batchDraw();
     

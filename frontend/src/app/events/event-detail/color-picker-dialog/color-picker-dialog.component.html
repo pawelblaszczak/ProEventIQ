@@ -1,0 +1,82 @@
+<div class="color-picker-dialog">
+  <div class="dialog-header">
+    <div class="dialog-icon">
+      <mat-icon color="primary">palette</mat-icon>
+    </div>
+    <h2 mat-dialog-title class="dialog-title">Choose Seat Color</h2>
+  </div>
+  
+  <mat-dialog-content class="dialog-content">
+    <div class="current-color-preview">
+      <div class="color-preview-box" 
+           [style.background-color]="selectedColor() || '#e0e0e0'"
+           [style.color]="getContrastColor(selectedColor())">
+        {{ selectedColor() || 'No color selected' }}
+      </div>
+    </div>
+
+    <div class="color-section">
+      <h3 class="section-title">
+        <mat-icon>palette</mat-icon>
+        Predefined Colors
+      </h3>
+      <div class="predefined-colors-grid">
+        <button *ngFor="let color of getAvailableColors()" 
+                class="color-option"
+                [style.background-color]="color"
+                [class.selected]="selectedColor() === color"
+                (click)="selectColor(color)"
+                [title]="color"
+                type="button">
+          <mat-icon *ngIf="selectedColor() === color" class="check-icon">check</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <div class="color-section">
+      <h3 class="section-title">
+        <mat-icon>colorize</mat-icon>
+        Custom Color
+      </h3>
+      <div class="custom-color-section">
+        <div class="custom-color-row" style="display: flex; align-items: center; gap: 16px; margin-top: -10px;">
+          <mat-form-field appearance="outline" class="hex-input" style="flex: 1;">
+            <mat-label>Hex Color Code</mat-label>
+            <input matInput 
+                   [(ngModel)]="customHexColor"
+                   placeholder="#FF5733"
+                   pattern="^#[0-9A-Fa-f]{6}$"
+                   (input)="onHexInput($event)">
+            <mat-icon matSuffix>tag</mat-icon>
+          </mat-form-field>
+          <input type="color" 
+                 [(ngModel)]="selectedColor"
+                 class="color-picker-input"
+                 (change)="onColorPickerChange($event)"
+                 title="Color picker"
+                 style="height: 40px; width: 40px; border: none; background: none; cursor: pointer; margin-top: -20px;">
+        </div>
+      </div>
+    </div>
+  </mat-dialog-content>
+
+  <mat-dialog-actions class="dialog-actions" align="end">
+    <button mat-stroked-button 
+            type="button" 
+            (click)="onCancel()" 
+            class="cancel-button">
+      <mat-icon>close</mat-icon>
+      Cancel
+    </button>
+    
+    <button mat-raised-button 
+            color="primary" 
+            type="button" 
+            (click)="onConfirm()" 
+            [disabled]="!selectedColor()"
+            class="confirm-button">
+      <mat-icon>check</mat-icon>
+      Select Color
+    </button>
+  </mat-dialog-actions>
+</div>

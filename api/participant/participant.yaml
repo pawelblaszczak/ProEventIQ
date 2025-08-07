@@ -12,6 +12,13 @@ components:
         name:
           type: string
           description: Name of the participant
+        address:
+          type: string
+          description: Address of the participant
+        seatColor:
+          type: string
+          pattern: '^#[0-9A-Fa-f]{6}$'
+          description: HEX color code for seats on venue map (e.g., #FF5733)
         numberOfTickets:
           type: integer
           minimum: 1

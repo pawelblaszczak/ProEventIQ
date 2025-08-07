@@ -11,10 +11,12 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatTableModule } from '@angular/material/table';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatDialog } from '@angular/material/dialog';
 import { Event as ApiEvent } from '../../api/model/event';
 import { Venue } from '../../api/model/venue';
 import { ProEventIQService } from '../../api/api/pro-event-iq.service';
-import { ConfirmationDialogService } from '../../shared';
+import { ConfirmationDialogService, ColorService } from '../../shared';
+import { ColorPickerDialogComponent } from './color-picker-dialog';
 import { Participant } from '../../api/model/participant';
 import { VenueMapEditComponent } from '../../venues/venue-map-edit/venue-map-edit.component';
 import { EventService } from '../event.service';
@@ -47,6 +49,8 @@ export class EventDetailComponent implements OnInit {
   private readonly eventApi = inject(ProEventIQService);
   private readonly confirmationDialog = inject(ConfirmationDialogService);
   private readonly eventService = inject(EventService);
+  private readonly dialog = inject(MatDialog);
+  private readonly colorService = inject(ColorService);
 
   private readonly eventId = signal<string | null>(null);
   public event = signal<ApiEvent | null>(null);
@@ -320,12 +324,45 @@ export class EventDetailComponent implements OnInit {
     });
   }
 
+  private generateRandomColor(): string {
+    return this.colorService.generateRandomColor();
+  }
+
+  public getAvailableColors(): string[] {
+    return this.colorService.getAvailableColors();
+  }
+
+  public getContrastColor(hexColor: string | undefined): string {
+    return this.colorService.getContrastColor(hexColor);
+  }
+
+  public openColorPicker(participant: Participant): void {
+    const dialogRef = this.dialog.open(ColorPickerDialogComponent, {
+      width: '450px',
+      data: {
+        currentColor: participant.seatColor,
+        title: `Choose Seat Color for ${participant.name || 'Participant'}`
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(selectedColor => {
+      if (selectedColor) {
+        participant.seatColor = selectedColor;
+        // Trigger change detection by updating the participants signal with a new array
+        const currentParticipants = this.participants();
+        this.participants.set([...currentParticipants]);
+      }
+    });
+  }
+
   public onAddParticipant() {
     const currentParticipants = this.participants();
     const newParticipant: Participant = {
       participantId: 'new',
       eventId: this.eventId() ?? '',
       name: '',
+      address: '',
+      seatColor: this.generateRandomColor(),
       numberOfTickets: 1
     };
     this.participants.set([...currentParticipants, newParticipant]);
@@ -344,6 +381,8 @@ export class EventDetailComponent implements OnInit {
       // Create new participant
       const participantInput = {
         name: participant.name,
+        address: participant.address || undefined,
+        seatColor: participant.seatColor || undefined,
         numberOfTickets: participant.numberOfTickets
       };
       this.eventApi.eventsEventIdParticipantsPost(eventId, participantInput).subscribe({
@@ -357,6 +396,8 @@ export class EventDetailComponent implements OnInit {
       // Update existing participant
       const participantInput = {
         name: participant.name,
+        address: participant.address || undefined,
+        seatColor: participant.seatColor || undefined,
         numberOfTickets: participant.numberOfTickets
       };
       this.eventApi.eventsEventIdParticipantsParticipantIdPut(eventId, participant.participantId, participantInput).subscribe({

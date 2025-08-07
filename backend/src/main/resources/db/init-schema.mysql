@@ -113,6 +113,8 @@ CREATE TABLE participant (
     participant_id INT AUTO_INCREMENT PRIMARY KEY,
     event_id INT NOT NULL,
     name VARCHAR(255) NOT NULL,
+    address VARCHAR(255),
+    seat_color VARCHAR(7),
     number_of_tickets INT NOT NULL CHECK (number_of_tickets >= 1),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -162,6 +164,18 @@ BEGIN
 END$$
 
 DELIMITER ;
+
+CREATE TABLE seat_reservation (
+    reservation_id INT AUTO_INCREMENT PRIMARY KEY,
+    participant_id INT NOT NULL,
+    seat_id INT NOT NULL,
+    event_id INT NOT NULL,
+    reserved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (participant_id) REFERENCES participant(participant_id) ON DELETE CASCADE,
+    FOREIGN KEY (seat_id) REFERENCES seat(seat_id) ON DELETE CASCADE,
+    FOREIGN KEY (event_id) REFERENCES event(event_id) ON DELETE CASCADE,
+    UNIQUE KEY unique_seat_event (seat_id, event_id), -- Prevent double booking of a seat for an event
+);
 
 
 

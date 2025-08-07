@@ -513,3 +513,24 @@ $border-radius: 12px;
   scrollbar-width: auto;
   scrollbar-color: #cfd8dc #f5f8fa;
 }
+
+// Tooltip for seat information
+.seat-tooltip {
+  position: absolute;
+  background-color: rgba(0, 0, 0, 0.75);
+  color: white;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  pointer-events: none;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  display: none;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+// Konva tooltips are rendered directly, no need for CSS display property
+:host ::ng-deep .konvajs-content {
+  position: relative;
+}

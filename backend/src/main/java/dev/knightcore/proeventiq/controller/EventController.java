@@ -57,11 +57,10 @@ public class EventController implements EventsApi {
     }
 
     @Override
-    public ResponseEntity<Void> deleteEvent(String eventId) {
+    public ResponseEntity<Void> deleteEvent(Long eventId) {
         log.info("Deleting event with ID: {}", eventId);
         try {
-            Long id = Long.parseLong(eventId);
-            boolean deleted = eventService.deleteEvent(id);
+            boolean deleted = eventService.deleteEvent(eventId);
             if (deleted) {
                 return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
             } else {
@@ -77,11 +76,10 @@ public class EventController implements EventsApi {
     }
 
     @Override
-    public ResponseEntity<Event> getEventById(String eventId) {
+    public ResponseEntity<Event> getEventById(Long eventId) {
         log.info("Fetching event with ID: {}", eventId);
         try {
-            Long id = Long.parseLong(eventId);
-            return eventService.getEvent(id)
+            return eventService.getEvent(eventId)
                     .map(ResponseEntity::ok)
                     .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
         } catch (NumberFormatException e) {
@@ -94,7 +92,7 @@ public class EventController implements EventsApi {
     }
 
     @Override
-    public ResponseEntity<PaginatedEvents> listEvents(String showId, OffsetDateTime dateFrom, OffsetDateTime dateTo, String venueId, Integer page, Integer size, String search) {
+    public ResponseEntity<PaginatedEvents> listEvents(Long showId, OffsetDateTime dateFrom, OffsetDateTime dateTo, Long venueId, Integer page, Integer size, String search) {
         log.info("Listing events with filters - showId: {}, venueId: {}, dateFrom: {}, dateTo: {}, page: {}, size: {}, search: {}", 
                 showId, venueId, dateFrom, dateTo, page, size, search);
         try {
@@ -102,17 +100,9 @@ public class EventController implements EventsApi {
                 log.warn("Invalid date range: dateFrom {} is after dateTo {}", dateFrom, dateTo);
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
             }
-            Long parsedShowId = null;
-            Long parsedVenueId = null;
-            if (showId != null && !showId.trim().isEmpty()) {
-                parsedShowId = Long.parseLong(showId);
-            }
-            if (venueId != null && !venueId.trim().isEmpty()) {
-                parsedVenueId = Long.parseLong(venueId);
-            }
             int pageNum = (page != null && page > 0) ? page - 1 : 0;
             int pageSize = (size != null && size > 0) ? size : 20;
-            Page<Event> eventPage = eventService.listEventsPaginated(parsedShowId, parsedVenueId, dateFrom, dateTo, search, PageRequest.of(pageNum, pageSize));
+            Page<Event> eventPage = eventService.listEventsPaginated(showId, venueId, dateFrom, dateTo, search, PageRequest.of(pageNum, pageSize));
             PaginatedEvents result = new PaginatedEvents()
                 .items(eventPage.getContent())
                 .totalItems((int) eventPage.getTotalElements())
@@ -130,11 +120,10 @@ public class EventController implements EventsApi {
     }
 
     @Override
-    public ResponseEntity<Event> updateEvent(String eventId, @Valid EventInput eventInput) {
+    public ResponseEntity<Event> updateEvent(Long eventId, @Valid EventInput eventInput) {
         log.info("Updating event with ID: {}", eventId);
         try {
-            Long id = Long.parseLong(eventId);
-            return eventService.updateEvent(id, eventInput)
+            return eventService.updateEvent(eventId, eventInput)
                     .map(ResponseEntity::ok)
                     .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
         } catch (NumberFormatException e) {
@@ -148,11 +137,10 @@ public class EventController implements EventsApi {
 
     // PARTICIPANT ENDPOINTS
     @Override
-    public ResponseEntity<List<Participant>> eventsEventIdParticipantsGet(String eventId) {
+    public ResponseEntity<List<Participant>> eventsEventIdParticipantsGet(Long eventId) {
         log.info("Listing participants for event ID: {}", eventId);
         try {
-            Long id = Long.parseLong(eventId);
-            List<Participant> participants = eventService.listParticipantsByEvent(id);
+            List<Participant> participants = eventService.listParticipantsByEvent(eventId);
             return ResponseEntity.ok(participants);
         } catch (NumberFormatException e) {
             log.error(INVALID_EVENT_ID_FORMAT, eventId);
@@ -164,11 +152,10 @@ public class EventController implements EventsApi {
     }
 
     @Override
-    public ResponseEntity<Participant> eventsEventIdParticipantsPost(String eventId, @Valid ParticipantInput participantInput) {
+    public ResponseEntity<Participant> eventsEventIdParticipantsPost(Long eventId, @Valid ParticipantInput participantInput) {
         log.info("Adding participant to event ID: {}", eventId);
         try {
-            Long id = Long.parseLong(eventId);
-            return eventService.addParticipant(id, participantInput)
+            return eventService.addParticipant(eventId, participantInput)
                     .map(participant -> ResponseEntity.status(HttpStatus.CREATED).body(participant))
                     .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(null));
         } catch (NumberFormatException e) {
@@ -181,11 +168,10 @@ public class EventController implements EventsApi {
     }
 
     @Override
-    public ResponseEntity<Participant> eventsEventIdParticipantsParticipantIdGet(String eventId, String participantId) {
+    public ResponseEntity<Participant> eventsEventIdParticipantsParticipantIdGet(Long eventId, Long participantId) {
         log.info("Fetching participant {} for event ID: {}", participantId, eventId);
         try {
-            Long eid = Long.parseLong(eventId);
-            return eventService.getParticipant(eid, participantId)
+            return eventService.getParticipant(eventId, participantId)
                     .map(ResponseEntity::ok)
                     .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
         } catch (NumberFormatException e) {
@@ -198,11 +184,10 @@ public class EventController implements EventsApi {
     }
 
     @Override
-    public ResponseEntity<Participant> eventsEventIdParticipantsParticipantIdPut(String eventId, String participantId, @Valid ParticipantInput participantInput) {
+    public ResponseEntity<Participant> eventsEventIdParticipantsParticipantIdPut(Long eventId, Long participantId, @Valid ParticipantInput participantInput) {
         log.info("Updating participant {} for event ID: {}", participantId, eventId);
         try {
-            Long eid = Long.parseLong(eventId);
-            return eventService.updateParticipant(eid, participantId, participantInput)
+            return eventService.updateParticipant(eventId, participantId, participantInput)
                     .map(ResponseEntity::ok)
                     .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
         } catch (NumberFormatException e) {
@@ -215,11 +200,10 @@ public class EventController implements EventsApi {
     }
 
     @Override
-    public ResponseEntity<Void> eventsEventIdParticipantsParticipantIdDelete(String eventId, String participantId) {
+    public ResponseEntity<Void> eventsEventIdParticipantsParticipantIdDelete(Long eventId, Long participantId) {
         log.info("Deleting participant {} from event ID: {}", participantId, eventId);
         try {
-            Long eid = Long.parseLong(eventId);
-            boolean deleted = eventService.deleteParticipant(eid, participantId);
+            boolean deleted = eventService.deleteParticipant(eventId, participantId);
             if (deleted) {
                 return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
             } else {
@@ -234,16 +218,15 @@ public class EventController implements EventsApi {
         }
     }
 
-    public ResponseEntity<org.springframework.core.io.Resource> eventsEventIdParticipantsParticipantIdReportGet(String eventId, String participantId) {
+    public ResponseEntity<org.springframework.core.io.Resource> eventsEventIdParticipantsParticipantIdReportGet(Long eventId, Long participantId) {
         log.info("Generating participant report for participant {} in event ID: {}", participantId, eventId);
         try {
-            Long eid = Long.parseLong(eventId);
-            return reportService.generateParticipantReport(eid, participantId)
+            return reportService.generateParticipantReport(eventId, participantId)
                     .map(reportBytes -> {
                         HttpHeaders headers = new HttpHeaders();
                         headers.setContentType(MediaType.APPLICATION_PDF);
                         // Use centralized filename generation from ReportService
-                        String filename = reportService.generateParticipantReportFilename(eid, participantId);
+                        String filename = reportService.generateParticipantReportFilename(eventId, participantId);
                         headers.set(HttpHeaders.CONTENT_DISPOSITION, 
                             "attachment; filename=" + filename);
                         
@@ -263,16 +246,15 @@ public class EventController implements EventsApi {
     }
 
     @Override
-    public ResponseEntity<Resource> eventsEventIdParticipantsReportsZipGet(String eventId) {
+    public ResponseEntity<Resource> eventsEventIdParticipantsReportsZipGet(Long eventId) {
         log.info("Generating ZIP of all participant reports for event ID: {}", eventId);
         try {
-            Long eid = Long.parseLong(eventId);
-            return reportService.generateAllParticipantReportsZip(eid)
+            return reportService.generateAllParticipantReportsZip(eventId)
                     .map(zipBytes -> {
                         HttpHeaders headers = new HttpHeaders();
                         headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
                         // Use centralized filename generation from ReportService
-                        String filename = reportService.generateParticipantReportsZipFilename(eid);
+                        String filename = reportService.generateParticipantReportsZipFilename(eventId);
                         headers.set(HttpHeaders.CONTENT_DISPOSITION, 
                             "attachment; filename=" + filename);
                         

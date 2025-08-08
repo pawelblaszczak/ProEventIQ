@@ -136,7 +136,7 @@
           <ng-container matColumnDef="name">
             <th mat-header-cell *matHeaderCellDef style="width: 40%; min-width: 200px;">Name/Address</th>
             <td mat-cell *matCellDef="let p" style="width: 40%; min-width: 200px;">
-              <div *ngIf="p.participantId !== 'new' && editingParticipant() !== p.participantId; else editNameAddressTemplate">
+              <div *ngIf="p.participantId !== -1 && editingParticipant() !== p.participantId; else editNameAddressTemplate">
                 <div class="participant-name">{{ p.name }}</div>
                 <div class="participant-address">{{ p.address || '-' }}</div>
               </div>
@@ -157,7 +157,7 @@
           <ng-container matColumnDef="seatColor">
             <th mat-header-cell *matHeaderCellDef style="width: 10%; min-width: 70px;">Seat Color</th>
             <td mat-cell *matCellDef="let p" style="width: 10%; min-width: 70px;">
-              <div *ngIf="p.participantId !== 'new' && editingParticipant() !== p.participantId; else editSeatColorTemplate">
+              <div *ngIf="p.participantId !== -1 && editingParticipant() !== p.participantId; else editSeatColorTemplate">
                 <ng-container *ngIf="p.seatColor; else noColorLabel">
                   <div class="color-preview" 
                        [style.background-color]="p.seatColor" 
@@ -188,7 +188,7 @@
           <ng-container matColumnDef="numberOfTickets">
             <th mat-header-cell *matHeaderCellDef style="width: 16%; min-width: 80px;">Tickets</th>
             <td mat-cell *matCellDef="let p" style="width: 16%; min-width: 80px;">
-              <div *ngIf="p.participantId !== 'new' && editingParticipant() !== p.participantId; else editTicketsTemplate">
+              <div *ngIf="p.participantId !== -1 && editingParticipant() !== p.participantId; else editTicketsTemplate">
                 {{ p.numberOfTickets }}
               </div>
               <ng-template #editTicketsTemplate>
@@ -207,7 +207,7 @@
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef style="width: 15%; min-width: 120px; text-align: center;">Actions</th>
             <td mat-cell *matCellDef="let p" style="width: 15%; min-width: 120px; text-align: center;">
-              <div *ngIf="p.participantId !== 'new' && editingParticipant() !== p.participantId; else editActionsTemplate">
+              <div *ngIf="p.participantId !== -1 && editingParticipant() !== p.participantId; else editActionsTemplate">
                 <button mat-icon-button color="accent" (click)="onGenerateReport(p.participantId)" aria-label="Generate report" title="Generate PDF Report">
                   <mat-icon style="color: #222;">article</mat-icon>
                 </button>

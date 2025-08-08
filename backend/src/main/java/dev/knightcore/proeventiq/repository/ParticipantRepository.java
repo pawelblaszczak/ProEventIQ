@@ -8,9 +8,9 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface ParticipantRepository extends JpaRepository<ParticipantEntity, String> {
+public interface ParticipantRepository extends JpaRepository<ParticipantEntity, Long> {
     List<ParticipantEntity> findByEventId(Long eventId);
-    Optional<ParticipantEntity> findByParticipantIdAndEventId(String participantId, Long eventId);
-    void deleteByParticipantIdAndEventId(String participantId, Long eventId);
-    boolean existsByParticipantIdAndEventId(String participantId, Long eventId);
+    Optional<ParticipantEntity> findByParticipantIdAndEventId(Long participantId, Long eventId);
+    void deleteByParticipantIdAndEventId(Long participantId, Long eventId);
+    boolean existsByParticipantIdAndEventId(Long participantId, Long eventId);
 }

@@ -8,7 +8,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 
 export interface EditRowDialogData {
-  rowId: string;
+  rowId: number;
   currentName: string;
   orderNumber?: number;
 }

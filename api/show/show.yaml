@@ -2,7 +2,8 @@ Show:
   type: object
   properties:
     showId:
-      type: string
+      type: integer
+      format: int64
     name:
       type: string
     thumbnail:

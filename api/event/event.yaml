@@ -2,11 +2,14 @@ Event:
   type: object
   properties:
     eventId:
-      type: string
+      type: integer
+      format: int64
     showId:
-      type: string
+      type: integer
+      format: int64
     venueId:
-      type: string
+      type: integer
+      format: int64
     showName:
       type: string
     venueName:

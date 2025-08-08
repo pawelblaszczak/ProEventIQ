@@ -36,7 +36,7 @@ export class ShowEditComponent {
   private readonly showApi = inject(ProEventIQService);
   
   form: FormGroup;
-  showId: string | null = null;
+  showId: number | null = null;
   isAddMode = signal(false);
   loading = signal(false);
   error = signal<string | null>(null);
@@ -57,7 +57,8 @@ export class ShowEditComponent {
     });
 
     this.route.paramMap.subscribe(params => {
-      this.showId = params.get('id');
+      const idParam = params.get('id');
+      this.showId = idParam ? Number(idParam) : null;
       this.isAddMode.set(!this.showId);
       
       if (this.showId) {
@@ -69,7 +70,7 @@ export class ShowEditComponent {
     });
   }
 
-  loadShow(id: string) {
+  loadShow(id: number) {
     this.loading.set(true);
     this.showApi.getShowById(id).subscribe({
       next: (show: Show) => {

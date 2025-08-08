@@ -41,7 +41,7 @@ export class EventEditComponent {
   private readonly eventApi = inject(ProEventIQService);
 
   form: FormGroup;
-  eventId: string | null = null;
+  eventId: number | null = null;
   isAddMode = signal(false);
   loading = signal(false);
   error = signal<string | null>(null);
@@ -62,7 +62,8 @@ export class EventEditComponent {
       dateTime: ['', Validators.required]
     });
     this.route.paramMap.subscribe(params => {
-      this.eventId = params.get('id');
+      const idParam = params.get('id');
+      this.eventId = idParam ? +idParam : null;
       this.isAddMode.set(!this.eventId);
       if (this.eventId) {
         this.loadEvent(this.eventId);
@@ -98,7 +99,7 @@ export class EventEditComponent {
     });
   }
 
-  loadEvent(id: string) {
+  loadEvent(id: number) {
     this.loading.set(true);
     this.eventApi.getEventById(id).subscribe({
       next: (event) => {

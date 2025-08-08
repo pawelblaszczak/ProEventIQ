@@ -4,10 +4,12 @@ components:
       type: object
       properties:
         participantId:
-          type: string
+          type: integer
+          format: int64
           description: Unique identifier for the participant
         eventId:
-          type: string
+          type: integer
+          format: int64
           description: ID of the event the participant is attending
         name:
           type: string

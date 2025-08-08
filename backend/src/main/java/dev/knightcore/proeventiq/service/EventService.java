@@ -74,8 +74,8 @@ public class EventService {
         log.info("Creating new event for show: {} at venue: {}", input.getShowId(), input.getVenueId());
         
         // Validate that show and venue exist
-        Long showId = Long.parseLong(input.getShowId());
-        Long venueId = Long.parseLong(input.getVenueId());
+        Long showId = input.getShowId();
+        Long venueId = input.getVenueId();
         
         if (!showRepository.existsById(showId)) {
             log.warn("Show with ID {} not found", showId);
@@ -98,8 +98,8 @@ public class EventService {
         
         return eventRepository.findById(eventId).map(entity -> {
             // Validate that show and venue exist
-            Long showId = Long.parseLong(input.getShowId());
-            Long venueId = Long.parseLong(input.getVenueId());
+            Long showId = input.getShowId();
+            Long venueId = input.getVenueId();
             
             if (!showRepository.existsById(showId)) {
                 log.warn("Show with ID {} not found", showId);
@@ -150,10 +150,8 @@ public class EventService {
             log.warn("Invalid number of tickets: {}", input.getNumberOfTickets());
             return Optional.empty();
         }
-        // Generate unique participantId
-        String participantId = UUID.randomUUID().toString();
+
         ParticipantEntity entity = new ParticipantEntity();
-        entity.setParticipantId(participantId);
         entity.setEventId(eventId);
         entity.setName(input.getName());
         entity.setAddress(input.getAddress());
@@ -166,14 +164,14 @@ public class EventService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<Participant> getParticipant(Long eventId, String participantId) {
+    public Optional<Participant> getParticipant(Long eventId, Long participantId) {
         log.info("Fetching participant {} for event {}", participantId, eventId);
         return participantRepository.findByParticipantIdAndEventId(participantId, eventId)
                 .map(this::toParticipantDto);
     }
 
     @Transactional
-    public Optional<Participant> updateParticipant(Long eventId, String participantId, ParticipantInput input) {
+    public Optional<Participant> updateParticipant(Long eventId, Long participantId, ParticipantInput input) {
         log.info("Updating participant {} for event {}", participantId, eventId);
         return participantRepository.findByParticipantIdAndEventId(participantId, eventId).map(entity -> {
             if (input.getName() != null) entity.setName(input.getName());
@@ -189,7 +187,7 @@ public class EventService {
     }
 
     @Transactional
-    public boolean deleteParticipant(Long eventId, String participantId) {
+    public boolean deleteParticipant(Long eventId, Long participantId) {
         log.info("Deleting participant {} from event {}", participantId, eventId);
         if (participantRepository.existsByParticipantIdAndEventId(participantId, eventId)) {
             participantRepository.deleteByParticipantIdAndEventId(participantId, eventId);
@@ -200,9 +198,9 @@ public class EventService {
 
     private Event toDto(EventEntity entity) {
         Event dto = new Event();
-        dto.setEventId(entity.getEventId().toString());
-        dto.setShowId(entity.getShowId().toString());
-        dto.setVenueId(entity.getVenueId().toString());
+        dto.setEventId(entity.getEventId());
+        dto.setShowId(entity.getShowId());
+        dto.setVenueId(entity.getVenueId());
         dto.setDateTime(entity.getDateTime().atOffset(ZoneOffset.UTC));
         // Set show and venue names from the loaded entities
         if (entity.getShow() != null) {
@@ -238,14 +236,14 @@ public class EventService {
     }
 
     private void updateEventEntityFromInput(EventEntity entity, EventInput input) {
-        entity.setShowId(Long.parseLong(input.getShowId()));
-        entity.setVenueId(Long.parseLong(input.getVenueId()));
+        entity.setShowId(input.getShowId());
+        entity.setVenueId(input.getVenueId());
         entity.setDateTime(input.getDateTime().toLocalDateTime());
     }
     
     private dev.knightcore.proeventiq.api.model.Show convertShowEntityToDto(dev.knightcore.proeventiq.entity.ShowEntity entity) {
         dev.knightcore.proeventiq.api.model.Show dto = new dev.knightcore.proeventiq.api.model.Show();
-        dto.setShowId(entity.getShowId().toString());
+        dto.setShowId(entity.getShowId());
         dto.setName(entity.getName());
         dto.setDescription(entity.getDescription());
         dto.setAgeFrom(entity.getAgeFrom());
@@ -261,7 +259,7 @@ public class EventService {
     
     private dev.knightcore.proeventiq.api.model.Venue convertVenueEntityToDto(dev.knightcore.proeventiq.entity.VenueEntity entity) {
         dev.knightcore.proeventiq.api.model.Venue dto = new dev.knightcore.proeventiq.api.model.Venue();
-        dto.setVenueId(entity.getVenueId().toString());
+        dto.setVenueId(entity.getVenueId());
         dto.setName(entity.getName());
         dto.setCountry(entity.getCountry());
         dto.setCity(entity.getCity());
@@ -279,7 +277,7 @@ public class EventService {
     private Participant toParticipantDto(ParticipantEntity entity) {
         Participant dto = new Participant(
             entity.getParticipantId(),
-            entity.getEventId().toString(),
+            entity.getEventId(),
             entity.getName(),
             entity.getNumberOfTickets()
         );

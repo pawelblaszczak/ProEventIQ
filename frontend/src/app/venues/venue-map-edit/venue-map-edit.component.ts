@@ -79,7 +79,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
 
-  private readonly venueId = signal<string | null>(null);
+  private readonly venueId = signal<number | null>(null);
   public venue = signal<Venue | null>(null);
   public loading = signal(true);
   public error = signal<string | null>(null);
@@ -89,11 +89,11 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
   private stage: Konva.Stage | null = null;
   private layer: Konva.Layer | null = null;
   private dragLayer: Konva.Layer | null = null; // Special layer for dragging operations
-  private readonly sectorGroups = new Map<string, Konva.Group>();
-  private readonly sectorSeats = new Map<string, Konva.Circle[]>(); // Cache seat objects
-  private readonly sectorOutlines = new Map<string, Konva.Line>(); // Cache outline objects
-  private readonly sectorLabels = new Map<string, { name: Konva.Text; seats: Konva.Text }>(); // Cache label objects
-  private initialDragPositions = new Map<string, { x: number; y: number }>();
+  private readonly sectorGroups = new Map<number, Konva.Group>();
+  private readonly sectorSeats = new Map<number, Konva.Circle[]>(); // Cache seat objects
+  private readonly sectorOutlines = new Map<number, Konva.Line>(); // Cache outline objects
+  private readonly sectorLabels = new Map<number, { name: Konva.Text; seats: Konva.Text }>(); // Cache label objects
+  private initialDragPositions = new Map<number, { x: number; y: number }>();
   private konvaInitialized = false;
   private needsFullRender = false; // Flag to control when full re-render is needed
   private seatTooltip: Konva.Label | null = null; // Tooltip for seat information
@@ -205,10 +205,11 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     } else {
       // Edit mode: fetch venue from route parameter
       this.route.paramMap.subscribe(params => {
-        const id = params.get('venueId'); // Changed from 'id' to 'venueId' to match route
+        const idParam = params.get('venueId'); // Changed from 'id' to 'venueId' to match route
+        const id = idParam ? Number(idParam) : null;
         this.venueId.set(id);
         console.log('Edit mode - venue ID from route:', id);
-        if (id) {
+        if (id !== null && !isNaN(id))  {
           this.fetchVenue(id);
         } else {
           console.error('No venue ID found in route parameters');
@@ -336,7 +337,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     return undefined;
   };
 
-  private fetchVenue(id: string) {
+  private fetchVenue(id: number) {
     console.log('Fetching venue with ID:', id);
     this.loading.set(true);
     this.venueApi.getVenue(id).subscribe({
@@ -547,7 +548,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     this.layer.batchDraw();
   }
 
-  private removeSector(sectorId: string) {
+  private removeSector(sectorId: number) {
     const group = this.sectorGroups.get(sectorId);
     if (group) {
       group.destroy();
@@ -1363,7 +1364,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     console.log('Adding new sector...');
     const sectors = this.editableSectors();
     const newSector: EditableSector = {
-      sectorId: `temp-${Date.now()}`,
+      sectorId: -1,
       name: `Sector ${sectors.length + 1}`,
       position: { x: 200, y: 200 },
       numberOfSeats: 0,
@@ -1399,7 +1400,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
           let errorOccurred = false;
           for (const sector of selectedSectors) {
             // Only call API for persisted sectors (not temp ones)
-            if (venueId && sector.sectorId && !sector.sectorId.startsWith('temp-')) {
+            if (venueId && sector.sectorId && !(sector.sectorId === -1) ) {
               try {
                 await firstValueFrom(this.venueApi.deleteSector(venueId, sector.sectorId));
                 console.log('Deleted sector from API:', sector.sectorId);
@@ -1437,7 +1438,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     selectedSectors.forEach((selectedSector, index) => {
       const duplicatedSector: EditableSector = {
         ...selectedSector,
-        sectorId: `temp-${Date.now()}-${index}`,
+        sectorId: -1,
         name: `${selectedSector.name} Copy`,
         position: {
           x: (selectedSector.position?.x ?? 0) + 50,
@@ -1467,7 +1468,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
       
       // Save all sectors
       for (const sector of this.editableSectors()) {
-        if (sector.sectorId?.startsWith('temp-')) {
+        if (sector.sectorId === -1) {
           // Create new sector
           const sectorInput = {
             name: sector.name ?? '',

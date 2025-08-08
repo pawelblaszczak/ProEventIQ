@@ -38,22 +38,25 @@ export class VenueDetailComponent {
   private readonly venueApi = inject(ProEventIQService);
   private readonly confirmationDialog = inject(ConfirmationDialogService);
 
-  private readonly venueId = signal<string | null>(null);
+  private readonly venueId = signal<number | null>(null);
   public venue = signal<Venue | null>(null);
   public loading = signal(true);
   public error = signal<string | null>(null);
 
   constructor() {
     this.route.paramMap.subscribe(params => {
-      const id = params.get('id');
-      this.venueId.set(id);
-      if (id) {
+      const idParam = params.get('id');
+      const id = idParam ? Number(idParam) : null;
+
+      this.venueId.set(id); // or .next(id), depending on what venueId is
+
+      if (id !== null && !isNaN(id)) {
         this.fetchVenue(id);
       }
     });
   }
 
-  private fetchVenue(id: string) {
+  private fetchVenue(id: number) {
     this.loading.set(true);
     this.venueApi.getVenue(id).subscribe({
       next: (venue: Venue) => {

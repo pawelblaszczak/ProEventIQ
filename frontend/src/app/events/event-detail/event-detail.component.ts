@@ -52,7 +52,7 @@ export class EventDetailComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly colorService = inject(ColorService);
 
-  private readonly eventId = signal<string | null>(null);
+  private readonly eventId = signal<number | null>(null);
   public event = signal<ApiEvent | null>(null);
   public venue = signal<Venue | null>(null);
   public loading = signal(true);
@@ -88,16 +88,19 @@ export class EventDetailComponent implements OnInit {
 
   ngOnInit() {
     this.route.paramMap.subscribe(params => {
-      const id = params.get('id');
-      this.eventId.set(id);
-      if (id) {
+      const idParam = params.get('id');
+      const id = idParam ? Number(idParam) : null;
+
+      this.eventId.set(id); // Or .next(id), depending on what eventId is
+
+      if (id !== null && !isNaN(id)) {
         this.loadEvent(id);
         this.loadParticipants(id);
       }
     });
   }
 
-  private loadEvent(eventId: string) {
+  private loadEvent(eventId: number) {
     this.loading.set(true);
     this.error.set(null);
 
@@ -115,72 +118,11 @@ export class EventDetailComponent implements OnInit {
       error: (error: any) => {
         console.error('Error loading event from API:', error);
         console.log('Falling back to mock data');
-        this.loadMockEvent(eventId);
       }
     });
   }
 
-  private loadMockEvent(eventId: string) {
-    // Mock data fallback
-    const mockEvents: ApiEvent[] = [
-      {
-        eventId: '1',
-        showId: '1',
-        venueId: '1',
-        showName: 'Hamlet - The Classic Drama',
-        venueName: 'Metropolitan Opera House',
-        dateTime: '2025-07-15T19:30:00.000Z'
-      },
-      {
-        eventId: '2',
-        showId: '2',
-        venueId: '2',
-        showName: 'Swan Lake Ballet',
-        venueName: 'Royal Albert Hall',
-        dateTime: '2025-07-22T20:00:00.000Z'
-      },
-      {
-        eventId: '3',
-        showId: '3',
-        venueId: '3',
-        showName: 'La Bohème Opera',
-        venueName: 'Sydney Opera House',
-        dateTime: '2025-08-05T19:00:00.000Z'
-      },
-      {
-        eventId: '4',
-        showId: '1',
-        venueId: '2',
-        showName: 'Hamlet - The Classic Drama',
-        venueName: 'Royal Albert Hall',
-        dateTime: '2025-08-12T19:30:00.000Z'
-      },
-      {
-        eventId: '5',
-        showId: '4',
-        venueId: '1',
-        showName: 'The Nutcracker',
-        venueName: 'Metropolitan Opera House',
-        dateTime: '2025-12-15T15:00:00.000Z'
-      }
-    ];
-
-    const foundEvent = mockEvents.find(e => e.eventId === eventId);
-    if (foundEvent) {
-      this.event.set(foundEvent);
-      // Load venue data if venueId is available
-      if (foundEvent.venueId) {
-        this.loadVenue(foundEvent.venueId);
-      } else {
-        this.loading.set(false);
-      }
-    } else {
-      this.error.set('Event not found');
-      this.loading.set(false);
-    }
-  }
-
-  private loadVenue(venueId: string) {
+  private loadVenue(venueId: number) {
     this.eventApi.getVenue(venueId).subscribe({
       next: (venue: Venue) => {
         this.venue.set(venue);
@@ -194,7 +136,7 @@ export class EventDetailComponent implements OnInit {
     });
   }
 
-  private loadParticipants(eventId: string) {
+  private loadParticipants(eventId: number) {
     this.eventApi.eventsEventIdParticipantsGet(eventId).subscribe({
       next: (participants) => this.participants.set(participants),
       error: (err) => {
@@ -204,7 +146,7 @@ export class EventDetailComponent implements OnInit {
     });
   }
 
-  public onDeleteParticipant(participantId: string) {
+  public onDeleteParticipant(participantId: number) {
     const eventId = this.eventId();
     if (!eventId) return;
     this.confirmationDialog.confirm({
@@ -224,7 +166,7 @@ export class EventDetailComponent implements OnInit {
     });
   }
 
-  public onGenerateReport(participantId: string) {
+  public onGenerateReport(participantId: number) {
     const eventId = this.eventId();
     if (!eventId) return;
 
@@ -358,8 +300,8 @@ export class EventDetailComponent implements OnInit {
   public onAddParticipant() {
     const currentParticipants = this.participants();
     const newParticipant: Participant = {
-      participantId: 'new',
-      eventId: this.eventId() ?? '',
+      participantId: -1,
+      eventId: this.eventId() || 0,
       name: '',
       address: '',
       seatColor: this.generateRandomColor(),
@@ -377,7 +319,7 @@ export class EventDetailComponent implements OnInit {
     const eventId = this.eventId();
     if (!eventId || !participant.name.trim()) return;
 
-    if (participant.participantId === 'new') {
+    if (participant.participantId === -1) {
       // Create new participant
       const participantInput = {
         name: participant.name,
@@ -495,7 +437,7 @@ export class EventDetailComponent implements OnInit {
     });
   }
 
-  private deleteEvent(eventId: string): void {
+  private deleteEvent(eventId: number): void {
     this.loading.set(true);
     
     this.eventApi.deleteEvent(eventId).subscribe({

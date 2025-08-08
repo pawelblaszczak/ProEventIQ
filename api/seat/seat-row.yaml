@@ -2,7 +2,8 @@ SeatRow:
   type: object
   properties:
     seatRowId:
-      type: string
+      type: integer
+      format: int64
     name:
       type: string
     orderNumber:

@@ -16,7 +16,8 @@ public interface ShowRepository extends JpaRepository<ShowEntity, Long> {
     @Query("SELECT s FROM ShowEntity s WHERE " +
            "(:name IS NULL OR LOWER(s.name) LIKE LOWER(CONCAT('%', :name, '%'))) AND " +
            "(:ageFrom IS NULL OR s.ageFrom IS NULL OR s.ageFrom >= :ageFrom) AND " +
-           "(:ageTo IS NULL OR s.ageTo IS NULL OR s.ageTo <= :ageTo)")
+           "(:ageTo IS NULL OR s.ageTo IS NULL OR s.ageTo <= :ageTo) " +
+           "ORDER BY s.name ASC")
     List<ShowEntity> findByFilters(@Param("name") String name, 
                                    @Param("ageFrom") Integer ageFrom, 
                                    @Param("ageTo") Integer ageTo);
@@ -25,7 +26,8 @@ public interface ShowRepository extends JpaRepository<ShowEntity, Long> {
            "(:name IS NULL OR LOWER(s.name) LIKE LOWER(CONCAT('%', :name, '%'))) AND " +
            "(:ageFrom IS NULL OR s.ageFrom IS NULL OR s.ageFrom >= :ageFrom) AND " +
            "(:ageTo IS NULL OR s.ageTo IS NULL OR s.ageTo <= :ageTo) AND " +
-           "(:search IS NULL OR LOWER(s.name) LIKE LOWER(CONCAT('%', :search, '%')))")
+           "(:search IS NULL OR LOWER(s.name) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+           "ORDER BY s.name ASC")
     Page<ShowEntity> findByFiltersPaginated(@Param("name") String name,
                                             @Param("ageFrom") Integer ageFrom,
                                             @Param("ageTo") Integer ageTo,

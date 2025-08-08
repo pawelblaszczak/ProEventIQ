@@ -10,14 +10,14 @@ import { MatSelectModule } from '@angular/material/select';
 
 export interface AddSeatDialogData {
   rows: Array<{
-    seatRowId: string;
+    seatRowId: number;
     name?: string;
     orderNumber?: number;
   }>;
 }
 
 export interface AddSeatDialogResult {
-  selectedRowId: string;
+  selectedRowId: number;
   seatCount: number;
 }
 

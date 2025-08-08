@@ -52,7 +52,7 @@ public class ReportService {
     }
     
     @Transactional(readOnly = true)
-    public Optional<byte[]> generateParticipantReport(Long eventId, String participantId) {
+    public Optional<byte[]> generateParticipantReport(Long eventId, Long participantId) {
         log.info("Generating PDF report for participant {} in event {}", participantId, eventId);
         
         try {
@@ -587,7 +587,7 @@ public class ReportService {
      * @param participantId the participant ID
      * @return formatted filename for the participant report
      */
-    public String generateParticipantReportFilename(Long eventId, String participantId) {
+    public String generateParticipantReportFilename(Long eventId, Long participantId) {
         try {
             // Fetch all required data for filename generation
             Optional<EventEntity> eventOpt = eventRepository.findById(eventId);

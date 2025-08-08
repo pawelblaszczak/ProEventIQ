@@ -6,9 +6,11 @@ EventInput:
     - dateTime
   properties:
     showId:
-      type: string
+      type: integer
+      format: int64
     venueId:
-      type: string
+      type: integer
+      format: int64
     dateTime:
       type: string
       format: date-time

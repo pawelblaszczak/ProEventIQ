@@ -2,7 +2,8 @@ Seat:
   type: object
   properties:
     seatId:
-      type: string
+      type: integer
+      format: int64
     orderNumber:
       type: integer
     position:

@@ -86,7 +86,8 @@ venueById:
         name: venueId
         required: true
         schema:
-          type: string
+          type: integer
+          format: int64
     responses:
       '200':
         description: Venue details
@@ -103,7 +104,8 @@ venueById:
         name: venueId
         required: true
         schema:
-          type: string
+          type: integer
+          format: int64
     requestBody:
       required: true
       content:
@@ -126,7 +128,8 @@ venueById:
         name: venueId
         required: true
         schema:
-          type: string
+          type: integer
+          format: int64
     responses:
       '204':
         description: Venue deleted

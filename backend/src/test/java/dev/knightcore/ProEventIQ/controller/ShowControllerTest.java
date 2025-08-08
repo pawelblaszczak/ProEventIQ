@@ -40,7 +40,7 @@ class ShowControllerTest {
     @BeforeEach
     void setUp() {
         testShow = new Show();
-        testShow.setShowId("1");
+        testShow.setShowId(1L);
         testShow.setName("Test Show");
         testShow.setDescription("Test Description");
         testShow.setAgeFrom(12);
@@ -68,7 +68,7 @@ class ShowControllerTest {
     void getShowById_ShouldReturnShow_WhenExists() {
         when(showService.getShow(1L)).thenReturn(Optional.of(testShow));
 
-        ResponseEntity<Show> response = showController.getShowById("1");
+        ResponseEntity<Show> response = showController.getShowById(1L);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(testShow, response.getBody());
@@ -79,7 +79,7 @@ class ShowControllerTest {
     void getShowById_ShouldReturnNotFound_WhenNotExists() {
         when(showService.getShow(1L)).thenReturn(Optional.empty());
 
-        ResponseEntity<Show> response = showController.getShowById("1");
+        ResponseEntity<Show> response = showController.getShowById(1L);
 
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         assertNull(response.getBody());
@@ -88,7 +88,7 @@ class ShowControllerTest {
 
     @Test
     void getShowById_ShouldReturnBadRequest_WhenInvalidId() {
-        ResponseEntity<Show> response = showController.getShowById("invalid");
+        ResponseEntity<Show> response = showController.getShowById(-1L);
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         verify(showService, never()).getShow(anyLong());
@@ -116,7 +116,7 @@ class ShowControllerTest {
     void updateShow_ShouldReturnUpdatedShow_WhenExists() {
         when(showService.updateShow(1L, testShowInput)).thenReturn(Optional.of(testShow));
 
-        ResponseEntity<Show> response = showController.updateShow("1", testShowInput);
+        ResponseEntity<Show> response = showController.updateShow(1L, testShowInput);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(testShow, response.getBody());
@@ -127,7 +127,7 @@ class ShowControllerTest {
     void updateShow_ShouldReturnNotFound_WhenNotExists() {
         when(showService.updateShow(1L, testShowInput)).thenReturn(Optional.empty());
 
-        ResponseEntity<Show> response = showController.updateShow("1", testShowInput);
+        ResponseEntity<Show> response = showController.updateShow(1L, testShowInput);
 
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         verify(showService).updateShow(1L, testShowInput);
@@ -137,7 +137,7 @@ class ShowControllerTest {
     void deleteShow_ShouldReturnNoContent_WhenDeleted() {
         when(showService.deleteShow(1L)).thenReturn(true);
 
-        ResponseEntity<Void> response = showController.deleteShow("1");
+        ResponseEntity<Void> response = showController.deleteShow(1L);
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
         verify(showService).deleteShow(1L);

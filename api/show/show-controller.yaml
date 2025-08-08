@@ -86,7 +86,8 @@ showById:
         name: showId
         required: true
         schema:
-          type: string
+          type: integer
+          format: int64
     responses:
       '200':
         description: Show details
@@ -103,7 +104,8 @@ showById:
         name: showId
         required: true
         schema:
-          type: string
+          type: integer
+          format: int64
     requestBody:
       required: true
       content:
@@ -126,7 +128,8 @@ showById:
         name: showId
         required: true
         schema:
-          type: string
+          type: integer
+          format: int64
     responses:
       '204':
         description: Show deleted

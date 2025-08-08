@@ -39,11 +39,10 @@ public class VenueController implements VenuesApi {
     }
 
     @Override
-    public ResponseEntity<Sector> addSector(String venueId, SectorInput sectorInput) {
+    public ResponseEntity<Sector> addSector(Long venueId, SectorInput sectorInput) {
         try {
-            Long id = Long.parseLong(venueId);
             SectorInputDTO inputDTO = toSectorInputDTO(sectorInput);
-            SectorDTO created = sectorService.addSector(id, inputDTO);
+            SectorDTO created = sectorService.addSector(venueId, inputDTO);
             Sector sector = toSector(created);
             return ResponseEntity.status(HttpStatus.CREATED).body(sector);
         } catch (NumberFormatException e) {
@@ -60,12 +59,11 @@ public class VenueController implements VenuesApi {
     }
     
     @Override
-    public ResponseEntity<Void> deleteVenue(String venueId) {
+    public ResponseEntity<Void> deleteVenue(Long venueId) {
         try {
-            Long id = Long.parseLong(venueId);
-            boolean deleted = venueService.deleteVenue(id);
-            return deleted ? 
-                   ResponseEntity.status(HttpStatus.NO_CONTENT).build() : 
+            boolean deleted = venueService.deleteVenue(venueId);
+            return deleted ?
+                   ResponseEntity.status(HttpStatus.NO_CONTENT).build() :
                    ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         } catch (NumberFormatException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
@@ -73,10 +71,9 @@ public class VenueController implements VenuesApi {
     }
 
     @Override
-    public ResponseEntity<Venue> getVenue(String venueId) {
+    public ResponseEntity<Venue> getVenue(Long venueId) {
         try {
-            Long id = Long.parseLong(venueId);
-            return venueService.getVenue(id)
+            return venueService.getVenue(venueId)
                     .map(venue -> ResponseEntity.status(HttpStatus.OK).body(venue))
                     .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
         } catch (NumberFormatException e) {
@@ -105,10 +102,9 @@ public class VenueController implements VenuesApi {
     }
 
     @Override
-    public ResponseEntity<Venue> updateVenue(String venueId, VenueInput venueInput) {
+    public ResponseEntity<Venue> updateVenue(Long venueId, VenueInput venueInput) {
         try {
-            Long id = Long.parseLong(venueId);
-            return venueService.updateVenue(id, venueInput)
+            return venueService.updateVenue(venueId, venueInput)
                     .map(venue -> ResponseEntity.status(HttpStatus.OK).body(venue))
                     .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
         } catch (NumberFormatException e) {
@@ -117,12 +113,11 @@ public class VenueController implements VenuesApi {
     }
 
     @Override
-    public ResponseEntity<Void> deleteSector(String venueId, String sectorId) {
+    public ResponseEntity<Void> deleteSector(Long venueId, Long sectorId) {
         try {
-            Long id = Long.parseLong(sectorId);
-            boolean deleted = sectorService.deleteSector(id);
-            return deleted ? 
-                   ResponseEntity.status(HttpStatus.NO_CONTENT).build() : 
+            boolean deleted = sectorService.deleteSector(sectorId);
+            return deleted ?
+                   ResponseEntity.status(HttpStatus.NO_CONTENT).build() :
                    ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         } catch (NumberFormatException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
@@ -130,10 +125,9 @@ public class VenueController implements VenuesApi {
     }
 
     @Override
-    public ResponseEntity<Sector> getSector(String venueId, String sectorId) {
+    public ResponseEntity<Sector> getSector(Long venueId, Long sectorId) {
         try {
-            Long id = Long.parseLong(sectorId);
-            return sectorService.getSector(id)
+            return sectorService.getSector(sectorId)
                     .map(dto -> ResponseEntity.status(HttpStatus.OK).body(toSector(dto)))
                     .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
         } catch (NumberFormatException e) {
@@ -142,11 +136,10 @@ public class VenueController implements VenuesApi {
     }
 
     @Override
-    public ResponseEntity<Sector> updateSector(String venueId, String sectorId, SectorInput sectorInput) {
+    public ResponseEntity<Sector> updateSector(Long venueId, Long sectorId, SectorInput sectorInput) {
         try {
-            Long id = Long.parseLong(sectorId);
             SectorInputDTO inputDTO = toSectorInputDTO(sectorInput);
-            return sectorService.updateSector(id, inputDTO)
+            return sectorService.updateSector(sectorId, inputDTO)
                     .map(dto -> ResponseEntity.status(HttpStatus.OK).body(toSector(dto)))
                     .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
         } catch (NumberFormatException e) {
@@ -184,7 +177,7 @@ public class VenueController implements VenuesApi {
 
     private Sector toSector(SectorDTO dto) {
         Sector sector = new Sector();
-        sector.setSectorId(dto.sectorId() != null ? dto.sectorId().toString() : null);
+        sector.setSectorId(dto.sectorId());
         sector.setName(dto.name());
         sector.setOrderNumber(dto.orderNumber());
         
@@ -209,16 +202,14 @@ public class VenueController implements VenuesApi {
     }
 
     @Override
-    public ResponseEntity<Sector> updateSectorSeats(String venueId, String sectorId,
+    public ResponseEntity<Sector> updateSectorSeats(Long venueId, Long sectorId,
             @Valid SectorSeatsInput sectorSeatsInput) {
         try {
-            Long id = Long.parseLong(sectorId);
-            
             // Update the seats using the SeatService
-            seatService.updateSectorSeats(id, sectorSeatsInput.getRows());
-            
+            seatService.updateSectorSeats(sectorId, sectorSeatsInput.getRows());
+
             // Return the updated sector with all seats
-            return sectorService.getSectorWithSeats(id)
+            return sectorService.getSectorWithSeats(sectorId)
                     .map(sector -> ResponseEntity.status(HttpStatus.OK).body(sector))
                     .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
         } catch (NumberFormatException e) {

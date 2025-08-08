@@ -174,7 +174,7 @@ CREATE TABLE seat_reservation (
     FOREIGN KEY (participant_id) REFERENCES participant(participant_id) ON DELETE CASCADE,
     FOREIGN KEY (seat_id) REFERENCES seat(seat_id) ON DELETE CASCADE,
     FOREIGN KEY (event_id) REFERENCES event(event_id) ON DELETE CASCADE,
-    UNIQUE KEY unique_seat_event (seat_id, event_id), -- Prevent double booking of a seat for an event
+    UNIQUE KEY unique_seat_event (seat_id, event_id) -- Prevent double booking of a seat for an event
 );
 
 

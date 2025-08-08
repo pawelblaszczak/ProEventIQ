@@ -43,11 +43,10 @@ public class ShowController implements ShowsApi {
     }
 
     @Override
-    public ResponseEntity<Void> deleteShow(String showId) {
+    public ResponseEntity<Void> deleteShow(Long showId) {
         log.info("Deleting show with ID: {}", showId);
         try {
-            Long id = Long.parseLong(showId);
-            boolean deleted = showService.deleteShow(id);
+            boolean deleted = showService.deleteShow(showId);
             if (deleted) {
                 return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
             } else {
@@ -63,11 +62,10 @@ public class ShowController implements ShowsApi {
     }
 
     @Override
-    public ResponseEntity<Show> getShowById(String showId) {
+    public ResponseEntity<Show> getShowById(Long showId) {
         log.info("Fetching show with ID: {}", showId);
         try {
-            Long id = Long.parseLong(showId);
-            return showService.getShow(id)
+            return showService.getShow(showId)
                     .map(ResponseEntity::ok)
                     .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
         } catch (NumberFormatException e) {
@@ -92,11 +90,10 @@ public class ShowController implements ShowsApi {
     }
 
     @Override
-    public ResponseEntity<Show> updateShow(String showId, @Valid ShowInput showInput) {
+    public ResponseEntity<Show> updateShow(Long showId, @Valid ShowInput showInput) {
         log.info("Updating show with ID: {}", showId);
         try {
-            Long id = Long.parseLong(showId);
-            return showService.updateShow(id, showInput)
+            return showService.updateShow(showId, showInput)
                     .map(ResponseEntity::ok)
                     .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
         } catch (NumberFormatException e) {

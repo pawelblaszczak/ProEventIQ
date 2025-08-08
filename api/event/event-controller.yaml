@@ -9,7 +9,8 @@ events:
       - in: query
         name: showId
         schema:
-          type: string
+          type: integer
+          format: int64
         description: Filter by show ID
       - in: query
         name: dateFrom
@@ -26,7 +27,8 @@ events:
       - in: query
         name: venueId
         schema:
-          type: string
+          type: integer
+          format: int64
         description: Filter by venue ID
       - in: query
         name: page
@@ -117,7 +119,8 @@ eventById:
         name: eventId
         required: true
         schema:
-          type: string
+          type: integer
+          format: int64
         description: Event ID
     responses:
       '200':
@@ -147,7 +150,8 @@ eventById:
         name: eventId
         required: true
         schema:
-          type: string
+          type: integer
+          format: int64
         description: Event ID
     requestBody:
       required: true
@@ -194,7 +198,8 @@ eventById:
         name: eventId
         required: true
         schema:
-          type: string
+          type: integer
+          format: int64
         description: Event ID
     responses:
       '204':

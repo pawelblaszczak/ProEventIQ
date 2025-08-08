@@ -2,7 +2,8 @@ Sector:
   type: object
   properties:
     sectorId:
-      type: string
+      type: integer
+      format: int64
     name:
       type: string
     orderNumber:

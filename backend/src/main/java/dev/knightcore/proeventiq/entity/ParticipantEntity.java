@@ -8,8 +8,8 @@ import java.time.LocalDateTime;
 @Table(name = "participant")
 public class ParticipantEntity {
     @Id
-    @Column(name = "participant_id", length = 50)
-    private String participantId;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long participantId;
 
     @Column(name = "event_id", nullable = false)
     private Long eventId;
@@ -34,8 +34,8 @@ public class ParticipantEntity {
     private LocalDateTime updatedAt;
 
     // Getters and setters
-    public String getParticipantId() { return participantId; }
-    public void setParticipantId(String participantId) { this.participantId = participantId; }
+    public Long getParticipantId() { return participantId; }
+    public void setParticipantId(Long participantId) { this.participantId = participantId; }
     public Long getEventId() { return eventId; }
     public void setEventId(Long eventId) { this.eventId = eventId; }
     public String getName() { return name; }

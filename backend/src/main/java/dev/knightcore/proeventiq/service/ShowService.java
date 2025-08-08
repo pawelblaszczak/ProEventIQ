@@ -38,7 +38,7 @@ public class ShowService {
         List<ShowEntity> entities = showRepository.findAll();
         return entities.stream()
                 .map(entity -> new ShowOption(
-                    entity.getShowId() != null ? entity.getShowId().toString() : null,
+                    entity.getShowId(),
                     entity.getName()
                 ))
                 .toList();
@@ -86,7 +86,7 @@ public class ShowService {
 
     private Show toDto(ShowEntity entity) {
         Show dto = new Show();
-        dto.setShowId(entity.getShowId().toString());
+        dto.setShowId(entity.getShowId());
         dto.setName(entity.getName());
         dto.setDescription(entity.getDescription());
         dto.setAgeFrom(entity.getAgeFrom());

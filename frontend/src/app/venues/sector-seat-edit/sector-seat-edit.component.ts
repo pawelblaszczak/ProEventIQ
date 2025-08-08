@@ -106,8 +106,8 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
   // Konva objects
   private stage: Konva.Stage | null = null;
   private layer: Konva.Layer | null = null;
-  private readonly seatGroups = new Map<string, Konva.Group>();
-  private readonly rowGroups = new Map<string, Konva.Group>();
+  private readonly seatGroups = new Map<number, Konva.Group>();
+  private readonly rowGroups = new Map<number, Konva.Group>();
   private konvaInitialized = false;
 
   // Form
@@ -122,8 +122,8 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
   });
 
   // Route parameters
-  venueId = signal<string>('');
-  sectorId = signal<string>('');
+  venueId = signal<number | null>(null);
+  sectorId = signal<number | null>(null);
 
   private seatTooltip: Konva.Label | null = null;
 
@@ -227,8 +227,11 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     console.log('SectorSeatEditComponent ngOnInit called');
     
     // Get route parameters
-    const venueId = this.route.snapshot.paramMap.get('venueId');
-    const sectorId = this.route.snapshot.paramMap.get('sectorId');
+    const venueIdParam = this.route.snapshot.paramMap.get('venueId');
+    const sectorIdParam = this.route.snapshot.paramMap.get('sectorId');
+
+    const venueId = venueIdParam ? Number(venueIdParam) : null;
+    const sectorId = sectorIdParam ? Number(sectorIdParam) : null;
 
     if (!venueId || !sectorId) {
       this.error.set('Missing venue or sector ID');
@@ -296,7 +299,8 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     this.loading.set(true);
     this.error.set(null);
 
-    this.proEventIQService.getVenue(this.venueId())
+    // Add non-null assertion operator to ensure venueId is not null
+    this.proEventIQService.getVenue(this.venueId()!)
       .pipe(
         takeUntil(this.destroy$),
         finalize(() => this.loading.set(false))
@@ -318,13 +322,13 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
             rows: (sector.rows || []).map((row, rowIndex) => ({
               ...row,
               // Ensure row has an ID
-              seatRowId: row.seatRowId || `temp-row-${Date.now()}-${rowIndex}`,
+              seatRowId: row.seatRowId || -1,
               // Ensure row has an orderNumber - use existing or assign based on index
               orderNumber: row.orderNumber ?? (rowIndex + 1),
               seats: (row.seats || []).map((seat, seatIndex) => ({
                 ...seat,
                 // Ensure seat has an ID
-                seatId: seat.seatId || `temp-seat-${Date.now()}-${rowIndex}-${seatIndex}`,
+                seatId: seat.seatId || -1,
                 selected: false,
                 originalPosition: seat.position ? { x: seat.position.x ?? 0, y: seat.position.y ?? 0 } : { x: 0, y: 0 }
               }))
@@ -993,7 +997,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     const result = await dialogRef.afterClosed().toPromise() as AddRowDialogResult | null;
     if (result && result.rowName && result.seatCount > 0) {
       // Generate a temporary ID for the new row
-      const tempId = `temp-row-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+      const tempId = -1;
       // Calculate the next order number based on existing rows
       const currentRows = this.sector()?.rows ?? [];
       const maxOrderNumber = currentRows.length > 0 
@@ -1085,7 +1089,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
         name: result.rowName,
         orderNumber: maxOrderNumber + 1,
         seats: Array.from({ length: result.seatCount }, (_, i) => ({
-          seatId: `temp-seat-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 11)}`,
+          seatId: -1,
           orderNumber: i + 1,
           position: { x: baseX + i * seatSpacing, y: baseY },
           status: 'active',
@@ -1184,7 +1188,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
       // Create multiple rows
       const newRows: EditableRow[] = [];
       for (let i = 0; i < result.rowCount; i++) {
-        const tempId = `temp-row-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 11)}`;
+        const tempId = -1;
         const orderNumber = maxOrderNumber + i + 1;
         const romanNumeral = this.numberToRoman(orderNumber);
         
@@ -1193,7 +1197,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
           name: romanNumeral,
           orderNumber: orderNumber,
           seats: Array.from({ length: result.seatCount }, (_, seatIndex) => ({
-            seatId: `temp-seat-${Date.now()}-${i}-${seatIndex}-${Math.random().toString(36).substring(2, 8)}`,
+            seatId: -1,
             orderNumber: seatIndex + 1,
             position: { 
               x: baseX + seatIndex * seatSpacing, 
@@ -1223,7 +1227,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
 
   addSeatToRow(row: EditableRow) {
     // Generate a temporary ID for the new seat
-    const tempId = `temp-seat-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+    const tempId = -1;
     
     const newSeat: EditableSeat = {
       seatId: tempId,
@@ -1245,7 +1249,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     this.snackBar.open(`Seat ${newSeat.orderNumber} added to ${row.name}`, 'Close', { duration: 2000 });
   }
 
-  addSeatsToRow(rowId: string, seatCount: number) {
+  addSeatsToRow(rowId: number, seatCount: number) {
     const sector = this.sector();
     if (!sector) {
       return;
@@ -1278,7 +1282,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     }
 
     for (let i = 0; i < seatCount; i++) {
-      const tempId = `temp-seat-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 11)}`;
+      const tempId = -1;
       
       const newSeat: EditableSeat = {
         seatId: tempId,
@@ -1509,7 +1513,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     };
 
     await firstValueFrom(this.proEventIQService.updateSector(
-      this.venueId(), 
+      this.venueId()!, 
       sector.sectorId, 
       sectorInput
     ));
@@ -1522,11 +1526,11 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
 
     const sectorSeatsInput: SectorSeatsInput = {
       rows: sector.rows.map(row => ({
-        seatRowId: row.seatRowId?.startsWith('temp-') ? undefined : row.seatRowId,
+        seatRowId: row.seatRowId === -1 ? undefined : row.seatRowId,
         name: row.name,
         orderNumber: row.orderNumber,
         seats: row.seats.map(seat => ({
-          seatId: seat.seatId?.startsWith('temp-') ? undefined : seat.seatId,
+          seatId: seat.seatId === -1 ? undefined : seat.seatId,
           orderNumber: seat.orderNumber,
           position: seat.position,
           priceCategory: seat.priceCategory,
@@ -1536,7 +1540,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     };
 
     await firstValueFrom(this.proEventIQService.updateSectorSeats(
-      this.venueId(),
+      this.venueId()!,
       sector.sectorId,
       sectorSeatsInput
     ));

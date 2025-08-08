@@ -34,7 +34,7 @@ export class VenueEditComponent {
   private router = inject(Router);
   private venueApi = inject(ProEventIQService);
   form: FormGroup;
-  venueId: string | null = null;
+  venueId: number | null = null;
   isAddMode = signal(false);
   loading = signal(false);
   error = signal<string | null>(null);
@@ -51,7 +51,9 @@ export class VenueEditComponent {
       country: ['', Validators.required],
       description: [''],
     });this.route.paramMap.subscribe(params => {
-      this.venueId = params.get('id');
+      const idParam = params.get('id'); // Changed from 'id' to 'venueId' to match route
+      this.venueId = idParam ? Number(idParam) : null;
+
       this.isAddMode.set(!this.venueId);
       
       if (this.venueId) {
@@ -63,7 +65,7 @@ export class VenueEditComponent {
     });
   }
 
-  loadVenue(id: string) {
+  loadVenue(id: number) {
     this.loading.set(true);
     this.venueApi.getVenue(id).subscribe({
       next: (venue: Venue) => {        this.form.patchValue({

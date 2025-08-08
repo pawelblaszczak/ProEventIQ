@@ -40,8 +40,8 @@ export class EventsListComponent implements OnInit {
   public today = new Date().toISOString().slice(0, 10); // yyyy-MM-dd
   // Filter state as signals
   public search = signal('');
-  public selectedShowId = signal<string | null>(null);
-  public selectedVenueId = signal<string | null>(null);
+  public selectedShowId = signal<number | null>(null);
+  public selectedVenueId = signal<number | null>(null);
   public dateFrom = signal<string>(this.today);
   public dateTo = signal<string>('');
 
@@ -264,26 +264,16 @@ export class EventsListComponent implements OnInit {
     });
   }
 
-  // Mock seat reservation data - replace with real API data later
-  getReservedSeats(eventId: string): { reserved: number; total: number; percentage: number } {
-    // Generate consistent but random-looking data based on eventId
-    const seed = eventId.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-    const total = 150 + (seed % 350); // Total seats between 150-500
-    const reserved = Math.floor(total * (0.3 + (seed % 40) / 100)); // 30-70% reserved
-    const percentage = Math.round((reserved / total) * 100);
-    
-    return { reserved, total, percentage };
-  }
-
   getSeatStatusText(event: ApiEvent): string {
-    const totalSeats = event.venueNumberOfSeats ?? this.getReservedSeats(event.eventId ?? '').total;
+    const totalSeats = event.venueNumberOfSeats ?? 0;
     const reserved = event.numberOfTickets ?? 0;
     return this.eventService.getSeatStatusText(reserved, totalSeats);
   }
 
-  getReservationClass(eventId: string): string {
-    const seatInfo = this.getReservedSeats(eventId);
-    return this.eventService.getReservationClass(seatInfo.reserved, seatInfo.total);
+  getReservationClass(event: ApiEvent): string {
+    const totalSeats = event.venueNumberOfSeats ?? 0;
+    const reserved = event.numberOfTickets ?? 0;
+    return this.eventService.getReservationClass(reserved, totalSeats);
   }
 
   /**
@@ -293,7 +283,7 @@ export class EventsListComponent implements OnInit {
   public getSeatStatusColor(event: ApiEvent): string {
     // Use real seat data if available, else fallback to mock
     const reserved = event.numberOfTickets ?? 0;
-    const total = event.venueNumberOfSeats ?? this.getReservedSeats(event.eventId ?? '').total;
+    const total = event.venueNumberOfSeats ?? 0;
     return this.eventService.getSeatStatusColor(reserved, total);
   }
 

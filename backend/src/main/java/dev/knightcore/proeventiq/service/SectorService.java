@@ -86,7 +86,7 @@ public class SectorService {
 
     private Sector toSectorWithSeats(SectorEntity entity) {
         Sector sector = new Sector();
-        sector.setSectorId(entity.getSectorId() != null ? entity.getSectorId().toString() : null);
+        sector.setSectorId(entity.getSectorId());
         sector.setName(entity.getName());
         sector.setOrderNumber(entity.getOrderNumber());
 
@@ -130,7 +130,7 @@ public class SectorService {
 
     private SeatRow mapRowToDto(dev.knightcore.proeventiq.entity.SeatRowEntity rowEntity) {
         SeatRow rowDto = new SeatRow();
-        rowDto.setSeatRowId(rowEntity.getSeatRowId() != null ? rowEntity.getSeatRowId().toString() : null);
+        rowDto.setSeatRowId(rowEntity.getSeatRowId());
         rowDto.setName(rowEntity.getName());
         rowDto.setOrderNumber(rowEntity.getOrderNumber());
 
@@ -150,7 +150,7 @@ public class SectorService {
 
     private Seat mapSeatToDto(dev.knightcore.proeventiq.entity.SeatEntity seatEntity) {
         Seat seatDto = new Seat();
-        seatDto.setSeatId(seatEntity.getSeatId() != null ? seatEntity.getSeatId().toString() : null);
+        seatDto.setSeatId(seatEntity.getSeatId());
         seatDto.setOrderNumber(seatEntity.getOrderNumber());
         seatDto.setPriceCategory(seatEntity.getPriceCategory());
         seatDto.setStatus(seatEntity.getStatus() != null ?

@@ -2,7 +2,8 @@ Venue:
   type: object
   properties:
     venueId:
-      type: string
+      type: integer
+      format: int64
     name:
       type: string
     country:

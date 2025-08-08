@@ -34,7 +34,7 @@ public class VenueService {
 
     @Transactional(readOnly = true)
     public List<Venue> listVenues(String name, String country, String city) {
-        List<VenueEntity> entities = venueRepository.findByNameContainingIgnoreCaseAndCountryContainingIgnoreCaseAndCityContainingIgnoreCase(
+        List<VenueEntity> entities = venueRepository.findByNameContainingIgnoreCaseAndCountryContainingIgnoreCaseAndCityContainingIgnoreCaseOrderByNameAsc(
                 name != null ? name : "",
                 country != null ? country : "",
                 city != null ? city : ""
@@ -159,7 +159,7 @@ public class VenueService {
     }
 
     private void mapBasicVenueProperties(VenueEntity entity, Venue dto) {
-        dto.setVenueId(entity.getVenueId() != null ? entity.getVenueId().toString() : null);
+        dto.setVenueId(entity.getVenueId());
         dto.setName(entity.getName());
         dto.setCountry(entity.getCountry());
         dto.setCity(entity.getCity());
@@ -198,7 +198,7 @@ public class VenueService {
 
     private Sector mapSectorToDto(dev.knightcore.proeventiq.entity.SectorEntity sectorEntity) {
         Sector sectorDto = new Sector();
-        sectorDto.setSectorId(sectorEntity.getSectorId() != null ? sectorEntity.getSectorId().toString() : null);
+        sectorDto.setSectorId(sectorEntity.getSectorId());
         sectorDto.setName(sectorEntity.getName());
         sectorDto.setOrderNumber(sectorEntity.getOrderNumber());
         sectorDto.setRotation(sectorEntity.getRotation());
@@ -247,7 +247,7 @@ public class VenueService {
 
     private SeatRow mapRowToDto(dev.knightcore.proeventiq.entity.SeatRowEntity rowEntity) {
         SeatRow rowDto = new SeatRow();
-        rowDto.setSeatRowId(rowEntity.getSeatRowId() != null ? rowEntity.getSeatRowId().toString() : null);
+        rowDto.setSeatRowId(rowEntity.getSeatRowId());
         rowDto.setName(rowEntity.getName());
         rowDto.setOrderNumber(rowEntity.getOrderNumber());
         
@@ -267,7 +267,7 @@ public class VenueService {
 
     private Seat mapSeatToDto(dev.knightcore.proeventiq.entity.SeatEntity seatEntity) {
         Seat seatDto = new Seat();
-        seatDto.setSeatId(seatEntity.getSeatId() != null ? seatEntity.getSeatId().toString() : null);
+        seatDto.setSeatId(seatEntity.getSeatId());
         seatDto.setOrderNumber(seatEntity.getOrderNumber());
         seatDto.setPriceCategory(seatEntity.getPriceCategory());
         seatDto.setStatus(seatEntity.getStatus() != null ?
@@ -288,7 +288,7 @@ public class VenueService {
         List<VenueEntity> entities = venueRepository.findAll();
         return entities.stream()
                 .map(entity -> new VenueOption(
-                    entity.getVenueId() != null ? entity.getVenueId().toString() : null,
+                    entity.getVenueId(),
                     entity.getName()
                 ))
                 .toList();
@@ -302,11 +302,11 @@ public class VenueService {
         String searchFilter = (search != null) ? search : "";
         // If search is provided, override other filters for a broad search
         if (!searchFilter.isEmpty()) {
-            return venueRepository.findByNameContainingIgnoreCaseOrCityContainingIgnoreCaseOrCountryContainingIgnoreCase(
+            return venueRepository.findByNameContainingIgnoreCaseOrCityContainingIgnoreCaseOrCountryContainingIgnoreCaseOrderByNameAsc(
                 searchFilter, searchFilter, searchFilter, pageable
             ).map(this::toDto);
         }
-        return venueRepository.findByNameContainingIgnoreCaseAndCountryContainingIgnoreCaseAndCityContainingIgnoreCase(
+        return venueRepository.findByNameContainingIgnoreCaseAndCountryContainingIgnoreCaseAndCityContainingIgnoreCaseOrderByNameAsc(
             nameFilter, countryFilter, cityFilter, pageable
         ).map(this::toDto);
     }

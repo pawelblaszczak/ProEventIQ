@@ -27,11 +27,11 @@ export class ShowDetailComponent implements OnInit {
   ngOnInit() {
     const showId = this.route.snapshot.paramMap.get('id');
     if (showId) {
-      this.loadShow(showId);
+      this.loadShow(Number(showId));
     }
   }
 
-  private loadShow(showId: string) {
+  private loadShow(showId: number) {
     this.isLoading.set(true);
     this.error.set(null);
     

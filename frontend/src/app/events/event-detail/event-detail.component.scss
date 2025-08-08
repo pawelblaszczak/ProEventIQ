@@ -836,6 +836,43 @@ $border-radius: 12px;
     border: 1px solid rgba(0, 0, 0, 0.1);
   }
 
+  // Seat color swatch/button shared styles for consistent size and alignment
+  .seat-color-swatch {
+  width: 56px;
+    height: 20px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    display: inline-block;
+    box-sizing: border-box;
+    vertical-align: middle;
+  }
+
+  // Center the swatch/button in the Seat Color cell without hard-coded margins
+  .participants-table {
+    .mat-mdc-cell:nth-child(2),
+    .mat-mdc-header-cell:nth-child(2),
+    .mat-mdc-footer-cell:nth-child(2) {
+      text-align: center;
+    }
+
+    // Use flex to center the interactive button container in edit mode
+    .mat-mdc-cell:nth-child(2) {
+      .color-edit-simple {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding-top: 0; // override earlier padding for perfect vertical centering
+      }
+    }
+  }
+
+  // Button-specific reset while keeping exact dimensions
+  .seat-color-button {
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+  }
+
   // Color edit container styles
   .color-edit-simple {
     width: 100%;
@@ -958,9 +995,23 @@ $border-radius: 12px;
 
   // SUPER SPECIFIC OVERRIDE for editing row Seat Color column  
   .participants-table .mat-mdc-row.editing-row .mat-mdc-cell:nth-child(2) {
+    text-align: center !important;
     .color-edit-simple {
-      padding-top: 0.85rem !important; // Increased padding for better alignment
+      padding-top: 0 !important;
+      justify-content: center !important;
+      align-items: center !important;
     }
+    // Slight downward nudge so the button visually aligns with the middle of the two input fields in the Name column
+    .seat-color-button {
+      margin-top: 16px !important;
+    }
+  }
+}
+
+// Slightly smaller nudge on narrow screens to keep visual balance
+@media (max-width: 768px) {
+  .participants-table .mat-mdc-row.editing-row .mat-mdc-cell:nth-child(2) .seat-color-button {
+    margin-top: 12px !important;
   }
 }
 

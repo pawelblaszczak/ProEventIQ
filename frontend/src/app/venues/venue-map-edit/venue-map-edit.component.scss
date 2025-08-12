@@ -203,6 +203,17 @@ $border-radius: 12px;
   }
 }
 
+// Preview mode - force default cursor everywhere
+.venue-map-editor.preview-mode {
+  .konva-canvas, 
+  .konva-canvas *, 
+  .venue-canvas-container, 
+  .venue-canvas-container *,
+  canvas {
+    cursor: default !important;
+  }
+}
+
 // Toolbar styles
 .toolbar-card {
   box-shadow: $card-shadow;

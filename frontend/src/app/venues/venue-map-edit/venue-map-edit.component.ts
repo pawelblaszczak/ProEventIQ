@@ -353,6 +353,20 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     this.konvaInitialized = true;
     console.log('Konva stage initialized successfully');
     
+    // Fix cursor for preview mode
+    if (this.mode === 'preview') {
+      // Add CSS to force default cursor
+      const style = document.createElement('style');
+      style.textContent = `
+        .preview-mode .konva-canvas,
+        .preview-mode .konva-canvas *,
+        .preview-mode canvas {
+          cursor: default !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+    
     // Force another resize after initialization to ensure perfect fit
     setTimeout(() => {
       this.resizeCanvas();
@@ -512,10 +526,18 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     this.sectorSeats.forEach((seats) => {
         seats.forEach(seat => {
             seat.visible(seatsVisible);
+            // IMPORTANT: When seats become visible, ensure they're on top of labels
+            // This ensures seats can receive mouse events for tooltips
+            if (seatsVisible) {
+              seat.moveToTop();
+            }
         });
     });
     
-
+    // Redraw the layer to apply visibility changes
+    if (this.layer) {
+      this.layer.batchDraw();
+    }
   }
   
   // Create or ensure the seat tooltip exists
@@ -760,9 +782,6 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     }
 
-    // Use optimized seat rendering
-    this.renderSeatsOptimized(group, sector, seatPositions);
-
     // Add selection indicators if selected
     if (sector.isSelected) {
       this.addSelectionIndicators(group);
@@ -858,6 +877,10 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     });
 
     group.add(seatsText);
+
+    // IMPORTANT: Add seats AFTER labels to ensure seats appear on top when visible
+    // This fixes the z-index issue where seats were under labels at zoom >= 180%
+    this.renderSeatsOptimized(group, sector, seatPositions);
 
     // Add event handlers to group (for fallback if outline is missing)
     group.on('click', (e) => {
@@ -1020,6 +1043,10 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
           }
           // Always update visibility when rendering
           seat.visible(seatsVisible);
+          // IMPORTANT: When seats become visible, ensure they're on top of labels
+          if (seatsVisible) {
+            seat.moveToTop();
+          }
         }
       });
     }
@@ -1085,15 +1112,55 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
               const labelText = this.seatTooltip.findOne('Text') as Konva.Text;
               labelText.text(tooltipText);
               
-              // Position tooltip above the seat, adjusted for zoom
+              // Position tooltip intelligently to stay within stage bounds
               const absPos = seat.getAbsolutePosition();
               const zoom = this.zoomLevel();
+              const seatX = absPos.x / zoom;
+              const seatY = absPos.y / zoom;
+              const seatRadius = seat.radius(); // Get the actual seat radius
+              
+              // Calculate tooltip dimensions (we need to temporarily show it to measure)
+              this.seatTooltip.visible(true);
+              const tooltipWidth = this.seatTooltip.width();
+              const tooltipHeight = this.seatTooltip.height();
+              
+              // Get stage bounds
+              const stageWidth = this.stage!.width();
+              const stageHeight = this.stage!.height();
+              
+              // Calculate smart positioning
+              let tooltipX = seatX;
+              let tooltipY = seatY - seatRadius - 8; // Above seat edge - tooltip pointer will be just above seat
+              
+              // Adjust Y position if tooltip would overflow top edge
+              if (tooltipY - tooltipHeight < 0) {
+                tooltipY = seatY + seatRadius + 8; // Below seat edge with small gap
+                // Update pointer direction to point up when tooltip is below
+                const tag = this.seatTooltip.findOne('Tag') as Konva.Tag;
+                tag.pointerDirection('up');
+              } else {
+                // Reset pointer direction to down when tooltip is above
+                const tag = this.seatTooltip.findOne('Tag') as Konva.Tag;
+                tag.pointerDirection('down');
+              }
+              
+              // Adjust X position if tooltip would overflow left or right edges
+              if (tooltipX < 0) {
+                tooltipX = 0;
+              } else if (tooltipX + tooltipWidth > stageWidth) {
+                tooltipX = stageWidth - tooltipWidth;
+              }
+              
+              // Ensure tooltip doesn't overflow bottom edge when positioned below
+              if (tooltipY + tooltipHeight > stageHeight) {
+                tooltipY = stageHeight - tooltipHeight;
+              }
+              
               this.seatTooltip.position({
-                x: absPos.x / zoom,
-                y: absPos.y / zoom - 10
+                x: tooltipX,
+                y: tooltipY
               });
               
-              this.seatTooltip.visible(true);
               // Always move tooltip to the top of the layer to ensure it's visible
               this.seatTooltip.moveToTop();
               this.layer!.batchDraw();

@@ -11,7 +11,9 @@
   title="Error Loading Venue">
 </app-error-display>
 
-<div *ngIf="venue()" class="venue-map-editor animate-fade-in" [class.reservation-mode]="mode==='reservation'">
+<div *ngIf="venue()" class="venue-map-editor animate-fade-in" 
+     [class.reservation-mode]="mode==='reservation'"
+     [class.preview-mode]="mode==='preview'">
   <!-- Header with venue info and actions (edit & reservation modes) -->
   <div class="editor-header" *ngIf="mode === 'edit' || mode === 'reservation'">
     <div class="venue-info">

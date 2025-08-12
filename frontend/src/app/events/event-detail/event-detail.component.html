@@ -191,7 +191,7 @@
               </div>
               <ng-template #editTicketsTemplate>
                 <mat-form-field appearance="outline" class="inline-edit-field">
-                  <input matInput type="number" [(ngModel)]="p.numberOfTickets" placeholder="Number of tickets" min="1">
+                  <input matInput type="number" class="tickets-input" [(ngModel)]="p.numberOfTickets" placeholder="Number of tickets" min="1">
                 </mat-form-field>
               </ng-template>
             </td>
@@ -259,7 +259,7 @@
         </span>
         <span class="banner-subtitle">Interactive venue layout for seat selection</span>
       </h3>
-      <button mat-raised-button color="primary" class="edit-map-btn" [routerLink]="['/venues', event()?.venueId, 'map-edit']" aria-label="Manage seat reservations">
+  <button mat-raised-button color="primary" class="edit-map-btn" [routerLink]="['/venues', event()?.venueId, 'reservations']" [queryParams]="{ eventId: event()?.eventId }" aria-label="Manage seat reservations">
         <mat-icon>settings</mat-icon>
         Manage Reservations
       </button>

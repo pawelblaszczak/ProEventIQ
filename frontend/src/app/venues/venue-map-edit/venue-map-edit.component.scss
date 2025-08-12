@@ -132,6 +132,77 @@ $border-radius: 12px;
   }
 }
 
+// Reservation mode layout adjustments
+.venue-map-editor.reservation-mode {
+  .editor-content {
+    display: flex;
+    flex-direction: column; // keep toolbar on top
+  }
+  // Row that contains canvas + sidebar
+  .map-row { 
+    display:flex; 
+    flex-direction:row; 
+    align-items:stretch; 
+    margin-top:1rem; 
+    width:100%; 
+    gap:1rem; 
+  }
+  .map-row.with-reservation { align-items:stretch; }
+  // Important: prevent canvas intrinsic width (3000px) from stretching row
+  .canvas-card { 
+    flex: 1 1 auto; 
+    min-width:0; 
+    overflow:hidden; 
+    display:flex; 
+    flex-direction:column; 
+  }
+  .canvas-card .canvas-content { 
+    flex:1 1 auto; 
+    display:flex; 
+    flex-direction:column; 
+    min-width:0; 
+  }
+  // Make the internal container scroll horizontally/vertically for large stage
+  .canvas-card .venue-canvas-container { 
+    flex:1 1 auto; 
+    width:100%; 
+    height:100%; 
+    overflow:auto; 
+    position:relative; 
+    max-width:100%; 
+  }
+  .canvas-card .konva-canvas { 
+    /* Ensure block to allow internal scroll */
+    display:block; 
+  }
+  .reservation-panel-card.narrow {
+    width: 230px;
+    margin-left: 1rem;
+    flex: 0 0 230px;
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    max-height: calc(100vh - 180px);
+    position: sticky;
+    top: 90px;
+    .reservation-panel-content { flex: 1; overflow-y: auto; padding-top: .25rem; }
+    .participants-list.simple { display: flex; flex-direction: column; gap: .4rem; }
+    .participants-list.simple .participant-row { display:flex; align-items:center; gap:.5rem; padding:.35rem .5rem; border:1px solid #e0e0e0; border-radius:6px; background:#fff; font-size:.75rem; cursor:pointer; position:relative; transition:background-color .2s ease, border-color .2s ease, box-shadow .2s ease; }
+    .participants-list.simple .participant-row:hover { background:#f5f5f5; }
+    .participants-list.simple .participant-row.selected { 
+      border-color: $primary-color; 
+      background: rgba($primary-color, 0.07); 
+      box-shadow: 0 0 0 2px rgba($primary-color, 0.15);
+    }
+    .participants-list.simple .participant-row.selected .name { font-weight:600; color:$primary-color; }
+    .participants-list.simple .participant-row:focus { outline:2px solid rgba($primary-color,0.5); outline-offset:2px; }
+    .participants-list.simple .participant-row .selected-indicator { margin-left:auto; font-size:16px; width:16px; height:16px; }
+    .participants-list.simple .participant-row .color { width:14px; height:14px; border-radius:4px; border:1px solid #bbb; box-shadow:0 0 0 1px #fff inset; }
+    .participants-list.simple .participant-row .name { flex:1; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .side-loading, .side-error, .side-empty { text-align:center; padding:1rem .5rem; color:#555; display:flex; flex-direction:column; align-items:center; gap:.5rem; font-size:.75rem; }
+  }
+}
+
 // Toolbar styles
 .toolbar-card {
   box-shadow: $card-shadow;

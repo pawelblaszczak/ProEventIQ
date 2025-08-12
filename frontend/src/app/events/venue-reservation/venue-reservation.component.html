@@ -1,0 +1,21 @@
+<div class="reservation-wrapper">
+	<div *ngIf="loading()" class="loading-container">
+		<mat-progress-spinner diameter="50" mode="indeterminate" color="primary"></mat-progress-spinner>
+		<p>Loading venue...</p>
+	</div>
+
+	<div *ngIf="!loading() && error()" class="error-container">
+		<mat-icon color="warn">error</mat-icon>
+		<p>{{ error() }}</p>
+		<button mat-stroked-button (click)="goBack()">
+			<mat-icon>arrow_back</mat-icon>
+			Back
+		</button>
+	</div>
+
+	<div *ngIf="venue()" class="venue-map-editor reservation-mode animate-fade-in">
+						<div class="reservation-map-container">
+							<app-venue-map-edit [mode]="'reservation'" [eventData]="event()"></app-venue-map-edit>
+						</div>
+	</div>
+</div>

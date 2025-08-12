@@ -11,17 +11,30 @@
   title="Error Loading Venue">
 </app-error-display>
 
-<div *ngIf="venue()" class="venue-map-editor animate-fade-in">
-  <!-- Header with venue info and actions -->
-  <div class="editor-header" *ngIf="mode === 'edit'">
+<div *ngIf="venue()" class="venue-map-editor animate-fade-in" [class.reservation-mode]="mode==='reservation'">
+  <!-- Header with venue info and actions (edit & reservation modes) -->
+  <div class="editor-header" *ngIf="mode === 'edit' || mode === 'reservation'">
     <div class="venue-info">
       <h1 class="venue-name">
-        <mat-icon>edit</mat-icon>
-        Editing: {{ venue()?.name }}
+        <mat-icon>{{ mode === 'edit' ? 'edit' : 'event_seat' }}</mat-icon>
+        @if (mode === 'edit') {
+          Editing: {{ venue()?.name }}
+        } @else {
+          Reservations: {{ eventData?.showName || venue()?.name }}
+          <span *ngIf="eventData?.dateTime" class="event-date">{{ eventData?.dateTime | date:'mediumDate' }}</span>
+        }
       </h1>
-      <p class="venue-location">{{ venue()?.city }}, {{ venue()?.country }}</p>
+      <p class="venue-location">
+        @if (mode === 'reservation') {
+          {{ venue()?.name }}
+          <span *ngIf="venue()?.address"> – {{ venue()?.address }}</span>
+          <span *ngIf="venue()?.city">, {{ venue()?.city }}</span>
+          <span *ngIf="venue()?.country">, {{ venue()?.country }}</span>
+        } @else {
+          {{ venue()?.city }}, {{ venue()?.country }}
+        }
+      </p>
     </div>
-    
     <div class="header-actions">
       <button mat-stroked-button 
               color="warn" 
@@ -30,7 +43,6 @@
         <mat-icon>cancel</mat-icon>
         Cancel
       </button>
-      
       <button mat-raised-button 
               color="primary" 
               (click)="saveChanges()" 
@@ -43,7 +55,6 @@
           Save Changes
         }
       </button>
-      
       <button mat-stroked-button (click)="goBack()">
         <mat-icon>arrow_back</mat-icon>
         Back
@@ -168,16 +179,18 @@
     </mat-card>
 
     <!-- Canvas Area -->
-    <mat-card class="canvas-card">
-      <mat-card-content class="canvas-content">
-        <!-- Canvas -->
-        <div class="venue-canvas-container custom-scroll-canvas" 
-             role="application"
-             aria-label="Venue map editor canvas">
-          <div #canvasContainer 
-               class="konva-canvas">
+    <!-- Map row (canvas + optional reservation sidebar) -->
+    <div class="map-row" [class.with-reservation]="mode==='reservation'">
+      <mat-card class="canvas-card">
+        <mat-card-content class="canvas-content">
+          <!-- Canvas -->
+          <div class="venue-canvas-container custom-scroll-canvas" 
+               role="application"
+               aria-label="Venue map editor canvas">
+            <div #canvasContainer 
+                 class="konva-canvas">
+            </div>
           </div>
-        </div>
 
         <!-- Selection Info Panel - Moved to bottom -->
         <div class="selection-panel" *ngIf="selectedSectors().length > 0 && mode === 'edit'">
@@ -267,7 +280,57 @@
             </div>
           }
         </div>
-      </mat-card-content>
-    </mat-card>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Reservation side panel (right side) -->
+      @if (mode === 'reservation') {
+        <mat-card class="reservation-panel-card narrow">
+          <mat-card-header>
+            <mat-card-title style="display:flex;align-items:center;gap:.5rem;">
+              <mat-icon>group</mat-icon>
+              Participants
+            </mat-card-title>
+          </mat-card-header>
+        <mat-card-content class="reservation-panel-content">
+          @if (participantsLoading()) {
+            <div class="side-loading">
+              <mat-progress-spinner diameter="40" mode="indeterminate"></mat-progress-spinner>
+              <p>Loading participants...</p>
+            </div>
+          } @else if (participantsError()) {
+            <div class="side-error">
+              <mat-icon color="warn">error_outline</mat-icon>
+              <p>{{ participantsError() }}</p>
+            </div>
+          } @else if (!participants().length) {
+            <div class="side-empty">
+              <mat-icon>info</mat-icon>
+              <p>No participants yet.</p>
+            </div>
+          } @else {
+            <div class="participants-list simple" role="list" aria-label="Participants">
+              <div 
+                class="participant-row" 
+                *ngFor="let p of participants()" 
+                matTooltip="{{ p.name }} ({{ p.numberOfTickets }} tickets)"
+                role="listitem"
+                tabindex="0"
+                (click)="selectParticipant(p)"
+                (keydown.enter)="selectParticipant(p)"
+                (keydown.space)="selectParticipant(p); $event.preventDefault()"
+                [class.selected]="isParticipantSelected(p)"
+                [attr.aria-selected]="isParticipantSelected(p)"
+              >
+                <div class="color" [style.background]="p.seatColor || '#bbb'"></div>
+                <div class="name one-line">{{ p.name }}</div>
+                <mat-icon *ngIf="isParticipantSelected(p)" class="selected-indicator" fontIcon="check_circle" color="primary"></mat-icon>
+              </div>
+            </div>
+          }
+          </mat-card-content>
+        </mat-card>
+      }
+    </div>
   </div>
 </div>

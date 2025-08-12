@@ -408,70 +408,7 @@ mat-card {
   margin-top: 1.5rem;
   overflow: visible;
   
-  .card-header-banner {
-    padding: 1.25rem 1.5rem;
-    background: linear-gradient(135deg, #3f51b5, #7986cb);
-    color: white;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    
-    .header-content {
-      flex: 1;
-      
-      .title-with-icon {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-      }
-      
-      .title-icon {
-        width: 40px;
-        height: 40px;
-        font-size: 24px;
-        border-radius: 50%;
-        background-color: rgba(255, 255, 255, 0.2);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        padding: 8px;
-      }
-
-      .banner-title {
-        margin: 0;
-        font-size: 1.5rem;
-        font-weight: 500;
-      }
-      
-      .banner-subtitle {
-        margin: 0.25rem 0 0;
-        opacity: 0.9;
-        font-size: 0.9rem;
-      }
-    }
-    
-    .header-actions {
-      .edit-map-btn {
-        background-color: rgba(255, 255, 255, 0.15);
-        color: white;
-        &:hover {
-          background-color: rgba(255, 255, 255, 0.25);
-        }
-      }
-    }
-    
-    .header-icon {
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      background-color: rgba(255, 255, 255, 0.2);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      // This style is kept for backward compatibility but no longer used
-    }
-  }
-  
+  // unified map content styling (previous header banner styles removed as unused)
   .map-content {
     padding: 0;
     
@@ -694,38 +631,13 @@ mat-card {
   }
 }
 
-.seat-legend {
-  display: flex;
-  gap: 2rem;
-  padding: 0.5rem;
-  
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    
-    .color-box {
-      width: 18px;
-      height: 18px;
-      border: 1px solid rgba(0, 0, 0, 0.3);
-      border-radius: 3px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      
-      &.active {
-        background-color: #4caf50;
-      }
-      
-      &.inactive {
-        background-color: #f44336;
-      }
-    }
-    
-    span {
-      font-weight: 500;
-      color: rgba(0, 0, 0, 0.7);
-    }
-  }
-}
+// Seat legend styles (single definition)
+.seat-legend { display: flex; gap: 2rem; padding: 0.5rem; }
+.seat-legend .legend-item { display: flex; align-items: center; gap: 0.75rem; }
+.seat-legend .legend-item .color-box { width: 18px; height: 18px; border: 1px solid rgba(0,0,0,0.3); border-radius: 3px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.seat-legend .legend-item .color-box.active { background-color: #4caf50; }
+.seat-legend .legend-item .color-box.inactive { background-color: #f44336; }
+.seat-legend .legend-item span { font-weight: 500; color: rgba(0,0,0,0.7); }
 
 // Sectors card styling
 // Removed sectors-card styles
@@ -758,32 +670,7 @@ mat-card-content p {
 }
 
 // Legend for seat status
-.seat-legend {
-  display: flex;
-  gap: 16px;
-  margin-top: 10px;
-  font-size: 12px;
-  
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    
-    .color-box {
-      width: 10px;
-      height: 10px;
-      border: 1px solid #333;
-    }
-    
-    .active {
-      background-color: #4caf50;
-    }
-    
-    .inactive {
-      background-color: #f44336;
-    }
-  }
-}
+// (Removed duplicate .seat-legend block to satisfy no-duplicate-selectors rule)
 
 // Removed sectors card reference
 
@@ -877,8 +764,5 @@ mat-card-content p {
 }
 
 // Remove old .card-header-banner padding for map card if present
-.venue-map-card .card-header-banner {
-  padding: 0;
-  background: none;
-  box-shadow: none;
-}
+// Remove default mat-card-content padding for the venue map preview (align with event detail styling)
+.venue-map-card .map-preview-content { padding: 0; }

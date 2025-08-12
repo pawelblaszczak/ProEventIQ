@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject, signal, ViewChild, ElementRef, AfterViewInit, OnDestroy, OnInit, untracked, Input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, signal, ViewChild, ElementRef, AfterViewInit, OnDestroy, OnInit, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
@@ -14,12 +14,12 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import Konva from 'konva';
 import { Venue } from '../../api/model/venue';
 import { Sector } from '../../api/model/sector';
-import { SectorSeatsInput } from '../../api/model/sector-seats-input';
+import { Participant } from '../../api/model/participant';
+import { Event } from '../../api/model/event';
 import { ProEventIQService } from '../../api/api/pro-event-iq.service';
 import { ConfirmationDialogService, ErrorDisplayComponent } from '../../shared';
 import { firstValueFrom } from 'rxjs';
 import { ChangeSectorNameDialogComponent } from './change-sector-name-dialog/change-sector-name-dialog.component';
-import { canDeactivateVenueMapEdit } from './can-deactivate-venue-map-edit.guard';
 
 /**
  * PERFORMANCE OPTIMIZATIONS APPLIED:
@@ -69,8 +69,17 @@ interface EditableSector extends Sector {
 })
 export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('canvasContainer', { static: false }) canvasContainer!: ElementRef<HTMLDivElement>;
-  @Input() mode: 'preview' | 'edit' = 'edit'; // Use simple string for mode
+  @Input() mode: 'preview' | 'edit' | 'reservation' = 'edit'; // Added 'reservation' mode
   @Input() venueData: Venue | null = null; // Allow venue data to be passed in
+  @Input() eventData: Event | null = null; // Event context for reservation header
+  // Event context (only for reservation mode)
+  // Exposed for template (reservation mode)
+  readonly eventId = signal<number | null>(null);
+  participants = signal<Participant[]>([]);
+  participantsLoading = signal(false);
+  participantsError = signal<string | null>(null);
+  // Reservation mode participant selection
+  selectedParticipantId = signal<number | null>(null);
   
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -97,6 +106,13 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
   private konvaInitialized = false;
   private needsFullRender = false; // Flag to control when full re-render is needed
   private seatTooltip: Konva.Label | null = null; // Tooltip for seat information
+  // Reservation seat coloring helpers
+  private readonly defaultSeatColor = '#90A4AE';
+  private getParticipantColor(participantId: number | null): string {
+    if (participantId == null) return this.defaultSeatColor;
+    const p = this.participants().find(pp => pp.participantId === participantId);
+    return p?.seatColor || this.defaultSeatColor;
+  }
   
   // Canvas and zoom settings
   canvasWidth = 3000;
@@ -217,7 +233,57 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
           this.loading.set(false);
         }
       });
+
+      // Read query params for reservation mode and eventId
+      this.route.queryParamMap.subscribe(qp => {
+        const modeParam = qp.get('mode');
+        if (modeParam === 'reservation') {
+          this.mode = 'reservation';
+        }
+        const eventIdParam = qp.get('eventId');
+        if (eventIdParam) {
+          const evId = Number(eventIdParam);
+            if (!isNaN(evId)) {
+              this.eventId.set(evId);
+              if (this.mode === 'reservation') {
+                this.loadParticipants(evId);
+              }
+            }
+        }
+      });
     }
+  }
+
+  loadParticipants(eventId: number) {
+    this.participantsLoading.set(true);
+    this.participantsError.set(null);
+    this.venueApi.eventsEventIdParticipantsGet(eventId).subscribe({
+      next: (data) => {
+        this.participants.set(data || []);
+        this.participantsLoading.set(false);
+      },
+      error: (err) => {
+        console.error('Failed loading participants', err);
+        this.participantsError.set('Failed to load participants');
+        this.participantsLoading.set(false);
+      }
+    });
+  }
+
+  // Select / toggle a participant in reservation mode
+  selectParticipant(p: Participant) {
+    if (this.mode !== 'reservation') return;
+    const current = this.selectedParticipantId();
+    this.selectedParticipantId.set(current === p.participantId ? null : p.participantId);
+    // Future hook: emit selection change or highlight seats for this participant
+  }
+
+  isParticipantSelected(p: Participant): boolean {
+    return this.selectedParticipantId() === p.participantId;
+  }
+
+  clearSelectedParticipant() {
+    this.selectedParticipantId.set(null);
   }
 
   private initializeKonva() {
@@ -523,6 +589,10 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
         if (selectionChanged) {
           existingGroup.destroy();
           this.sectorGroups.delete(sectorId);
+          // IMPORTANT: also clear cached Konva objects so they are rebuilt for new group
+          this.sectorSeats.delete(sectorId);
+          this.sectorOutlines.delete(sectorId);
+          this.sectorLabels.delete(sectorId);
           const group = this.createSectorGroup(sector);
           if (group) {
             this.sectorGroups.set(sectorId, group);
@@ -543,6 +613,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     
     // Update seat tooltip handlers for all seats
     this.updateSeatTooltipHandlers();
+  // Re-apply seat visibility rule in case of group recreation
+  this.updateSeatsVisibility(this.zoomLevel());
     
     // Single draw call at the end - like KonvaTest
     this.layer.batchDraw();
@@ -852,6 +924,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
         // Add simple event handlers like KonvaTest
         seat.on('mouseover', () => {
           this.stage!.container().style.cursor = 'pointer';
+          seat.setAttr('_prevFill', seat.fill());
           seat.fill('#66BB6A'); // Hover color
           
           // Show tooltip with seat information when zoom level is sufficient (≥ 180%)
@@ -884,7 +957,19 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
 
         seat.on('mouseout', () => {
           this.stage!.container().style.cursor = 'default';
-          seat.fill('#90A4AE'); // Reset color
+          const prev = seat.getAttr('_prevFill');
+          if (this.mode === 'reservation') {
+            const pid = seat.getAttr('participantId') as number | null | undefined;
+            if (pid) {
+              seat.fill(this.getParticipantColor(pid));
+            } else {
+              seat.fill(this.defaultSeatColor);
+            }
+          } else if (prev) {
+            seat.fill(prev);
+          } else {
+            seat.fill(this.defaultSeatColor); // fallback
+          }
           
           // Hide tooltip
           if (this.seatTooltip) {
@@ -895,9 +980,27 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
 
         seat.on('click', (e) => {
           e.cancelBubble = true;
-          // Simple selection toggle like KonvaTest
-          const isSelected = seat.fill() === '#4CAF50';
-          seat.fill(isSelected ? '#90A4AE' : '#4CAF50');
+          if (this.mode === 'reservation') {
+            const selectedPid = this.selectedParticipantId();
+            const currentPid = seat.getAttr('participantId') as number | null | undefined;
+            if (selectedPid == null) {
+              // No participant selected -> unassign/reset
+              seat.setAttr('participantId', null);
+              seat.fill(this.defaultSeatColor);
+            } else if (currentPid === selectedPid) {
+              // Toggle off assignment
+              seat.setAttr('participantId', null);
+              seat.fill(this.defaultSeatColor);
+            } else {
+              // Assign to selected participant
+              seat.setAttr('participantId', selectedPid);
+              seat.fill(this.getParticipantColor(selectedPid));
+            }
+          } else {
+            // Edit/preview: simple toggle highlight
+            const isSelected = seat.fill() === '#4CAF50';
+            seat.fill(isSelected ? this.defaultSeatColor : '#4CAF50');
+          }
           this.layer!.batchDraw();
         });
 
@@ -966,6 +1069,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
           // Add tooltip event handlers
           seat.on('mouseover', () => {
             this.stage!.container().style.cursor = 'pointer';
+            seat.setAttr('_prevFill', seat.fill());
             seat.fill('#66BB6A'); // Hover color
             
             // Show tooltip with seat information when zoom level is sufficient (≥ 180%)
@@ -998,7 +1102,19 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
           
           seat.on('mouseout', () => {
             this.stage!.container().style.cursor = 'default';
-            seat.fill('#90A4AE'); // Reset color
+            const prev = seat.getAttr('_prevFill');
+            if (this.mode === 'reservation') {
+              const pid = seat.getAttr('participantId') as number | null | undefined;
+              if (pid) {
+                seat.fill(this.getParticipantColor(pid));
+              } else {
+                seat.fill(this.defaultSeatColor);
+              }
+            } else if (prev) {
+              seat.fill(prev);
+            } else {
+              seat.fill(this.defaultSeatColor);
+            }
             
             // Hide tooltip
             if (this.seatTooltip) {

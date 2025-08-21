@@ -1,0 +1,39 @@
+<div class="container">
+  <mat-card class="unauth-card" appearance="raised">
+    <mat-card-content>
+      <div class="icon-container">
+        <mat-icon class="large-icon">security</mat-icon>
+      </div>
+      
+      <div class="content">
+        <h1 class="title">Access Denied</h1>
+        <div class="status-code">401 - Unauthorized</div>
+        
+        <p class="description">
+          You don't have permission to access this resource. 
+          Please check your credentials or contact an administrator.
+        </p>
+        
+        <div class="suggestions">
+          <h3>What you can do:</h3>
+          <ul>
+            <li>Try refreshing the page</li>
+            <li>Make sure you're logged in</li>
+            <li>Go back to the home page</li>
+          </ul>
+        </div>
+      </div>
+    </mat-card-content>
+    
+    <mat-card-actions align="end" class="actions">
+      <button mat-stroked-button color="primary" (click)="retry()">
+        <mat-icon>refresh</mat-icon>
+        Try Again
+      </button>
+      <button mat-flat-button color="primary" (click)="goHome()">
+        <mat-icon>home</mat-icon>
+        Go Home
+      </button>
+    </mat-card-actions>
+  </mat-card>
+</div>

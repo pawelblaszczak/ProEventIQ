@@ -12,6 +12,7 @@ export const routes: Routes = [
     component: MainLayoutComponent,
     children: [
       { path: '', redirectTo: 'home', pathMatch: 'full' },
+  { path: 'unauthorized', loadComponent: () => import('./auth/unauthorized/unauthorized.component').then(m => m.UnauthorizedComponent) },
       { path: 'home', component: HomeComponent },
       { path: 'venues', component: VenuesListComponent },
       { path: 'venues/add', loadComponent: () => import('./venues/venue-edit/venue-edit.component').then(m => m.VenueEditComponent) },

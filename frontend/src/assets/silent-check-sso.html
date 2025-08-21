@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Silent Check SSO</title>
+  </head>
+  <body>
+    <script>
+      // Notify parent window to complete the silent SSO flow
+      parent.postMessage(location.href, location.origin);
+    </script>
+  </body>
+</html>

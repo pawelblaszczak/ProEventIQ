@@ -1,13 +1,17 @@
 package dev.knightcore.proeventiq.config;
 
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
+import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
 import io.swagger.v3.oas.annotations.info.Contact;
 import io.swagger.v3.oas.annotations.info.Info;
 import io.swagger.v3.oas.annotations.info.License;
+import io.swagger.v3.oas.annotations.security.OAuthFlow;
+import io.swagger.v3.oas.annotations.security.OAuthFlows;
+import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import io.swagger.v3.oas.annotations.servers.Server;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
-import io.swagger.v3.oas.models.security.SecurityScheme;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -30,14 +34,29 @@ import org.springframework.context.annotation.Configuration;
         @Server(url = "/api", description = "API Server")
     }
 )
+@SecurityScheme(
+    name = "keycloak",
+    type = SecuritySchemeType.OAUTH2,
+    flows = @OAuthFlows(
+        authorizationCode = @OAuthFlow(
+            authorizationUrl = "${app.keycloak.server-url}/realms/${app.keycloak.realm}/protocol/openid-connect/auth",
+            tokenUrl = "${app.keycloak.server-url}/realms/${app.keycloak.realm}/protocol/openid-connect/token"
+        )
+    )
+)
+@SecurityScheme(
+    name = "bearer-key",
+    type = SecuritySchemeType.HTTP,
+    scheme = "bearer",
+    bearerFormat = "JWT"
+)
 public class OpenApiConfig {
 
     @Bean
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
-                .components(new Components()
-                        .addSecuritySchemes("bearer-key", 
-                                new SecurityScheme().type(SecurityScheme.Type.HTTP)
-                                        .scheme("bearer").bearerFormat("JWT")));
+                .components(new Components())
+                .addSecurityItem(new SecurityRequirement().addList("keycloak"))
+                .addSecurityItem(new SecurityRequirement().addList("bearer-key"));
     }
 }

@@ -1,16 +1,30 @@
 <mat-toolbar color="primary" class="toolbar">
-  <button mat-icon-button (click)="toggleSideNav()">
+  <button mat-icon-button (click)="toggleSideNav()" *ngIf="authenticated()">
     <mat-icon>menu</mat-icon>
   </button>  <div class="logo-container">
     <span class="material-icons-outlined logo-icon">event_available</span>
     <span class="app-title">ProEventIQ</span>
   </div>
   <span class="toolbar-spacer"></span>
-  <!-- Add user profile and other top-right icons if needed -->
+  <button mat-button *ngIf="!authenticated()" (click)="login()">Login</button>
+  <div *ngIf="authenticated()" class="user-info" [matMenuTriggerFor]="userMenu">
+    <span class="user-name" aria-label="Logged in user">{{ displayName() }}</span>
+    <mat-icon aria-hidden="true">account_circle</mat-icon>
+  </div>
+  <mat-menu #userMenu="matMenu">
+    <button mat-menu-item class="compact-menu-item">
+      <mat-icon class="compact-icon">person</mat-icon>
+      <span class="compact-text">My account</span>
+    </button>
+    <button mat-menu-item (click)="logout()" class="compact-menu-item">
+      <mat-icon class="compact-icon">logout</mat-icon>
+      <span class="compact-text">Logout</span>
+    </button>
+  </mat-menu>
 </mat-toolbar>
 
 <mat-sidenav-container class="sidenav-container">
-  <mat-sidenav mode="side" [opened]="true" class="sidenav" [ngClass]="{'expanded': isExpanded()}">
+  <mat-sidenav mode="side" [opened]="authenticated()" class="sidenav" [ngClass]="{'expanded': isExpanded()}" *ngIf="authenticated()">
     <div class="menu-header" *ngIf="isExpanded()">
       <span>NAVIGATION</span>
     </div>
@@ -73,7 +87,7 @@
       <!-- Add more menu items based on system requirements -->
     </mat-nav-list>  </mat-sidenav>
 
-  <mat-sidenav-content [style.marginLeft.px]="isExpanded() ? 200 : 72">
+  <mat-sidenav-content [style.marginLeft.px]="authenticated() && isExpanded() ? 200 : authenticated() ? 72 : 0">
     <div class="content-container">
       <router-outlet></router-outlet>
     </div>

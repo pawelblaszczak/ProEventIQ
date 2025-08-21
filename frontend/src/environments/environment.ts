@@ -1,4 +1,9 @@
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:8081/api'
+  apiUrl: 'https://localhost:8443/api',
+  keycloak: {
+  url: 'https://localhost:8444',
+    realm: 'proeventiq',
+    clientId: 'proeventiq-frontend'
+  }
 };

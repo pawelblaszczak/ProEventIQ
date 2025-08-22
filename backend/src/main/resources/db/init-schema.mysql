@@ -13,6 +13,7 @@ DROP TABLE IF EXISTS participant;
 -- Create venue table
 CREATE TABLE venue (
     venue_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_name VARCHAR(100) NOT NULL,
     name VARCHAR(100) NOT NULL,
     country VARCHAR(100) NOT NULL,
     city VARCHAR(100) NOT NULL,
@@ -77,6 +78,7 @@ CREATE INDEX idx_seat_status ON seat(status);
 -- Create event_show table
 CREATE TABLE event_show (
     show_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_name VARCHAR(100) NOT NULL,
     name VARCHAR(255) NOT NULL,
     thumbnail MEDIUMBLOB,
     thumbnail_content_type VARCHAR(100),
@@ -94,6 +96,7 @@ CREATE INDEX idx_show_age_range ON event_show(age_from, age_to);
 -- Create event table
 CREATE TABLE event (
     event_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_name VARCHAR(100) NOT NULL,
     show_id INT NOT NULL,
     venue_id INT NOT NULL,
     date_time DATETIME NOT NULL,

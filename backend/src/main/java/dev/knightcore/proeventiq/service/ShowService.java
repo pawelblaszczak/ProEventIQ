@@ -20,73 +20,96 @@ import java.util.Optional;
 public class ShowService {
     private static final Logger log = LoggerFactory.getLogger(ShowService.class);
     private final ShowRepository showRepository;
+    private final KeycloakUserService keycloakUserService;
 
-    public ShowService(ShowRepository showRepository) {
+    public ShowService(ShowRepository showRepository, KeycloakUserService keycloakUserService) {
         this.showRepository = showRepository;
+        this.keycloakUserService = keycloakUserService;
     }
 
     @Transactional(readOnly = true)
-    public List<Show> listShows(String name, Integer ageFrom, Integer ageTo) {
-        log.info("Listing shows with filters - name: {}, ageFrom: {}, ageTo: {}", name, ageFrom, ageTo);
-        List<ShowEntity> entities = showRepository.findByFilters(name, ageFrom, ageTo);
-        return entities.stream().map(this::toDto).toList();
+        public List<Show> listShows(String name, Integer ageFrom, Integer ageTo) {
+            String currentUsername = keycloakUserService.getCurrentUsername()
+                .orElseThrow(() -> new IllegalStateException("User not authenticated"));
+            log.info("Listing shows for user {} with filters - name: {}, ageFrom: {}, ageTo: {}", currentUsername, name, ageFrom, ageTo);
+            List<ShowEntity> entities = showRepository.findByUserNameAndFilters(currentUsername, name, ageFrom, ageTo);
+            return entities.stream().map(this::toDto).toList();
     }
 
     @Transactional(readOnly = true)
-    public List<ShowOption> listShowOptions() {
-        log.info("Listing show options");
-        List<ShowEntity> entities = showRepository.findAll();
-        return entities.stream()
-                .map(entity -> new ShowOption(
-                    entity.getShowId(),
-                    entity.getName()
-                ))
-                .toList();
+        public List<ShowOption> listShowOptions() {
+            String currentUsername = keycloakUserService.getCurrentUsername()
+                .orElseThrow(() -> new IllegalStateException("User not authenticated"));
+            log.info("Listing show options for user {}", currentUsername);
+            List<ShowEntity> entities = showRepository.findByUserName(currentUsername);
+            return entities.stream()
+                    .map(entity -> new ShowOption(
+                        entity.getShowId(),
+                        entity.getName()
+                    ))
+                    .toList();
     }
 
     @Transactional(readOnly = true)
-    public Optional<Show> getShow(Long showId) {
-        log.info("Fetching show with ID: {}", showId);
-        return showRepository.findById(showId).map(this::toDto);
+        public Optional<Show> getShow(Long showId) {
+            String currentUsername = keycloakUserService.getCurrentUsername()
+                .orElseThrow(() -> new IllegalStateException("User not authenticated"));
+            log.info("Fetching show with ID: {} for user {}", showId, currentUsername);
+            return showRepository.findById(showId)
+                .filter(entity -> currentUsername.equals(entity.getUserName()))
+                .map(this::toDto);
     }
 
     @Transactional
-    public Show addShow(ShowInput input) {
-        log.info("Adding new show: {}", input.getName());
-        ShowEntity entity = fromInput(input);
-        ShowEntity saved = showRepository.save(entity);
-        return toDto(saved);
+        public Show addShow(ShowInput input) {
+            String currentUsername = keycloakUserService.getCurrentUsername()
+                .orElseThrow(() -> new IllegalStateException("User not authenticated"));
+            log.info("Adding new show: {} for user {}", input.getName(), currentUsername);
+            ShowEntity entity = fromInput(input);
+            entity.setUserName(currentUsername);
+            ShowEntity saved = showRepository.save(entity);
+            return toDto(saved);
     }
 
     @Transactional
-    public Optional<Show> updateShow(Long showId, ShowInput input) {
-        log.info("Updating show with ID: {}", showId);
-        return showRepository.findById(showId).map(entity -> {
-            updateShowEntityFromInput(entity, input);
-            return toDto(showRepository.save(entity));
-        });
+        public Optional<Show> updateShow(Long showId, ShowInput input) {
+            String currentUsername = keycloakUserService.getCurrentUsername()
+                .orElseThrow(() -> new IllegalStateException("User not authenticated"));
+            log.info("Updating show with ID: {} for user {}", showId, currentUsername);
+            return showRepository.findById(showId)
+                .filter(entity -> currentUsername.equals(entity.getUserName()))
+                .map(entity -> {
+                    updateShowEntityFromInput(entity, input);
+                    return toDto(showRepository.save(entity));
+                });
     }
 
     @Transactional
-    public boolean deleteShow(Long showId) {
-        log.info("Deleting show with ID: {}", showId);
-        if (showRepository.existsById(showId)) {
-            showRepository.deleteById(showId);
-            return true;
-        }
-        return false;
+        public boolean deleteShow(Long showId) {
+            String currentUsername = keycloakUserService.getCurrentUsername()
+                .orElseThrow(() -> new IllegalStateException("User not authenticated"));
+            log.info("Deleting show with ID: {} for user {}", showId, currentUsername);
+            Optional<ShowEntity> entityOpt = showRepository.findById(showId);
+            if (entityOpt.isPresent() && currentUsername.equals(entityOpt.get().getUserName())) {
+                showRepository.deleteById(showId);
+                return true;
+            }
+            return false;
     }
 
     @Transactional(readOnly = true)
-    public Page<Show> listShowsPaginated(String name, Integer ageFrom, Integer ageTo, String search, Pageable pageable) {
-        log.info("Listing shows (paginated) with filters - name: {}, ageFrom: {}, ageTo: {}, search: {}, pageable: {}", name, ageFrom, ageTo, search, pageable);
-        Page<ShowEntity> page = showRepository.findByFiltersPaginated(name, ageFrom, ageTo, search, pageable);
-        return page.map(this::toDto);
+        public Page<Show> listShowsPaginated(String name, Integer ageFrom, Integer ageTo, String search, Pageable pageable) {
+            String currentUsername = keycloakUserService.getCurrentUsername()
+                .orElseThrow(() -> new IllegalStateException("User not authenticated"));
+            log.info("Listing shows (paginated) for user {} with filters - name: {}, ageFrom: {}, ageTo: {}, search: {}, pageable: {}", currentUsername, name, ageFrom, ageTo, search, pageable);
+            Page<ShowEntity> page = showRepository.findByUserNameAndFiltersPaginated(currentUsername, name, ageFrom, ageTo, search, pageable);
+            return page.map(this::toDto);
     }
 
     private Show toDto(ShowEntity entity) {
         Show dto = new Show();
         dto.setShowId(entity.getShowId());
+        dto.setUserName(entity.getUserName());
         dto.setName(entity.getName());
         dto.setDescription(entity.getDescription());
         dto.setAgeFrom(entity.getAgeFrom());
@@ -103,11 +126,13 @@ public class ShowService {
 
     private ShowEntity fromInput(ShowInput input) {
         ShowEntity entity = new ShowEntity();
+        entity.setUserName(input.getUserName());
         updateShowEntityFromInput(entity, input);
         return entity;
     }
 
     private void updateShowEntityFromInput(ShowEntity entity, ShowInput input) {
+        entity.setUserName(input.getUserName());
         entity.setName(input.getName());
         entity.setDescription(input.getDescription());
         entity.setAgeFrom(input.getAgeFrom());

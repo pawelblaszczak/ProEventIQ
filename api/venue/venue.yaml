@@ -1,9 +1,13 @@
 Venue:
   type: object
+  description: Complete venue representation including all sectors and seats data. Use VenueListDto for listing operations for better performance.
   properties:
     venueId:
       type: integer
       format: int64
+    userName:
+      type: string
+      description: Username of the user who created the venue
     name:
       type: string
     country:

@@ -5,6 +5,9 @@ EventInput:
     - venueId
     - dateTime
   properties:
+    userName:
+      type: string
+      description: User name associated with the event
     showId:
       type: integer
       format: int64

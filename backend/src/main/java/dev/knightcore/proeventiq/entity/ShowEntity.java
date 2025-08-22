@@ -9,6 +9,7 @@ public class ShowEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long showId;
     
+    private String userName;
     private String name;
     
     @Lob
@@ -38,6 +39,14 @@ public class ShowEntity {
     
     public void setShowId(Long showId) { 
         this.showId = showId; 
+    }
+
+    public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
     }
     
     public String getName() { 

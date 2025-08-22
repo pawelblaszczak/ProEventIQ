@@ -4,6 +4,9 @@ Show:
     showId:
       type: integer
       format: int64
+    userName:
+      type: string
+      description: User name associated with the show
     name:
       type: string
     thumbnail:

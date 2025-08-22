@@ -35,59 +35,68 @@ public class EventService {
     private final ShowService showService;
     private final VenueService venueService;
     private final ParticipantRepository participantRepository;
+    private final KeycloakUserService keycloakUserService;
 
     public EventService(EventRepository eventRepository, 
                        ShowRepository showRepository,
                        VenueRepository venueRepository,
                        ShowService showService,
                        VenueService venueService,
-                       ParticipantRepository participantRepository) {
+                       ParticipantRepository participantRepository,
+                       KeycloakUserService keycloakUserService) {
         this.eventRepository = eventRepository;
         this.showRepository = showRepository;
         this.venueRepository = venueRepository;
         this.showService = showService;
         this.venueService = venueService;
         this.participantRepository = participantRepository;
+        this.keycloakUserService = keycloakUserService;
     }
 
     @Transactional(readOnly = true)
     public List<Event> listEvents(Long showId, Long venueId, OffsetDateTime dateFrom, OffsetDateTime dateTo) {
         log.info("Listing events with filters - showId: {}, venueId: {}, dateFrom: {}, dateTo: {}", 
                 showId, venueId, dateFrom, dateTo);
-        
+        String currentUsername = keycloakUserService.getCurrentUsername()
+            .orElseThrow(() -> new IllegalStateException("User not authenticated"));
         LocalDateTime localDateFrom = dateFrom != null ? dateFrom.toLocalDateTime() : null;
         LocalDateTime localDateTo = dateTo != null ? dateTo.toLocalDateTime() : null;
-        
         List<EventEntity> entities = eventRepository.findByFilters(showId, venueId, localDateFrom, localDateTo);
-        return entities.stream().map(this::toDto).toList();
+        return entities.stream()
+            .filter(e -> currentUsername.equals(e.getUserName()))
+            .map(this::toDto).toList();
     }
 
     @Transactional(readOnly = true)
     public Optional<Event> getEvent(Long eventId) {
         log.info("Fetching event with ID: {}", eventId);
+        String currentUsername = keycloakUserService.getCurrentUsername()
+            .orElseThrow(() -> new IllegalStateException("User not authenticated"));
         EventEntity entity = eventRepository.findByIdWithDetails(eventId);
-        return entity != null ? Optional.of(toDto(entity)) : Optional.empty();
+        if (entity != null && currentUsername.equals(entity.getUserName())) {
+            return Optional.of(toDto(entity));
+        }
+        return Optional.empty();
     }
 
     @Transactional
     public Optional<Event> createEvent(EventInput input) {
         log.info("Creating new event for show: {} at venue: {}", input.getShowId(), input.getVenueId());
-        
         // Validate that show and venue exist
         Long showId = input.getShowId();
         Long venueId = input.getVenueId();
-        
         if (!showRepository.existsById(showId)) {
             log.warn("Show with ID {} not found", showId);
             return Optional.empty();
         }
-        
         if (!venueRepository.existsById(venueId)) {
             log.warn("Venue with ID {} not found", venueId);
             return Optional.empty();
         }
-        
         EventEntity entity = fromInput(input);
+        String currentUsername = keycloakUserService.getCurrentUsername()
+            .orElseThrow(() -> new IllegalStateException("User not authenticated"));
+        entity.setUserName(currentUsername);
         EventEntity saved = eventRepository.save(entity);
         return Optional.of(toDto(saved));
     }
@@ -95,31 +104,34 @@ public class EventService {
     @Transactional
     public Optional<Event> updateEvent(Long eventId, EventInput input) {
         log.info("Updating event with ID: {}", eventId);
-        
-        return eventRepository.findById(eventId).map(entity -> {
-            // Validate that show and venue exist
-            Long showId = input.getShowId();
-            Long venueId = input.getVenueId();
-            
-            if (!showRepository.existsById(showId)) {
-                log.warn("Show with ID {} not found", showId);
-                return null;
-            }
-            
-            if (!venueRepository.existsById(venueId)) {
-                log.warn("Venue with ID {} not found", venueId);
-                return null;
-            }
-            
-            updateEventEntityFromInput(entity, input);
-            return toDto(eventRepository.save(entity));
-        });
+        String currentUsername = keycloakUserService.getCurrentUsername()
+            .orElseThrow(() -> new IllegalStateException("User not authenticated"));
+        return eventRepository.findById(eventId)
+            .filter(entity -> currentUsername.equals(entity.getUserName()))
+            .map(entity -> {
+                // Validate that show and venue exist
+                Long showId = input.getShowId();
+                Long venueId = input.getVenueId();
+                if (!showRepository.existsById(showId)) {
+                    log.warn("Show with ID {} not found", showId);
+                    return null;
+                }
+                if (!venueRepository.existsById(venueId)) {
+                    log.warn("Venue with ID {} not found", venueId);
+                    return null;
+                }
+                updateEventEntityFromInput(entity, input);
+                return toDto(eventRepository.save(entity));
+            });
     }
 
     @Transactional
     public boolean deleteEvent(Long eventId) {
         log.info("Deleting event with ID: {}", eventId);
-        if (eventRepository.existsById(eventId)) {
+        String currentUsername = keycloakUserService.getCurrentUsername()
+            .orElseThrow(() -> new IllegalStateException("User not authenticated"));
+        Optional<EventEntity> entityOpt = eventRepository.findById(eventId);
+        if (entityOpt.isPresent() && currentUsername.equals(entityOpt.get().getUserName())) {
             eventRepository.deleteById(eventId);
             return true;
         }
@@ -129,10 +141,16 @@ public class EventService {
     @Transactional(readOnly = true)
     public Page<Event> listEventsPaginated(Long showId, Long venueId, OffsetDateTime dateFrom, OffsetDateTime dateTo, String search, Pageable pageable) {
         log.info("Listing events (paginated) with filters - showId: {}, venueId: {}, dateFrom: {}, dateTo: {}, search: {}, pageable: {}", showId, venueId, dateFrom, dateTo, search, pageable);
+        String currentUsername = keycloakUserService.getCurrentUsername()
+            .orElseThrow(() -> new IllegalStateException("User not authenticated"));
         LocalDateTime localDateFrom = dateFrom != null ? dateFrom.toLocalDateTime() : null;
         LocalDateTime localDateTo = dateTo != null ? dateTo.toLocalDateTime() : null;
         Page<EventEntity> page = eventRepository.findByFiltersPaginated(showId, venueId, localDateFrom, localDateTo, search, pageable);
-        return page.map(this::toDto);
+        List<Event> filtered = page.getContent().stream()
+            .filter(e -> currentUsername.equals(e.getUserName()))
+            .map(this::toDto)
+            .toList();
+        return new org.springframework.data.domain.PageImpl<>(filtered, pageable, filtered.size());
     }
 
     // PARTICIPANT SERVICE METHODS

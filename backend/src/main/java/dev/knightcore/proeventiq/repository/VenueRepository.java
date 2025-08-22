@@ -13,6 +13,9 @@ import java.util.List;
 
 @Repository
 public interface VenueRepository extends JpaRepository<VenueEntity, Long> {
+    List<VenueEntity> findByUserName(String userName);
+    Page<VenueEntity> findByUserNameAndNameContainingIgnoreCaseAndCountryContainingIgnoreCaseAndCityContainingIgnoreCaseOrderByNameAsc(String userName, String name, String country, String city, Pageable pageable);
+    Page<VenueEntity> findByUserNameAndNameContainingIgnoreCaseOrCityContainingIgnoreCaseOrCountryContainingIgnoreCaseOrderByNameAsc(String userName, String name, String city, String country, Pageable pageable);
     List<VenueEntity> findByNameContainingIgnoreCaseAndCountryContainingIgnoreCaseAndCityContainingIgnoreCaseOrderByNameAsc(String name, String country, String city);
     Page<VenueEntity> findByNameContainingIgnoreCaseAndCountryContainingIgnoreCaseAndCityContainingIgnoreCaseOrderByNameAsc(String name, String country, String city, Pageable pageable); // Sorting by name can be passed via Pageable
     Page<VenueEntity> findByNameContainingIgnoreCaseOrCityContainingIgnoreCaseOrCountryContainingIgnoreCaseOrderByNameAsc(String name, String city, String country, Pageable pageable); // Sorting by name can be passed via Pageable

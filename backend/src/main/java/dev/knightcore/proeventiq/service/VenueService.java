@@ -26,29 +26,28 @@ public class VenueService {
     private static final Logger log = LoggerFactory.getLogger(VenueService.class);
     private final VenueRepository venueRepository;
     private final dev.knightcore.proeventiq.repository.SectorRepository sectorRepository;
+    private final KeycloakUserService keycloakUserService;
 
-    public VenueService(VenueRepository venueRepository, dev.knightcore.proeventiq.repository.SectorRepository sectorRepository) {
+    public VenueService(VenueRepository venueRepository, 
+                       dev.knightcore.proeventiq.repository.SectorRepository sectorRepository,
+                       KeycloakUserService keycloakUserService) {
         this.venueRepository = venueRepository;
         this.sectorRepository = sectorRepository;
+        this.keycloakUserService = keycloakUserService;
     }
-
+    
     @Transactional(readOnly = true)
-    public List<Venue> listVenues(String name, String country, String city) {
-        List<VenueEntity> entities = venueRepository.findByNameContainingIgnoreCaseAndCountryContainingIgnoreCaseAndCityContainingIgnoreCaseOrderByNameAsc(
-                name != null ? name : "",
-                country != null ? country : "",
-                city != null ? city : ""
-        );
-        return entities.stream().map(this::toDto).toList();
-    }    @Transactional(readOnly = true)
     public Optional<Venue> getVenue(Long venueId) {
         log.info("Fetching venue with ID: {}", venueId);
-        
-        return venueRepository.findWithSectorsByVenueId(venueId).map(entity -> {
-            logVenueDetails(entity);
-            initializeLazyCollections(entity);
-            return toDto(entity);
-        });
+        String currentUsername = keycloakUserService.getCurrentUsername()
+            .orElseThrow(() -> new IllegalStateException("User not authenticated"));
+        return venueRepository.findWithSectorsByVenueId(venueId)
+            .filter(entity -> currentUsername.equals(entity.getUserName()))
+            .map(entity -> {
+                logVenueDetails(entity);
+                initializeLazyCollections(entity);
+                return toDto(entity, true);
+            });
     }
 
     private void logVenueDetails(VenueEntity entity) {
@@ -89,19 +88,34 @@ public class VenueService {
     @Transactional
     public Venue addVenue(VenueInput input) {
         VenueEntity entity = fromInput(input);
+        
+        // Set the userName from the authentication context
+        String currentUsername = keycloakUserService.getCurrentUsername()
+            .orElseThrow(() -> new IllegalStateException("User not authenticated"));
+        entity.setUserName(currentUsername);
+        
         VenueEntity saved = venueRepository.save(entity);
-        return toDto(saved);
-    }    @Transactional
+        return toDto(saved, true);
+    }    
+    
+    @Transactional
     public Optional<Venue> updateVenue(Long venueId, VenueInput input) {
-        return venueRepository.findById(venueId).map(entity -> {
-            updateVenueEntityFromInput(entity, input);
-            return toDto(venueRepository.save(entity));
-        });
+        String currentUsername = keycloakUserService.getCurrentUsername()
+            .orElseThrow(() -> new IllegalStateException("User not authenticated"));
+        return venueRepository.findById(venueId)
+            .filter(entity -> currentUsername.equals(entity.getUserName()))
+            .map(entity -> {
+                updateVenueEntityFromInput(entity, input);
+                return toDto(venueRepository.save(entity), true);
+            });
     }
 
     @Transactional
     public boolean deleteVenue(Long venueId) {
-        if (venueRepository.existsById(venueId)) {
+        String currentUsername = keycloakUserService.getCurrentUsername()
+            .orElseThrow(() -> new IllegalStateException("User not authenticated"));
+        Optional<VenueEntity> entityOpt = venueRepository.findById(venueId);
+        if (entityOpt.isPresent() && currentUsername.equals(entityOpt.get().getUserName())) {
             venueRepository.deleteById(venueId);
             return true;
         }
@@ -139,15 +153,21 @@ public class VenueService {
             base64String = base64Data.split(",")[1];
         }
           return Base64.getDecoder().decode(base64String);
-    }private VenueEntity fromInput(VenueInput input) {
+    }
+    
+    private VenueEntity fromInput(VenueInput input) {
         VenueEntity entity = new VenueEntity();
         updateVenueEntityFromInput(entity, input);
         return entity;
-    }    private Venue toDto(VenueEntity entity) {
+    }    
+    
+    private Venue toDto(VenueEntity entity, Boolean includeSectors) {
         Venue dto = new Venue();
         mapBasicVenueProperties(entity, dto);
         mapVenueThumbnail(entity, dto);
-        mapVenueSectors(entity, dto);
+        if (includeSectors) {
+            mapVenueSectors(entity, dto);
+        }
         // Set numberOfSeats using DB function
         if (entity.getVenueId() != null) {
             Integer seatCount = venueRepository.getVenueSeatCount(entity.getVenueId());
@@ -160,6 +180,7 @@ public class VenueService {
 
     private void mapBasicVenueProperties(VenueEntity entity, Venue dto) {
         dto.setVenueId(entity.getVenueId());
+        dto.setUserName(entity.getUserName());
         dto.setName(entity.getName());
         dto.setCountry(entity.getCountry());
         dto.setCity(entity.getCity());
@@ -285,7 +306,9 @@ public class VenueService {
 
     @Transactional(readOnly = true)
     public List<VenueOption> listVenueOptions() {
-        List<VenueEntity> entities = venueRepository.findAll();
+        String currentUsername = keycloakUserService.getCurrentUsername()
+            .orElseThrow(() -> new IllegalStateException("User not authenticated"));
+        List<VenueEntity> entities = venueRepository.findByUserName(currentUsername);
         return entities.stream()
                 .map(entity -> new VenueOption(
                     entity.getVenueId(),
@@ -296,18 +319,20 @@ public class VenueService {
 
     @Transactional(readOnly = true)
     public Page<Venue> listVenuesPaginated(String name, String country, String city, String search, Pageable pageable) {
+        String currentUsername = keycloakUserService.getCurrentUsername()
+            .orElseThrow(() -> new IllegalStateException("User not authenticated"));
         String nameFilter = (name != null) ? name : "";
         String countryFilter = (country != null) ? country : "";
         String cityFilter = (city != null) ? city : "";
         String searchFilter = (search != null) ? search : "";
         // If search is provided, override other filters for a broad search
         if (!searchFilter.isEmpty()) {
-            return venueRepository.findByNameContainingIgnoreCaseOrCityContainingIgnoreCaseOrCountryContainingIgnoreCaseOrderByNameAsc(
-                searchFilter, searchFilter, searchFilter, pageable
-            ).map(this::toDto);
+            return venueRepository.findByUserNameAndNameContainingIgnoreCaseOrCityContainingIgnoreCaseOrCountryContainingIgnoreCaseOrderByNameAsc(
+                currentUsername, searchFilter, searchFilter, searchFilter, pageable
+            ).map(entity -> toDto(entity, false));
         }
-        return venueRepository.findByNameContainingIgnoreCaseAndCountryContainingIgnoreCaseAndCityContainingIgnoreCaseOrderByNameAsc(
-            nameFilter, countryFilter, cityFilter, pageable
-        ).map(this::toDto);
+        return venueRepository.findByUserNameAndNameContainingIgnoreCaseAndCountryContainingIgnoreCaseAndCityContainingIgnoreCaseOrderByNameAsc(
+            currentUsername, nameFilter, countryFilter, cityFilter, pageable
+        ).map(entity -> toDto(entity, false));
     }
 }

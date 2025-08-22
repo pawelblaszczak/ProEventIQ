@@ -9,6 +9,8 @@ public class EventEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long eventId;
+
+    private String userName;    
     
     @Column(name = "show_id", nullable = false)
     private Long showId;
@@ -43,6 +45,14 @@ public class EventEntity {
 
     public void setEventId(Long eventId) {
         this.eventId = eventId;
+    }
+
+    public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
     }
 
     public Long getShowId() {

@@ -48,12 +48,35 @@ export class KeycloakAuthService {
       });
   }
 
-  login(): Promise<void> {
-    return this.keycloak!.login();
+  login(redirectUri?: string): Promise<void> {
+    const options = redirectUri ? { redirectUri } : undefined;
+    return this.keycloak!.login(options);
   }
 
   logout(): Promise<void> {
     return this.keycloak!.logout({ redirectUri: window.location.origin });
+  }
+
+  async refreshAuthenticationState(): Promise<void> {
+    if (!this.keycloak) return;
+    
+    try {
+      // Update token and check if user is authenticated
+      await this.keycloak.updateToken(-1); // Force refresh
+      const authenticated = this.keycloak.authenticated || false;
+      this.isAuthenticated.set(authenticated);
+      
+      if (authenticated) {
+        this.profile.set(this.keycloak.tokenParsed);
+        this.scheduleTokenRefresh();
+      } else {
+        this.profile.set(undefined);
+      }
+    } catch (error) {
+      console.error('Failed to refresh authentication state:', error);
+      this.isAuthenticated.set(false);
+      this.profile.set(undefined);
+    }
   }
 
   getToken(): Promise<string | undefined> {

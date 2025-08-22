@@ -1,6 +1,9 @@
 ShowInput:
   type: object
   properties:
+    userName:
+      type: string
+      description: User name associated with the show
     name:
       type: string
     ageFrom:

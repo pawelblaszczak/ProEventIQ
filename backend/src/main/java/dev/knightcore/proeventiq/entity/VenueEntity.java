@@ -8,7 +8,10 @@ import java.util.List;
 public class VenueEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long venueId;    private String name;
+    private Long venueId;
+    
+    private String userName;
+    private String name;
     private String country;
     private String city;
     private String address;
@@ -25,6 +28,8 @@ public class VenueEntity {
     // Getters and setters
     public Long getVenueId() { return venueId; }
     public void setVenueId(Long venueId) { this.venueId = venueId; }
+    public String getUserName() { return userName; }
+    public void setUserName(String userName) { this.userName = userName; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     public String getCountry() { return country; }

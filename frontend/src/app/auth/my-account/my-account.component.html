@@ -1,0 +1,106 @@
+<div *ngIf="!isAuthenticated()" class="error-container animate-fade-in">
+  <mat-card appearance="outlined" class="error-card">
+    <mat-card-content>
+      <div class="error-icon-container">
+        <mat-icon color="warn">warning</mat-icon>
+      </div>
+      <div class="error-message">
+        <h3>Not Authenticated</h3>
+        <p>Please log in to view your account information.</p>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>
+
+<div *ngIf="isAuthenticated()" class="account-details-section animate-fade-in">
+  <mat-card appearance="outlined" class="account-details-card mat-elevation-z3">
+    <div class="account-hero">
+      <div class="account-header-content">
+        <h1 class="account-name">{{ userName() }}</h1>
+        <h2 class="account-email">
+          <mat-icon class="email-icon">email</mat-icon>
+          {{ userEmail() }}
+        </h2>
+        <div class="account-stats">
+          <div class="stat-item">
+            <mat-icon>person</mat-icon>
+            <div class="stat-content">
+              <span class="stat-inline">{{ preferredUsername() }}</span>
+            </div>
+          </div>
+          <div class="stat-item">
+            <mat-icon>calendar_today</mat-icon>
+            <div class="stat-content">
+              <span class="stat-inline">Member since {{ accountCreated() }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="user-avatar-container">
+        <div class="user-avatar" [attr.aria-label]="'User avatar for ' + userName()">
+          <span class="avatar-initials">{{ userInitials() }}</span>
+        </div>
+      </div>
+      <div class="user-avatar-placeholder">
+        <mat-icon class="placeholder-icon" style="font-size: 72px; color: #bdbdbd;">account_circle</mat-icon>
+        <p>Profile Avatar</p>
+      </div>
+    </div>
+    
+    <mat-divider></mat-divider>
+
+    
+    <mat-card-content class="account-details-content">
+      <div class="account-details-header-row">
+        <h3 class="section-title">
+          <mat-icon>account_circle</mat-icon>
+          Account Information
+        </h3>
+      </div>
+      <div class="account-info-grid">
+        <div class="info-item">
+          <div class="info-label">Full Name</div>
+          <div class="info-value">{{ userName() }}</div>
+        </div>
+        
+        <div class="info-item">
+          <div class="info-label">Email Address</div>
+          <div class="info-value">{{ userEmail() }}</div>
+        </div>
+        
+        <div class="info-item">
+          <div class="info-label">Username</div>
+          <div class="info-value">{{ preferredUsername() }}</div>
+        </div>
+        
+  <!-- Roles & Permissions section removed -->
+      </div>
+    </mat-card-content>
+  <mat-card-actions class="account-actions" align="end" style="display: flex; justify-content: flex-end; align-items: center; gap: 1rem; padding: 1.5rem 2rem; background-color: #fff; border-top: 1px solid rgba(0, 0, 0, 0.1);">
+      <button mat-stroked-button routerLink="/home" class="back-button">
+        <mat-icon>arrow_back</mat-icon>
+        BACK TO HOME
+      </button>
+      <button mat-raised-button color="primary" [routerLink]="['/account', 'edit']" aria-label="Edit account" class="edit-button">
+        <mat-icon>edit</mat-icon>
+        EDIT ACCOUNT
+      </button>
+    </mat-card-actions>
+  </mat-card>
+
+  <!-- Error Display -->
+  <div *ngIf="error()" class="error-banner animate-fade-in">
+    <mat-card appearance="outlined" class="error-card">
+      <mat-card-content>
+        <div class="error-content">
+          <mat-icon color="warn">error</mat-icon>
+          <span>{{ error() }}</span>
+          <button mat-icon-button (click)="error.set(null)" matTooltip="Dismiss error">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

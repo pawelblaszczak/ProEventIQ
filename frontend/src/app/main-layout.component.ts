@@ -1,6 +1,6 @@
-import { Component, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, signal, ChangeDetectionStrategy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { MaterialModule } from './material.module';
 import { MAT_TOOLTIP_DEFAULT_OPTIONS, MatTooltipDefaultOptions } from '@angular/material/tooltip';
 import { KeycloakAuthService } from './auth/keycloak/keycloak.service';
@@ -26,8 +26,10 @@ export const myTooltipDefaults: MatTooltipDefaultOptions = {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class MainLayoutComponent {
+  private readonly router = inject(Router);
+  private readonly auth = inject(KeycloakAuthService);
+  
   isExpanded = signal<boolean>(true);
-  constructor(private readonly auth: KeycloakAuthService) {}
   
   toggleSideNav(): void {
     this.isExpanded.update(value => !value);
@@ -50,5 +52,9 @@ export class MainLayoutComponent {
 
   logout(): void {
     this.auth.logout();
+  }
+
+  navigateToMyAccount(): void {
+    this.router.navigate(['/my-account']);
   }
 }

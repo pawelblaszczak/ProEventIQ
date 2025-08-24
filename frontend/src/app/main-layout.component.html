@@ -12,7 +12,7 @@
     <mat-icon aria-hidden="true">account_circle</mat-icon>
   </div>
   <mat-menu #userMenu="matMenu">
-    <button mat-menu-item class="compact-menu-item">
+    <button mat-menu-item (click)="navigateToMyAccount()" class="compact-menu-item">
       <mat-icon class="compact-icon">person</mat-icon>
       <span class="compact-text">My account</span>
     </button>

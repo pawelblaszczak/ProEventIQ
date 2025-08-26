@@ -3,10 +3,12 @@ package dev.knightcore.proeventiq.service;
 import dev.knightcore.proeventiq.entity.EventEntity;
 import dev.knightcore.proeventiq.entity.ParticipantEntity;
 import dev.knightcore.proeventiq.entity.ShowEntity;
+import dev.knightcore.proeventiq.entity.UserEntity;
 import dev.knightcore.proeventiq.entity.VenueEntity;
 import dev.knightcore.proeventiq.repository.EventRepository;
 import dev.knightcore.proeventiq.repository.ParticipantRepository;
 import dev.knightcore.proeventiq.repository.ShowRepository;
+import dev.knightcore.proeventiq.repository.UserRepository;
 import dev.knightcore.proeventiq.repository.VenueRepository;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -40,15 +42,21 @@ public class ReportService {
     private final ParticipantRepository participantRepository;
     private final ShowRepository showRepository;
     private final VenueRepository venueRepository;
+    private final UserRepository userRepository;
+    private final KeycloakUserService keycloakUserService;
     
     public ReportService(EventRepository eventRepository,
                         ParticipantRepository participantRepository,
                         ShowRepository showRepository,
-                        VenueRepository venueRepository) {
+                        VenueRepository venueRepository,
+                        UserRepository userRepository,
+                        KeycloakUserService keycloakUserService) {
         this.eventRepository = eventRepository;
         this.participantRepository = participantRepository;
         this.showRepository = showRepository;
         this.venueRepository = venueRepository;
+        this.userRepository = userRepository;
+        this.keycloakUserService = keycloakUserService;
     }
     
     @Transactional(readOnly = true)
@@ -79,8 +87,22 @@ public class ReportService {
             ShowEntity show = showOpt.get();
             VenueEntity venue = venueOpt.get();
             
+            // Fetch current user (organizer) information from Keycloak and user_details table
+            UserEntity organizer = null;
+            Optional<String> currentUserEmail = keycloakUserService.getCurrentUserEmail();
+            if (currentUserEmail.isPresent()) {
+                Optional<UserEntity> organizerOpt = userRepository.findByEmail(currentUserEmail.get());
+                if (organizerOpt.isPresent()) {
+                    organizer = organizerOpt.get();
+                } else {
+                    log.warn("Organizer not found in user_details table for email: {}", currentUserEmail.get());
+                }
+            } else {
+                log.warn("Could not retrieve current user email from Keycloak");
+            }
+            
             // Generate PDF
-            byte[] pdfBytes = createPdfReport(event, participant, show, venue);
+            byte[] pdfBytes = createPdfReport(event, participant, show, venue, organizer);
             return Optional.of(pdfBytes);
             
         } catch (Exception e) {
@@ -89,14 +111,13 @@ public class ReportService {
         }
     }
     
-    private byte[] createPdfReport(EventEntity event, ParticipantEntity participant, ShowEntity show, VenueEntity venue) throws IOException {
+    private byte[] createPdfReport(EventEntity event, ParticipantEntity participant, ShowEntity show, VenueEntity venue, UserEntity organizer) throws IOException {
         try (PDDocument document = new PDDocument()) {
             PDPage page = new PDPage(PDRectangle.A4);
             document.addPage(page);
             
             try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
                 // Set up fonts with Unicode support for Polish characters
-                PDFont titleFont;
                 PDFont headerFont;
                 PDFont bodyFont;
                 
@@ -111,7 +132,6 @@ public class ReportService {
                     }
                     
                     // Load fonts using PDType0Font for full Unicode support
-                    titleFont = PDType0Font.load(document, arialBoldFile);
                     headerFont = PDType0Font.load(document, arialBoldFile);
                     bodyFont = PDType0Font.load(document, arialFile);
                     
@@ -119,7 +139,6 @@ public class ReportService {
                 } catch (Exception e) {
                     // Fallback to standard fonts without Polish support
                     log.warn("Could not load Unicode fonts, falling back to standard fonts. Polish characters will be converted to ASCII equivalents: {}", e.getMessage());
-                    titleFont = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
                     headerFont = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
                     bodyFont = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
                 }
@@ -128,17 +147,75 @@ public class ReportService {
                 float yPosition = page.getMediaBox().getHeight() - margin;
                 float lineHeight = 20;
 
-                // Centered title: Reservation confirmation
+                // Centered title: Reservation confirmation with organizer logo on the right
                 String reportTitle = "Reservation confirmation";
                 contentStream.setFont(headerFont, 20);
                 float titleWidth = headerFont.getStringWidth(reportTitle) / 1000 * 20;
                 float pageWidth = page.getMediaBox().getWidth();
                 float titleX = (pageWidth - titleWidth) / 2;
+                
+                // Save original yPosition for logo alignment
+                float titleYPosition = yPosition;
+                
+                // Draw title
                 contentStream.beginText();
                 contentStream.newLineAtOffset(titleX, yPosition);
                 safeShowText(contentStream, reportTitle);
                 contentStream.endText();
+                
+                // Add organizer logo on the right side, aligned with the title
+                if (organizer != null && organizer.getThumbnail() != null && organizer.getThumbnailContentType() != null) {
+                    try {
+                        PDImageXObject logoImage = PDImageXObject.createFromByteArray(document, organizer.getThumbnail(), "organizer_logo");
+                        float logoSize = 80; // Enlarged logo size
+                        float logoX = pageWidth - margin - logoSize; // Right aligned
+                        float logoY = titleYPosition - logoSize + 15; // Aligned with title
+                        contentStream.drawImage(logoImage, logoX, logoY, logoSize, logoSize);
+                    } catch (Exception e) {
+                        log.warn("Could not load organizer logo: {}", e.getMessage());
+                    }
+                }
+                
                 yPosition -= lineHeight + 15;
+
+                // Event organizer section with current user data
+                if (organizer != null) {
+                    contentStream.setFont(headerFont, 14);
+                    contentStream.beginText();
+                    contentStream.newLineAtOffset(margin, yPosition);
+                    safeShowText(contentStream, "Event organizer");
+                    contentStream.endText();
+                    yPosition -= lineHeight + 5;
+
+                    // Get current user data from Keycloak
+                    String organizerName = keycloakUserService.getCurrentUserFullName().orElse(
+                        organizer.getName() != null ? organizer.getName() : "N/A"
+                    );
+                    String organizerEmail = keycloakUserService.getCurrentUserEmail().orElse("N/A");
+                    String organizerAddress = organizer.getAddress() != null ? organizer.getAddress() : "N/A";
+
+                    // Organizer name
+                    contentStream.setFont(bodyFont, 12);
+                    contentStream.beginText();
+                    contentStream.newLineAtOffset(margin + 20, yPosition);
+                    safeShowText(contentStream, "Name: " + organizerName);
+                    contentStream.endText();
+                    yPosition -= lineHeight;
+                    
+                    // Organizer email
+                    contentStream.beginText();
+                    contentStream.newLineAtOffset(margin + 20, yPosition);
+                    safeShowText(contentStream, "Email: " + organizerEmail);
+                    contentStream.endText();
+                    yPosition -= lineHeight;
+                    
+                    // Organizer address
+                    contentStream.beginText();
+                    contentStream.newLineAtOffset(margin + 20, yPosition);
+                    safeShowText(contentStream, "Address: " + organizerAddress);
+                    contentStream.endText();
+                    yPosition -= lineHeight + 10; // Extra spacing after organizer section
+                }
 
                 // Reservation holder label and name
                 contentStream.setFont(headerFont, 14);
@@ -153,7 +230,19 @@ public class ReportService {
                 contentStream.newLineAtOffset(margin + 20, yPosition);
                 safeShowText(contentStream, participant.getName() != null ? participant.getName() : "N/A");
                 contentStream.endText();
-                yPosition -= lineHeight + 10;
+                yPosition -= lineHeight + 5;
+
+                // Add participant address
+                if (participant.getAddress() != null && !participant.getAddress().trim().isEmpty()) {
+                    contentStream.setFont(bodyFont, 12);
+                    contentStream.beginText();
+                    contentStream.newLineAtOffset(margin + 20, yPosition);
+                    safeShowText(contentStream, participant.getAddress());
+                    contentStream.endText();
+                    yPosition -= lineHeight + 10;
+                } else {
+                    yPosition -= 10;
+                }
 
                 // Removed PARTICIPANT INFORMATION section as requested
                 
@@ -649,5 +738,24 @@ public class ReportService {
             log.error("Error generating ZIP filename: {}", e.getMessage());
             return String.format("event_%d.zip", eventId);
         }
+    }
+    
+    private float addOrganizerTextOnly(PDPageContentStream contentStream, PDFont bodyFont, float margin, float yPosition, float lineHeight, UserEntity organizer) throws IOException {
+        // Organizer name
+        contentStream.setFont(bodyFont, 12);
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin + 20, yPosition);
+        safeShowText(contentStream, organizer.getName() != null ? organizer.getName() : "N/A");
+        contentStream.endText();
+        yPosition -= lineHeight;
+        
+        // Organizer address
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin + 20, yPosition);
+        safeShowText(contentStream, organizer.getAddress() != null ? organizer.getAddress() : "N/A");
+        contentStream.endText();
+        yPosition -= lineHeight;
+        
+        return yPosition;
     }
 }

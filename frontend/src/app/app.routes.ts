@@ -14,6 +14,8 @@ export const routes: Routes = [
       { path: '', redirectTo: 'home', pathMatch: 'full' },
   { path: 'unauthorized', loadComponent: () => import('./auth/unauthorized/unauthorized.component').then(m => m.UnauthorizedComponent) },
       { path: 'my-account', loadComponent: () => import('./auth/my-account/my-account.component').then(m => m.MyAccountComponent) },
+      { path: 'account/edit', loadComponent: () => import('./auth/account-edit/account-edit.component').then(m => m.AccountEditComponent) },
+      { path: 'users', loadComponent: () => import('./auth/users-list/users-list.component').then(m => m.UsersListComponent) },
       { path: 'home', component: HomeComponent },
       { path: 'venues', component: VenuesListComponent },
       { path: 'venues/add', loadComponent: () => import('./venues/venue-edit/venue-edit.component').then(m => m.VenueEditComponent) },

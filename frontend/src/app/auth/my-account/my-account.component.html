@@ -12,9 +12,41 @@
   </mat-card>
 </div>
 
-<div *ngIf="isAuthenticated()" class="account-details-section animate-fade-in">
+<!-- Loading state for user details -->
+<div *ngIf="isAuthenticated() && userDetailsLoading()" class="loading-container animate-fade-in">
+  <mat-card appearance="outlined" class="loading-card">
+    <mat-card-content>
+      <div class="loading-content">
+        <mat-spinner diameter="50"></mat-spinner>
+        <h3>Loading Account Details</h3>
+        <p>Please wait while we fetch your account information...</p>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>
+
+<!-- Error state for user details -->
+<div *ngIf="isAuthenticated() && userDetailsError() && !userDetailsLoading()" class="error-container animate-fade-in">
+  <mat-card appearance="outlined" class="error-card">
+    <mat-card-content>
+      <div class="error-icon-container">
+        <mat-icon color="warn">error</mat-icon>
+      </div>
+      <div class="error-message">
+        <h3>Failed to Load Account Details</h3>
+        <p>{{ userDetailsError() }}</p>
+        <button mat-raised-button color="primary" (click)="loadUserDetails()">
+          <mat-icon>refresh</mat-icon>
+          Retry
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>
+
+<div *ngIf="isAuthenticated() && !userDetailsLoading()" class="account-details-section animate-fade-in">
   <mat-card appearance="outlined" class="account-details-card mat-elevation-z3">
-    <div class="account-hero">
+    <div class="account-hero" [ngClass]="{'has-image': userDetails()?.thumbnail}">
       <div class="account-header-content">
         <h1 class="account-name">{{ userName() }}</h1>
         <h2 class="account-email">
@@ -22,12 +54,6 @@
           {{ userEmail() }}
         </h2>
         <div class="account-stats">
-          <div class="stat-item">
-            <mat-icon>person</mat-icon>
-            <div class="stat-content">
-              <span class="stat-inline">{{ preferredUsername() }}</span>
-            </div>
-          </div>
           <div class="stat-item">
             <mat-icon>calendar_today</mat-icon>
             <div class="stat-content">
@@ -37,14 +63,14 @@
         </div>
       </div>
       
-      <div class="user-avatar-container">
-        <div class="user-avatar" [attr.aria-label]="'User avatar for ' + userName()">
-          <span class="avatar-initials">{{ userInitials() }}</span>
-        </div>
+      <div *ngIf="userDetails()?.thumbnail" class="user-image-container">
+        <img class="user-hero-image" 
+             [src]="'data:' + userDetails()?.thumbnail_content_type + ';base64,' + userDetails()?.thumbnail" 
+             [alt]="userName() + ' profile'">
       </div>
-      <div class="user-avatar-placeholder">
+      <div *ngIf="!userDetails()?.thumbnail" class="user-image-placeholder">
         <mat-icon class="placeholder-icon" style="font-size: 72px; color: #bdbdbd;">account_circle</mat-icon>
-        <p>Profile Avatar</p>
+        <p>No logo available</p>
       </div>
     </div>
     
@@ -70,8 +96,8 @@
         </div>
         
         <div class="info-item">
-          <div class="info-label">Username</div>
-          <div class="info-value">{{ preferredUsername() }}</div>
+          <div class="info-label">Address</div>
+          <div class="info-value">{{ userAddress() }}</div>
         </div>
         
   <!-- Roles & Permissions section removed -->

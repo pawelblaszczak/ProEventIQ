@@ -48,3 +48,7 @@ paths:
     $ref: './participant/participant-controller.yaml#/participantReport'
   /events/{eventId}/participants/reports-zip:
     $ref: './participant/participant-controller.yaml#/participantReportsZip'
+  /users:
+    $ref: './user/user-controller.yaml#/users'
+  /users/{userId}:
+    $ref: './user/user-controller.yaml#/userById'

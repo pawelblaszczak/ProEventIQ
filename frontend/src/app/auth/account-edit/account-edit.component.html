@@ -1,0 +1,198 @@
+@if (loading()) {
+  <div class="loading-container animated-pulse">
+    <div class="loading-icon-wrapper">
+      <mat-progress-spinner color="primary" mode="indeterminate" diameter="50"></mat-progress-spinner>
+    </div>
+    <p class="loading-text">Loading account details...</p>
+    <div class="loading-progress-dots">
+      <span class="dot"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+    </div>
+  </div>
+}
+
+@if (!loading()) {
+  <div class="account-edit-section animate-fade-in">
+    <mat-card appearance="outlined" class="account-edit-card mat-elevation-z3">
+      <div class="card-header-banner">
+        <div class="header-content">
+          <h1 class="banner-title">
+            <mat-icon>edit</mat-icon>
+            Edit Account
+          </h1>
+          <p class="banner-subtitle">Update your account information and settings</p>
+        </div>
+        <div class="header-icon">
+          <mat-icon>account_circle</mat-icon>
+        </div>
+      </div>
+      
+      <mat-divider></mat-divider>
+
+      
+      <mat-card-content class="account-edit-content">
+        @if (error()) {
+          <mat-card appearance="outlined" class="error-card">
+            <mat-card-content>
+              <div class="error-content">
+                <mat-icon color="warn">error_outline</mat-icon>
+                <div class="error-message">
+                  <h4>Error</h4>
+                  <p>{{ error() }}</p>
+                </div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        }
+
+        <form [formGroup]="accountForm" (ngSubmit)="onSubmit()" class="account-form">
+          <h3 class="section-title">
+            <mat-icon>info</mat-icon>
+            Personal Information
+          </h3>
+          
+          <div class="form-grid">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Email Address</mat-label>
+              <input matInput 
+                     type="email" 
+                     formControlName="email"
+                     placeholder="Enter your email address"
+                     required>
+              <mat-icon matSuffix>email</mat-icon>
+              @if (getFieldError('email')) {
+                <mat-error>{{ getFieldError('email') }}</mat-error>
+              }
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Full Name</mat-label>
+              <input matInput 
+                     type="text" 
+                     formControlName="name"
+                     placeholder="Enter your full name">
+              <mat-icon matSuffix>person</mat-icon>
+              @if (getFieldError('name')) {
+                <mat-error>{{ getFieldError('name') }}</mat-error>
+              }
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Address</mat-label>
+              <textarea matInput 
+                        formControlName="address"
+                        placeholder="Enter your address"
+                        rows="4"
+                        cdkTextareaAutosize
+                        cdkAutosizeMinRows="3"
+                        cdkAutosizeMaxRows="5">
+              </textarea>
+              <mat-icon matSuffix>location_on</mat-icon>
+              @if (getFieldError('address')) {
+                <mat-error>{{ getFieldError('address') }}</mat-error>
+              }
+            </mat-form-field>
+          </div>
+          
+          <mat-divider class="section-divider"></mat-divider>
+          
+          <h3 class="section-title">
+            <mat-icon>photo_camera</mat-icon>
+            Profile Picture
+          </h3>
+          
+          <div class="profile-picture-section" style="display: flex; gap: 16px;">
+            <div class="profile-upload-area" style="flex: 1;" 
+                 (dragover)="onDragOver($event)" 
+                 (dragleave)="onDragLeave($event)"
+                 (drop)="onDrop($event)" 
+                 [class.drag-over]="dragOver()">
+              <mat-card appearance="outlined" class="upload-card profile-card-equal-height" style="height: 180px; display: flex;">
+                <mat-card-content style="width: 100%; display: flex; align-items: center; justify-content: center; position: relative;">
+                  <div class="upload-content" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%;">
+                    <div class="upload-icon">
+                      <mat-icon>cloud_upload</mat-icon>
+                    </div>
+                    <h4>Upload Profile Picture</h4>
+                    <p>Choose an image file for your profile</p>
+                    <input type="file" 
+                           id="profile-input" 
+                           (change)="onProfilePictureChange($event)" 
+                           accept="image/*,.webp" 
+                           class="file-input" />
+                    <label for="profile-input" class="upload-button">
+                      <mat-icon>add_photo_alternate</mat-icon>
+                      Choose Image
+                    </label>
+                  </div>
+                  <div class="drag-overlay" [style.display]="dragOver() ? 'flex' : 'none'">
+                    <mat-icon>file_upload</mat-icon>
+                    <span>Drop image here</span>
+                  </div>
+                </mat-card-content>
+              </mat-card>
+            </div>
+            
+            <div class="profile-preview" style="flex: 1;">
+              @if (profilePreview()) {
+                <mat-card appearance="outlined" class="preview-card profile-card-equal-height" style="height: 180px; display: flex;">
+                  <mat-card-content style="width: 100%; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div class="preview-header" style="display: flex; justify-content: space-between; align-items: center;">
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <h4>Preview</h4>
+                        <mat-icon color="primary">visibility</mat-icon>
+                      </div>
+                      <button mat-icon-button 
+                              color="warn" 
+                              (click)="clearProfilePicture()"
+                              matTooltip="Remove profile picture"
+                              type="button">
+                        <mat-icon>clear</mat-icon>
+                      </button>
+                    </div>
+                    <div class="preview-image-container" style="flex-grow: 1; display: flex; align-items: center; justify-content: center;">
+                      <img [src]="profilePreview()" 
+                           alt="Profile preview" 
+                           class="preview-image" />
+                    </div>
+                  </mat-card-content>
+                </mat-card>
+              } @else {
+                <mat-card appearance="outlined" class="no-preview-card profile-card-equal-height" style="height: 180px; display: flex;">
+                  <mat-card-content style="width: 100%; display: flex; align-items: center; justify-content: center;">
+                    <div class="no-preview-content" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%;">
+                      <mat-icon style="font-size: 72px; height: 72px; width: 72px; margin-bottom: 12px; color: #bdbdbd;">account_circle</mat-icon>
+                      <p style="text-align: center;">No image selected</p>
+                    </div>
+                  </mat-card-content>
+                </mat-card>
+              }
+            </div>
+          </div>
+        </form>
+      </mat-card-content>
+
+      <mat-card-actions class="account-actions" align="end">
+        <button mat-stroked-button type="button" (click)="onCancel()" class="cancel-button">
+          <mat-icon>close</mat-icon>
+          CANCEL
+        </button>
+        
+        <button mat-raised-button 
+                color="primary"
+                type="submit"
+                (click)="onSubmit()"
+                [disabled]="saving() || accountForm.invalid"
+                class="save-button">
+          @if (saving()) {
+            <mat-progress-spinner diameter="20" class="button-spinner"></mat-progress-spinner>
+          } @else {
+            <mat-icon>save</mat-icon>
+          }
+          {{ saving() ? 'SAVING...' : 'SAVE CHANGES' }}
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+}

@@ -1,0 +1,17 @@
+UserDetailsDto:
+  type: object
+  properties:
+    email:
+      type: string
+      format: email
+    name:
+      type: string
+    address:
+      type: string
+    thumbnail:
+      type: string
+      format: byte
+    thumbnail_content_type:
+      type: string
+  required:
+    - email

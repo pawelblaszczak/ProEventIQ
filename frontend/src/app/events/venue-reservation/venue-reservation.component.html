@@ -14,8 +14,20 @@
 	</div>
 
 	<div *ngIf="venue()" class="venue-map-editor reservation-mode animate-fade-in">
-						<div class="reservation-map-container">
-							<app-venue-map-edit [mode]="'reservation'" [eventData]="event()"></app-venue-map-edit>
-						</div>
+		<!-- Action buttons removed: `app-venue-map-edit` header shows Cancel/Save/Back for reservation mode -->
+
+		<div class="reservation-map-container">
+			<app-venue-map-edit 
+				[mode]="'reservation'" 
+				[venueData]="venue()"
+				[eventData]="event()"
+				[reservationData]="reservations()"
+				[participantData]="participants()"
+				[pendingReservationCount]="pendingReservationUpdates().length"
+				(reservationChange)="onReservationChange($event)"
+				(reservationSave)="onReservationSave()"
+				(reservationCancel)="onReservationCancel()">
+			</app-venue-map-edit>
+		</div>
 	</div>
 </div>

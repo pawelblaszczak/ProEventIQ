@@ -259,7 +259,7 @@
         </span>
         <span class="banner-subtitle">Interactive venue layout for seat selection</span>
       </h3>
-  <button mat-raised-button color="primary" class="edit-map-btn" [routerLink]="['/venues', event()?.venueId, 'reservations']" [queryParams]="{ eventId: event()?.eventId }" aria-label="Manage seat reservations">
+  <button mat-raised-button color="primary" class="edit-map-btn" [routerLink]="['/events', event()?.eventId, 'reservations']" aria-label="Manage seat reservations">
         <mat-icon>settings</mat-icon>
         Manage Reservations
       </button>

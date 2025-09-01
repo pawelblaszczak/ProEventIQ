@@ -1,0 +1,77 @@
+reservationByEventId:
+  get:
+    tags: [ProEventIQ]
+    summary: List all reservations for a specific event
+    description: Retrieve all reservations registered for the specified event
+    operationId: getReservation
+    parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: ID of the event
+    responses:
+      '200':
+        description: List of reservations for the event
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: './reservation.yaml#/Reservation'
+      '404':
+        description: Event not found
+  put:
+    tags: [ProEventIQ]
+    summary: Update reservation for a specific event
+    description: Update an existing reservation
+    operationId: updateReservation
+    parameters:
+      - in: path
+        name: eventId
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Event ID
+    requestBody:
+      required: true
+      content:
+        application/json:
+            schema:
+              type: array
+              items:
+                $ref: './reservation-input.yaml#/ReservationInput'
+    responses:
+      '200':
+        description: Reservation updated successfully
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: './reservation.yaml#/Reservation'
+      '400':
+        description: Invalid input data
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                error:
+                  type: string
+                message:
+                  type: string
+      '404':
+        description: Event not found
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                error:
+                  type: string
+                message:
+                  type: string

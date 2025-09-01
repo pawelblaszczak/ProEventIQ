@@ -23,6 +23,7 @@ export const routes: Routes = [
       { path: 'venues/:id/edit', loadComponent: () => import('./venues/venue-edit/venue-edit.component').then(m => m.VenueEditComponent) },
   { path: 'venues/:venueId/map-edit', loadComponent: () => import('./venues/venue-map-edit').then(m => m.VenueMapEditComponent), canDeactivate: [canDeactivateVenueMapEdit] },
   { path: 'venues/:venueId/reservations', loadComponent: () => import('./events/venue-reservation/venue-reservation.component').then(m => m.VenueReservationComponent) },
+  { path: 'events/:eventId/reservations', loadComponent: () => import('./events/venue-reservation/venue-reservation.component').then(m => m.VenueReservationComponent) },
       { path: 'venues/:venueId/sectors/:sectorId/seat-edit', loadComponent: () => import('./venues/sector-seat-edit/sector-seat-edit.component').then(m => m.SectorSeatEditComponent) },
       { path: 'shows', component: ShowsListComponent },
       { path: 'shows/add', loadComponent: () => import('./shows/show-edit/show-edit.component').then(m => m.ShowEditComponent) },

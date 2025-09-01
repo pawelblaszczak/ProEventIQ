@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject, signal, ViewChild, ElementRef, AfterViewInit, OnDestroy, OnInit, Input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, signal, computed, ViewChild, ElementRef, AfterViewInit, OnDestroy, OnInit, OnChanges, SimpleChanges, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
@@ -16,6 +16,8 @@ import { Venue } from '../../api/model/venue';
 import { Sector } from '../../api/model/sector';
 import { Participant } from '../../api/model/participant';
 import { Event } from '../../api/model/event';
+import { Reservation } from '../../api/model/reservation';
+import { ReservationInput } from '../../api/model/reservation-input';
 import { ProEventIQService } from '../../api/api/pro-event-iq.service';
 import { ConfirmationDialogService, ErrorDisplayComponent } from '../../shared';
 import { firstValueFrom } from 'rxjs';
@@ -67,11 +69,34 @@ interface EditableSector extends Sector {
   styleUrls: ['./venue-map-edit.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
+export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, OnChanges {
+  /**
+   * Returns the number of seats reserved for a participant (from reservationData)
+   */
+  getReservedSeatsForParticipant(participant: Participant): number {
+    if (!participant || !this.reservationData) return 0;
+    // Count reservations for this participant
+    return this.reservationData.filter(r => r.participantId === participant.participantId).length;
+  }
   @ViewChild('canvasContainer', { static: false }) canvasContainer!: ElementRef<HTMLDivElement>;
   @Input() mode: 'preview' | 'edit' | 'reservation' = 'edit'; // Added 'reservation' mode
   @Input() venueData: Venue | null = null; // Allow venue data to be passed in
   @Input() eventData: Event | null = null; // Event context for reservation header
+  @Input() reservationData: Reservation[] = []; // Existing reservations for the event
+  @Input() participantData: Participant[] = []; // Participants for the event
+  @Input() pendingReservationCount: number = 0; // Number of pending reservation updates from parent
+  
+  // Outputs for reservation mode
+  @Output() reservationChange = new EventEmitter<{
+    id?: number;
+    eventId: number;
+    participantId?: number; // optional for unassignment
+    seatId: number;
+    oldParticipantId?: number;
+  }>();
+  // Parent-managed reservation control events
+  @Output() reservationSave = new EventEmitter<void>();
+  @Output() reservationCancel = new EventEmitter<void>();
   // Event context (only for reservation mode)
   // Exposed for template (reservation mode)
   readonly eventId = signal<number | null>(null);
@@ -108,10 +133,32 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
   private seatTooltip: Konva.Label | null = null; // Tooltip for seat information
   // Reservation seat coloring helpers
   private readonly defaultSeatColor = '#90A4AE';
+  private readonly participantColors = [
+    '#FF5722', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5', 
+    '#2196F3', '#03A9F4', '#00BCD4', '#009688', '#4CAF50',
+    '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800'
+  ];
+  
   private getParticipantColor(participantId: number | null): string {
-    if (participantId == null) return this.defaultSeatColor;
+    console.log('getParticipantColor called with participantId:', participantId);
+    if (participantId == null) {
+      console.log('Returning default color for null participantId');
+      return this.defaultSeatColor;
+    }
     const p = this.participants().find(pp => pp.participantId === participantId);
-    return p?.seatColor || this.defaultSeatColor;
+    console.log('Found participant:', p);
+    
+    // Use participant's defined color or generate one based on ID
+    if (p?.seatColor) {
+      console.log('Using participant defined color:', p.seatColor);
+      return p.seatColor;
+    } else {
+      // Generate a consistent color based on participant ID
+      const colorIndex = participantId % this.participantColors.length;
+      const generatedColor = this.participantColors[colorIndex];
+      console.log('Generated color for participant:', generatedColor);
+      return generatedColor;
+    }
   }
   
   // Canvas and zoom settings
@@ -133,6 +180,22 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
   selectedSectors = signal<EditableSector[]>([]);
   selectedSector = signal<EditableSector | null>(null); // Keep for backward compatibility
   hasChanges = signal(false);  // Grid settings
+  hasReservationChanges = signal(false);  // Track reservation changes in reservation mode
+  pendingReservationChanges: Array<{
+    id?: number;
+    eventId: number;
+    participantId?: number;
+    seatId: number;
+    oldParticipantId?: number;
+  }> = [];
+  
+  // Computed signal that returns true if there are any changes (venue or reservation)
+  readonly hasAnyChanges = computed(() => {
+    if (this.mode === 'reservation') {
+      return this.hasReservationChanges();
+    }
+    return this.hasChanges();
+  });
   showGrid = signal(true);
   gridSize = 20;
   
@@ -187,6 +250,15 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     });
     
+    // Watch for reservation and participant data changes (reservation mode)
+    effect(() => {
+      if (this.mode === 'reservation' && this.konvaInitialized) {
+        // Apply existing reservations to seats when participants or konva state changes
+        this.applyReservationsToSeats();
+        console.log('Effect: Applied reservations to seats');
+      }
+    });
+    
     // Add keyboard event listeners
     window.addEventListener('keydown', this.handleKeyDown);
     window.addEventListener('keyup', this.handleKeyUp);
@@ -211,6 +283,54 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     }, 500);
   }
 
+  ngOnChanges(changes: SimpleChanges) {
+    // Handle input data changes for reservation mode
+    if (this.mode === 'reservation') {
+      // If parent provided event data, capture its id for navigation
+      if (changes['eventData'] && this.eventData) {
+        try {
+          const evId = (this.eventData as Event).eventId;
+          this.eventId.set(evId ?? null);
+          console.log('ngOnChanges: eventId set from eventData ->', evId);
+        } catch (e) {
+          // ignore
+        }
+      }
+      let shouldApplyReservations = false;
+      
+      if (changes['participantData'] && this.participantData) {
+        this.participants.set(this.participantData);
+        console.log('Updated participants from input:', this.participantData.length);
+        // If we have reservations, reapply them with new participant data
+        if (this.reservationData && this.reservationData.length > 0) {
+          shouldApplyReservations = true;
+        }
+      }
+      
+      if (changes['reservationData'] && this.reservationData) {
+        console.log('Updated reservations from input:', this.reservationData.length);
+        shouldApplyReservations = true;
+      }
+      
+      if (shouldApplyReservations) {
+        // Apply reservations to seats after the view is initialized
+        setTimeout(() => {
+          this.applyReservationsToSeats();
+        }, 100); // Increased timeout to ensure proper initialization
+      }
+      // If parent provides pendingReservationCount, reflect it in hasReservationChanges
+      if (changes['pendingReservationCount']) {
+        try {
+          const val = Number(this.pendingReservationCount) || 0;
+          this.hasReservationChanges.set(val > 0);
+          console.log('ngOnChanges: pendingReservationCount updated ->', val);
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+  }
+
   ngOnInit() {
     // Initialize venue data based on mode
     if (this.mode === 'preview' && this.venueData) {
@@ -218,6 +338,17 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
       this.venue.set(this.venueData);
       this.loading.set(false);
       this.initializeEditableSectors(this.venueData);
+    } else if (this.mode === 'reservation' && this.venueData) {
+      // Reservation mode: use passed venue data and initialize participants/reservations
+      this.venue.set(this.venueData);
+      this.loading.set(false);
+      this.initializeEditableSectors(this.venueData);
+      
+      // Set participants and apply reservations if data is available
+      if (this.participantData) {
+        this.participants.set(this.participantData);
+        console.log('Reservation mode - initialized participants:', this.participantData.length);
+      }
     } else {
       // Edit mode: fetch venue from route parameter
       this.route.paramMap.subscribe(params => {
@@ -272,10 +403,10 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Select / toggle a participant in reservation mode
   selectParticipant(p: Participant) {
-    if (this.mode !== 'reservation') return;
-    const current = this.selectedParticipantId();
-    this.selectedParticipantId.set(current === p.participantId ? null : p.participantId);
-    // Future hook: emit selection change or highlight seats for this participant
+  if (this.mode !== 'reservation') return;
+  const current = this.selectedParticipantId();
+  this.selectedParticipantId.set(current === p.participantId ? null : p.participantId);
+  // Future hook: emit selection change or highlight seats for this participant
   }
 
   isParticipantSelected(p: Participant): boolean {
@@ -284,6 +415,117 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
 
   clearSelectedParticipant() {
     this.selectedParticipantId.set(null);
+  }
+
+  // Add pending reservation change (reservation mode)
+  private addPendingReservationChange(change: {
+    id?: number;
+    eventId: number;
+    participantId?: number;
+    seatId: number;
+    oldParticipantId?: number;
+  }) {
+    // In reservation mode, immediately emit the change to parent component
+    // The parent will handle batching and saving
+    this.reservationChange.emit(change);
+    
+    console.log('Emitted reservation change:', change);
+  }
+
+  // Helper method to find existing reservation ID for a seat
+  private findReservationIdForSeat(seatId: number): number | undefined {
+    const existingReservation = this.reservationData.find(r => r.seatId === seatId);
+    return existingReservation?.id;
+  }
+
+  // Helper method to find existing reservation ID for a participant and seat combination
+  private findReservationIdForParticipantSeat(participantId: number, seatId: number): number | undefined {
+    const existingReservation = this.reservationData.find(r => 
+      r.participantId === participantId && r.seatId === seatId
+    );
+    return existingReservation?.id;
+  }
+
+  // Save all pending reservation changes
+  private async saveReservationChanges() {
+    if (this.pendingReservationChanges.length === 0) return;
+    
+    try {
+      this.saving.set(true);
+      console.log('Saving reservation changes...', this.pendingReservationChanges);
+      
+      // Process each reservation change
+      for (const change of this.pendingReservationChanges) {
+        // Emit the change to the parent component
+        this.reservationChange.emit(change);
+      }
+      
+      // Clear pending changes
+      this.pendingReservationChanges = [];
+      this.hasReservationChanges.set(false);
+      
+      this.snackBar.open('Reservation changes saved successfully!', 'Close', {
+        duration: 3000,
+        horizontalPosition: 'center',
+        verticalPosition: 'top'
+      });
+      
+    } catch (error) {
+      console.error('Error saving reservation changes:', error);
+      this.snackBar.open('Failed to save reservation changes. Please try again.', 'Close', {
+        duration: 5000,
+        horizontalPosition: 'center',
+        verticalPosition: 'top'
+      });
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  // Apply existing reservations to seats (reservation mode)
+  private applyReservationsToSeats() {
+    console.log('applyReservationsToSeats called');
+    console.log('reservationData:', this.reservationData);
+    console.log('participants:', this.participants());
+    console.log('layer exists:', !!this.layer);
+    
+    if (!this.reservationData || !this.layer) {
+      console.log('Early return: missing reservationData or layer');
+      return;
+    }
+    
+    // Get all seat objects from all sectors
+    const allSeats: Konva.Circle[] = [];
+    this.sectorSeats.forEach(seats => allSeats.push(...seats));
+    console.log('Total seats found:', allSeats.length);
+    
+    // Clear existing assignments
+    allSeats.forEach(seat => {
+  seat.setAttr('participantId', null);
+  // Reset originalParticipantId when clearing - will be set again below if reservation exists
+  seat.setAttr('originalParticipantId', null);
+      seat.fill(this.defaultSeatColor);
+    });
+    
+    // Apply reservations
+    this.reservationData.forEach(reservation => {
+      console.log('Processing reservation:', reservation);
+      if (reservation.seatId && reservation.participantId) {
+        const seat = allSeats.find(s => s.getAttr('seatId') === reservation.seatId);
+        console.log('Found seat for reservation:', !!seat, 'seatId:', reservation.seatId);
+        if (seat) {
+          const participantColor = this.getParticipantColor(reservation.participantId);
+          console.log('Applying color to seat:', participantColor, 'for participant:', reservation.participantId);
+          // Set both the current participant assignment and the original backend owner
+          seat.setAttr('participantId', reservation.participantId);
+          seat.setAttr('originalParticipantId', reservation.participantId);
+          seat.fill(participantColor);
+        }
+      }
+    });
+    
+    this.layer.batchDraw();
+    console.log('applyReservationsToSeats completed');
   }
 
   private initializeKonva() {
@@ -409,7 +651,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private readonly handleBeforeUnload = (event: BeforeUnloadEvent) => {
-    if (this.hasChanges()) {
+    if (this.hasAnyChanges()) {
       event.preventDefault();
       // Modern browsers will show their own dialog message
       return '';
@@ -701,7 +943,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     // Use smaller scale for venue overview - seats should appear smaller
     const seatRadius = 3; // Reduced from 8 to 3 for overview
     const seatSpacing = 2; // Reduced from 6 to 2 for overview
-    let seatPositions: {x: number, y: number}[] = [];
+    let seatPositions: {x: number, y: number, seatId?: number}[] = [];
     let maxRowLength = 0;
     let totalRows = 0;
     if (sector.rows && Array.isArray(sector.rows)) {
@@ -717,7 +959,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
             if (seat.position && typeof seat.position.x === 'number' && typeof seat.position.y === 'number') {
               seatPositions.push({ 
                 x: seat.position.x * scaleFactor, 
-                y: seat.position.y * scaleFactor 
+                y: seat.position.y * scaleFactor,
+                seatId: seat.seatId
               });
             } else if (row.seats) {
               // Fallback: calculate position as before but scaled down
@@ -725,7 +968,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
               const rowOffset = (maxRowLength - row.seats.length) * (seatRadius + seatSpacing/2) * scaleFactor;
               const x = (seatIdx * (seatRadius * 2 + seatSpacing) + rowOffset) * scaleFactor;
               const y = rowY;
-              seatPositions.push({x, y});
+              seatPositions.push({x, y, seatId: seat.seatId});
             }
           });
         }
@@ -738,7 +981,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
           // Flip Y so that the largest Y (top row) is at 0 and rows increase downward
           const minY = Math.min(...seatPositions.map(p => p.y));
           const maxY = Math.max(...seatPositions.map(p => p.y));
-          seatPositions = seatPositions.map(p => ({ x: p.x, y: maxY - p.y }));
+          seatPositions = seatPositions.map(p => ({ x: p.x, y: maxY - p.y, seatId: p.seatId }));
         }
         // else: do not flip, keep as is
       }
@@ -772,7 +1015,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
           this.onSectorRectClick(sector, e);
         });
         outline.on('mouseenter', () => {
-          this.stage!.container().style.cursor = 'grab';
+          if (this.mode === 'edit') {
+            this.stage!.container().style.cursor = 'grab';
+          }
         });
         outline.on('mouseleave', () => {
           this.stage!.container().style.cursor = 'default';
@@ -844,7 +1089,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
       this.onSectorRectClick(sector, e);
     });
     nameText.on('mouseenter', () => {
-      this.stage!.container().style.cursor = 'grab';
+      if (this.mode === 'edit') {
+        this.stage!.container().style.cursor = 'grab';
+      }
     });
     nameText.on('mouseleave', () => {
       this.stage!.container().style.cursor = 'default';
@@ -870,7 +1117,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
       this.onSectorRectClick(sector, e);
     });
     seatsText.on('mouseenter', () => {
+      if (this.mode === 'edit') {
         this.stage!.container().style.cursor = 'grab';
+      }
     });
     seatsText.on('mouseleave', () => {
       this.stage!.container().style.cursor = 'default';
@@ -888,7 +1137,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
       this.onSectorRectClick(sector, e);
     });
     group.on('mouseenter', () => {
+      if (this.mode === 'edit') {
         this.stage!.container().style.cursor = 'grab';
+      }
     });
     group.on('mouseleave', () => {
       this.stage!.container().style.cursor = 'default';
@@ -915,7 +1166,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // Optimized seat rendering - inspired by KonvaTest approach
-  private renderSeatsOptimized(group: Konva.Group, sector: EditableSector, seatPositions: {x: number, y: number}[]) {
+  private renderSeatsOptimized(group: Konva.Group, sector: EditableSector, seatPositions: {x: number, y: number, seatId?: number}[]) {
     const sectorId = sector.sectorId!;
     const seatRadius = 3;
     
@@ -943,12 +1194,24 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
           visible: seatsVisible, // Set initial visibility based on zoom
           listening: true
         });
+        
+        // Set the seatId attribute for reservation tracking
+        if (pos.seatId) {
+          seat.setAttr('seatId', pos.seatId);
+  }
 
+  // Initialize originalParticipantId to null for newly created seats
+  seat.setAttr('originalParticipantId', null);
+  // Add simple event handlers like KonvaTest
         // Add simple event handlers like KonvaTest
         seat.on('mouseover', () => {
           this.stage!.container().style.cursor = 'pointer';
-          seat.setAttr('_prevFill', seat.fill());
-          seat.fill('#66BB6A'); // Hover color
+          // Preserve previous stroke and width so we can restore on mouseout
+          seat.setAttr('_prevStroke', seat.stroke());
+          seat.setAttr('_prevStrokeWidth', seat.strokeWidth());
+          // Visual hover indicator: thicker, colored border (keeps the seat fill intact)
+          seat.stroke('#1976d2');
+          seat.strokeWidth(2);
           
           // Show tooltip with seat information when zoom level is sufficient (≥ 180%)
           if (this.zoomLevel() >= 1.79) {
@@ -980,20 +1243,33 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
 
         seat.on('mouseout', () => {
           this.stage!.container().style.cursor = 'default';
-          const prev = seat.getAttr('_prevFill');
+          // Restore previous stroke and stroke width
+          const prevStroke = seat.getAttr('_prevStroke');
+          const prevStrokeWidth = seat.getAttr('_prevStrokeWidth');
+          if (prevStroke !== undefined) {
+            seat.stroke(prevStroke);
+            seat.strokeWidth(prevStrokeWidth ?? 0.5);
+          } else {
+            // sensible defaults if nothing was stored
+            seat.stroke('#37474F');
+            seat.strokeWidth(0.5);
+          }
+
+          // Also restore fill if a previous fill was saved (backwards-compatible)
+          const prevFill = seat.getAttr('_prevFill');
           if (this.mode === 'reservation') {
             const pid = seat.getAttr('participantId') as number | null | undefined;
             if (pid) {
               seat.fill(this.getParticipantColor(pid));
+            } else if (prevFill) {
+              seat.fill(prevFill);
             } else {
               seat.fill(this.defaultSeatColor);
             }
-          } else if (prev) {
-            seat.fill(prev);
-          } else {
-            seat.fill(this.defaultSeatColor); // fallback
+          } else if (prevFill) {
+            seat.fill(prevFill);
           }
-          
+
           // Hide tooltip
           if (this.seatTooltip) {
             this.seatTooltip.visible(false);
@@ -1001,31 +1277,11 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
           }
         });
 
-        seat.on('click', (e) => {
-          e.cancelBubble = true;
-          if (this.mode === 'reservation') {
-            const selectedPid = this.selectedParticipantId();
-            const currentPid = seat.getAttr('participantId') as number | null | undefined;
-            if (selectedPid == null) {
-              // No participant selected -> unassign/reset
-              seat.setAttr('participantId', null);
-              seat.fill(this.defaultSeatColor);
-            } else if (currentPid === selectedPid) {
-              // Toggle off assignment
-              seat.setAttr('participantId', null);
-              seat.fill(this.defaultSeatColor);
-            } else {
-              // Assign to selected participant
-              seat.setAttr('participantId', selectedPid);
-              seat.fill(this.getParticipantColor(selectedPid));
-            }
-          } else {
-            // Edit/preview: simple toggle highlight
-            const isSelected = seat.fill() === '#4CAF50';
-            seat.fill(isSelected ? this.defaultSeatColor : '#4CAF50');
-          }
-          this.layer!.batchDraw();
-        });
+        // Attach click handler only in reservation mode. Handlers will be managed
+        // centrally by updateSeatTooltipHandlers when mode changes.
+        if (this.mode === 'reservation') {
+          this.attachSeatClickHandler(seat, sector);
+        }
 
         existingSeats!.push(seat);
         group.add(seat);
@@ -1096,8 +1352,12 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
           // Add tooltip event handlers
           seat.on('mouseover', () => {
             this.stage!.container().style.cursor = 'pointer';
-            seat.setAttr('_prevFill', seat.fill());
-            seat.fill('#66BB6A'); // Hover color
+            // Preserve previous stroke and width so we can restore on mouseout
+            seat.setAttr('_prevStroke', seat.stroke());
+            seat.setAttr('_prevStrokeWidth', seat.strokeWidth());
+            // Visual hover indicator: thicker, colored border (keeps the seat fill intact)
+            seat.stroke('#1976d2');
+            seat.strokeWidth(2);
             
             // Show tooltip with seat information when zoom level is sufficient (≥ 180%)
             if (this.zoomLevel() >= 1.79) {
@@ -1107,11 +1367,21 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
               // Get seat info (row name and seat number)
               const { rowName, seatNumber } = this.getSeatInfoFromIndex(sector, index);
               
-              // Set tooltip text with sector name, row name, and seat number
-              const tooltipText = `Sector: ${sector.name || 'Unknown'}\nRow: ${rowName}\nSeat: ${seatNumber}`;
-              const labelText = this.seatTooltip.findOne('Text') as Konva.Text;
-              labelText.text(tooltipText);
+                // Set tooltip text with sector name, row name, seat number, and participant name if reserved
+                let tooltipText = `Sector: ${sector.name || 'Unknown'}\nRow: ${rowName}\nSeat: ${seatNumber}`;
+                if (this.mode === 'reservation') {
+                  const pid = seat.getAttr('participantId') as number | null | undefined;
+                  if (pid) {
+                    const participant = this.participants().find(p => p.participantId === pid);
+                    if (participant) {
+                      tooltipText += `\nReserved by: ${participant.name}`;
+                    }
+                  }
+                }
+                const labelText = this.seatTooltip.findOne('Text') as Konva.Text;
+                labelText.text(tooltipText);
               
+
               // Position tooltip intelligently to stay within stage bounds
               const absPos = seat.getAbsolutePosition();
               const zoom = this.zoomLevel();
@@ -1169,29 +1439,108 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
           
           seat.on('mouseout', () => {
             this.stage!.container().style.cursor = 'default';
-            const prev = seat.getAttr('_prevFill');
+            // Restore previous stroke and stroke width
+            const prevStroke = seat.getAttr('_prevStroke');
+            const prevStrokeWidth = seat.getAttr('_prevStrokeWidth');
+            if (prevStroke !== undefined) {
+              seat.stroke(prevStroke);
+              seat.strokeWidth(prevStrokeWidth ?? 0.5);
+            } else {
+              // sensible defaults if nothing was stored
+              seat.stroke('#37474F');
+              seat.strokeWidth(0.5);
+            }
+
+            // Also restore fill if a previous fill was saved (backwards-compatible)
+            const prevFill = seat.getAttr('_prevFill');
             if (this.mode === 'reservation') {
               const pid = seat.getAttr('participantId') as number | null | undefined;
               if (pid) {
                 seat.fill(this.getParticipantColor(pid));
+              } else if (prevFill) {
+                seat.fill(prevFill);
               } else {
                 seat.fill(this.defaultSeatColor);
               }
-            } else if (prev) {
-              seat.fill(prev);
-            } else {
-              seat.fill(this.defaultSeatColor);
+            } else if (prevFill) {
+              seat.fill(prevFill);
             }
-            
+
             // Hide tooltip
             if (this.seatTooltip) {
               this.seatTooltip.visible(false);
               this.layer!.batchDraw();
             }
           });
+          // Manage click handlers based on mode
+          // First remove any existing click handler to avoid duplicates
+          try { seat.off('click'); } catch (e) { /* ignore */ }
+          if (this.mode === 'reservation') {
+            this.attachSeatClickHandler(seat, sector);
+          }
         });
       }
     });
+  }
+
+  // Attach a click handler to a seat for reservation interactions
+  private attachSeatClickHandler(seat: Konva.Circle, sector: EditableSector) {
+    const clickHandler = (e: any) => {
+      e.cancelBubble = true;
+      const selectedPid = this.selectedParticipantId();
+      const currentPid = seat.getAttr('participantId') as number | null | undefined;
+      const originalPid = seat.getAttr('originalParticipantId') as number | null | undefined;
+      const seatId = seat.getAttr('seatId') as number;
+      const eventId = this.eventData?.eventId;
+      if (!eventId) return; // No event context
+
+      if (selectedPid == null) {
+        if (currentPid) {
+          let reservationId: number | undefined;
+          if (originalPid) reservationId = this.findReservationIdForParticipantSeat(originalPid, seatId);
+          if (!reservationId && currentPid) reservationId = this.findReservationIdForParticipantSeat(currentPid, seatId);
+          if (!reservationId) reservationId = this.findReservationIdForSeat(seatId);
+          this.addPendingReservationChange({ id: reservationId, eventId, seatId, oldParticipantId: originalPid ?? currentPid });
+        }
+        seat.setAttr('participantId', null);
+        seat.fill(this.defaultSeatColor);
+      } else if (currentPid === selectedPid) {
+        let reservationIdToggle: number | undefined;
+        if (originalPid) reservationIdToggle = this.findReservationIdForParticipantSeat(originalPid, seatId);
+        if (!reservationIdToggle) reservationIdToggle = this.findReservationIdForParticipantSeat(selectedPid, seatId);
+        if (!reservationIdToggle) reservationIdToggle = this.findReservationIdForSeat(seatId);
+        this.addPendingReservationChange({ id: reservationIdToggle, eventId, seatId, oldParticipantId: originalPid ?? selectedPid });
+        seat.setAttr('participantId', null);
+        seat.fill(this.defaultSeatColor);
+      } else {
+        let existingReservationId: number | undefined;
+        const pidToCheck = originalPid ?? currentPid;
+        if (pidToCheck) existingReservationId = this.findReservationIdForParticipantSeat(pidToCheck, seatId);
+        if (!existingReservationId) existingReservationId = this.findReservationIdForSeat(seatId);
+        this.addPendingReservationChange({ id: existingReservationId, eventId, participantId: selectedPid, seatId, oldParticipantId: originalPid ?? (currentPid || undefined) });
+        seat.setAttr('participantId', selectedPid);
+        seat.fill(this.getParticipantColor(selectedPid));
+      }
+      this.layer!.batchDraw();
+    };
+    // store handler on seat so it can be removed later
+    seat.setAttr('_clickHandler', clickHandler);
+    seat.on('click', clickHandler);
+  }
+
+  // Detach click handler from a seat if present
+  private detachSeatClickHandler(seat: Konva.Circle) {
+    try {
+      const handler = seat.getAttr('_clickHandler');
+      if (handler) {
+        seat.off('click', handler);
+        seat.setAttr('_clickHandler', null);
+      } else {
+        seat.off('click');
+      }
+    } catch (e) {
+      // ignore
+    }
   }
   private getConvexHull(points: {x: number, y: number}[]): {x: number, y: number}[] {
     // Andrew's monotone chain algorithm
@@ -1315,7 +1664,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
   onSectorHover(sector: EditableSector, event: any) {
     const stage = event.target.getStage();
 
-    if (this.mode === 'preview') return;
+    if (this.mode !== 'edit') return;
 
     stage.container().style.cursor = 'grab';
   }
@@ -1541,7 +1890,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
       this.selectedSector.set(updatedPrimary || null);
     }
     
-    this.hasChanges.set(true);
+    this.hasChanges.set(true );
   }  // Add new sector
   addNewSector() {
     console.log('Adding new sector...');
@@ -1598,7 +1947,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
           this.editableSectors.set(updatedSectors);
           this.selectedSectors.set([]);
           this.selectedSector.set(null);
-          this.hasChanges.set(true);
+                   this.hasChanges.set(true);
           this.renderSectors(); // Force canvas update after deletion
           console.log('Sector(s) deleted:', selectedIds);
           if (errorOccurred) {
@@ -1640,7 +1989,16 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
   }
   // Save and Cancel operations
   async saveChanges() {
-    if (!this.hasChanges() || this.saving()) return;
+    if (this.saving()) return;
+    
+    // Handle reservation mode differently
+    if (this.mode === 'reservation') {
+      if (!this.hasReservationChanges()) return;
+      await this.saveReservationChanges();
+      return;
+    }
+    // Original venue editing logic
+    if (!this.hasChanges()) return;
     
     const venueId = this.venueId();
     if (!venueId) return;
@@ -1697,6 +2055,29 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
   async cancelChanges() {
+    // Handle reservation mode differently
+    if (this.mode === 'reservation') {
+      if (!this.hasReservationChanges()) return;
+      
+      const confirmed = await firstValueFrom(this.confirmationDialog.confirm({
+        title: 'Cancel Reservation Changes',
+        message: 'Are you sure you want to cancel all unsaved reservation changes?',
+        confirmButtonText: 'Yes, Cancel',
+        cancelButtonText: 'Keep Editing'
+      }));
+
+      if (confirmed) {
+        console.log('Cancelling reservation changes...');
+        this.pendingReservationChanges = [];
+        this.hasReservationChanges.set(false);
+        
+        // Reapply original reservations to reset visual state
+        this.applyReservationsToSeats();
+      }
+      return;
+    }
+    
+    // Original venue editing logic
     if (!this.hasChanges()) return;
 
     const confirmed = await firstValueFrom(this.confirmationDialog.confirm({
@@ -1735,12 +2116,43 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private navigateBack() {
+    // If we're in reservation mode prefer returning to the event detail page
+    if (this.mode === 'reservation') {
+      // Try multiple strategies to discover the event id
+      let evId = this.eventId();
+      if (!evId && this.eventData && (this.eventData as Event).eventId) {
+        evId = (this.eventData as Event).eventId as number;
+      }
+      // Check route params (e.g., /events/:eventId/reservations)
+      if (!evId) {
+        const param = this.route.snapshot.paramMap.get('eventId');
+        if (param) {
+          const num = Number(param);
+          if (!isNaN(num)) evId = num;
+        }
+      }
+      // Check query params fallback (e.g., ?eventId=123)
+      if (!evId) {
+        const qparam = this.route.snapshot.queryParamMap.get('eventId');
+        if (qparam) {
+          const qnum = Number(qparam);
+          if (!isNaN(qnum)) evId = qnum;
+        }
+      }
+
+      if (evId) {
+        this.router.navigate(['/events', evId]);
+        return;
+      }
+    }
+
     const venueId = this.venueId();
     if (venueId) {
       this.router.navigate(['/venues', venueId]);
     } else {
       this.router.navigate(['/venues']);
-    }  }
+    }
+  }
 
   ngOnDestroy() {
     window.removeEventListener('beforeunload', this.handleBeforeUnload);
@@ -1906,6 +2318,15 @@ console.log("addSelectionIndicators2");
     this.applyZoom();
   }
 
+  // Quick helper: set zoom to 180% so seats become visible
+  public setZoomTo180(): void {
+    const target = 1.8;
+    // Clamp to min/max just in case
+    const clamped = Math.max(this.minZoom, Math.min(this.maxZoom, target));
+    this.zoomLevel.set(clamped);
+    this.applyZoom();
+  }
+
   private applyZoom(): void {
     if (!this.stage || !this.canvasContainer) return;
 
@@ -1967,4 +2388,23 @@ console.log("addSelectionIndicators2");
   
   // Expose zoomLevel signal for template access
   getCurrentZoom() { return this.zoomLevel(); }
+
+  // Public wrappers so template buttons can call save/cancel for both edit and reservation modes
+  public async saveReservationChangesPublic(): Promise<void> {
+    if (this.mode === 'reservation') {
+      // Delegate saving to parent when used as a child component
+      this.reservationSave.emit();
+      return;
+    }
+    await this.saveChanges();
+  }
+
+  public cancelReservationChangesPublic(): void {
+    if (this.mode === 'reservation') {
+      // Delegate cancellation to the parent so it can clear authoritative pending updates
+      this.reservationCancel.emit();
+      return;
+    }
+    this.cancelChanges();
+  }
 }

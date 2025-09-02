@@ -54,14 +54,9 @@ public class ReservationController implements ReservationApi {
         try {
             List<Reservation> updatedReservations = reservationService.updateReservation(eventId, reservationInput);
             
-            if (!updatedReservations.isEmpty()) {
-                log.debug("Successfully updated {} reservations for event ID: {}", updatedReservations.size(), eventId);
-                // Return the first reservation for backward compatibility with API response
-                return ResponseEntity.ok(updatedReservations);
-            } else {
-                log.warn("No reservations were updated for event ID: {}", eventId);
-                return ResponseEntity.notFound().build();
-            }
+            log.debug("Successfully updated {} reservations for event ID: {}", updatedReservations.size(), eventId);
+            // Return the first reservation for backward compatibility with API response
+            return ResponseEntity.ok(updatedReservations);
         } catch (IllegalArgumentException e) {
             log.warn("Invalid input for reservation update - Event ID: {}, Error: {}", eventId, e.getMessage());
             return ResponseEntity.badRequest().build();

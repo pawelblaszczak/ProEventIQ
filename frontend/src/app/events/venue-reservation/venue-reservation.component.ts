@@ -5,6 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { VenueMapEditComponent } from '../../venues/venue-map-edit/venue-map-edit.component';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { ProEventIQService } from '../../api/api/pro-event-iq.service';
 import { Venue } from '../../api/model/venue';
 import { Event } from '../../api/model/event';
@@ -31,6 +32,7 @@ export class VenueReservationComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(ProEventIQService);
+  private readonly snackBar = inject(MatSnackBar);
 
   venue = signal<Venue | null>(null);
   event = signal<Event | null>(null);
@@ -188,6 +190,11 @@ export class VenueReservationComponent implements OnInit {
     
     if (updates.length === 0) {
       console.log('No pending reservation updates to save');
+      this.snackBar.open('No reservation changes to save.', 'Close', {
+        duration: 2000,
+        horizontalPosition: 'center',
+        verticalPosition: 'top'
+      });
       return;
     }
 
@@ -214,12 +221,22 @@ export class VenueReservationComponent implements OnInit {
           }
         } finally {
           this.reservationLoading.set(false);
+          this.snackBar.open('Reservation changes saved successfully!', 'Close', {
+            duration: 3000,
+            horizontalPosition: 'center',
+            verticalPosition: 'top'
+          });
         }
       },
       error: err => {
         console.error('Failed to save batch reservation updates', err);
         this.reservationError.set('Failed to save reservation updates');
         this.reservationLoading.set(false);
+        this.snackBar.open('Failed to save reservation changes. Please try again.', 'Close', {
+          duration: 5000,
+          horizontalPosition: 'center',
+          verticalPosition: 'top'
+        });
       }
     });
   }
@@ -232,7 +249,7 @@ export class VenueReservationComponent implements OnInit {
   onReservationChange(event: {
     id?: number;
     eventId: number;
-    participantId?: number;
+  participantId?: number | null;
     seatId: number;
     oldParticipantId?: number;
   }) {
@@ -240,7 +257,8 @@ export class VenueReservationComponent implements OnInit {
     
     // Handle unassignment (seatId = 0)
     // If participantId is absent, treat as unassignment for the given seat
-    if (event.participantId === undefined) {
+  // Treat either undefined or explicit null as unassignment
+  if (event.participantId === undefined || event.participantId === null) {
       // Optimistically update local reservations to reflect the unassignment
       const current = this.reservations();
       const idx = current.findIndex(r => r.seatId === event.seatId);
@@ -256,7 +274,7 @@ export class VenueReservationComponent implements OnInit {
       this.updateReservation(
         event.eventId,
         // pass undefined to signal unassignment
-        undefined as unknown as number,
+    undefined as unknown as number,
         event.seatId,
         event.oldParticipantId,
         event.id

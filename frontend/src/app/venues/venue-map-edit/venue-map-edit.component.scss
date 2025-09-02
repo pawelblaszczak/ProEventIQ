@@ -130,6 +130,234 @@ $border-radius: 12px;
     flex-direction: column;
     gap: 1rem;
   }
+
+  // Row that contains canvas + sidebar (default for edit & reservation)
+  .map-row {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    margin-top: 1rem;
+    width: 100%;
+    gap: 1rem;
+  }
+
+  // Make canvas card shrinkable inside the flex row so large stage sizes become scrollable
+  .canvas-card {
+    box-shadow: $card-shadow;
+    border-radius: $border-radius;
+    display: flex;
+    flex-direction: column;
+    height: 700px;
+    flex: 1 1 auto;
+    min-width: 0; /* allow flex child to shrink */
+
+    .canvas-content {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 auto;
+      min-height: 0;
+      min-width: 0;
+
+      mat-card-content {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
+        min-width: 0;
+      }
+
+      .venue-canvas-container {
+        flex: 1 1 auto;
+        min-height: 0;
+        min-width: 0; /* crucial to allow shrinking in flex layout */
+        width: 100%;
+        height: 100%;
+        overflow: auto; /* internal scrolling for large stage */
+        position: relative;
+        max-width: 100%;
+      }
+    }
+  }
+
+  // Right-side narrow panels used for reservation and selection details
+  .reservation-panel-card.narrow {
+    width: 230px;
+    margin-left: 1rem;
+    flex: 0 0 230px;
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    max-height: calc(100vh - 180px);
+    position: sticky;
+    top: 90px;
+
+    .reservation-panel-content { flex: 1; overflow-y: auto; padding-top: .25rem; }
+    .participants-list.simple { display: flex; flex-direction: column; gap: .4rem; }
+    .participants-list.simple .participant-row { display:flex; align-items:center; gap:.5rem; padding:.35rem .5rem; border:1px solid #e0e0e0; border-radius:6px; background:#fff; font-size:.75rem; cursor:pointer; position:relative; transition:background-color .2s ease, border-color .2s ease, box-shadow .2s ease; }
+    .participants-list.simple .participant-row:hover { background:#f5f5f5; }
+    .participants-list.simple .participant-row.selected { 
+      border-color: $primary-color; 
+      background: rgba($primary-color, 0.07); 
+      box-shadow: 0 0 0 2px rgba($primary-color, 0.15);
+    }
+    .participants-list.simple .participant-row.selected .name { font-weight:600; color:$primary-color; }
+    .participants-list.simple .participant-row:focus { outline:2px solid rgba($primary-color,0.5); outline-offset:2px; }
+    .participants-list.simple .participant-row .selected-indicator { margin-left:auto; font-size:16px; width:16px; height:16px; }
+    .participants-list.simple .participant-row .color { width:14px; height:14px; border-radius:4px; border:1px solid #bbb; box-shadow:0 0 0 1px #fff inset; }
+    .participants-list.simple .participant-row .name { flex:1; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .side-loading, .side-error, .side-empty { text-align:center; padding:1rem .5rem; color:#555; display:flex; flex-direction:column; align-items:center; gap:.5rem; font-size:.75rem; }
+  }
+
+  // Selection panel uses the same narrow styling (kept separate for clarity)
+  .selection-panel-card.narrow {
+    width: 230px;
+    margin-left: 1rem;
+    flex: 0 0 230px;
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    max-height: calc(100vh - 180px);
+    position: sticky;
+    top: 90px;
+
+    .reservation-panel-content { flex: 1; overflow-y: auto; padding-top: .25rem; }
+    .participants-list.simple { display: flex; flex-direction: column; gap: .4rem; }
+    .participants-list.simple .participant-row { display:flex; align-items:center; gap:.5rem; padding:.35rem .5rem; border:1px solid #e0e0e0; border-radius:6px; background:#fff; font-size:.75rem; cursor:pointer; position:relative; transition:background-color .2s ease, border-color .2s ease, box-shadow .2s ease; }
+    .participants-list.simple .participant-row:hover { background:#f5f5f5; }
+    .participants-list.simple .participant-row.selected { 
+      border-color: $primary-color; 
+      background: rgba($primary-color, 0.07); 
+      box-shadow: 0 0 0 2px rgba($primary-color, 0.15);
+    }
+    .participants-list.simple .participant-row.selected .name { font-weight:600; color:$primary-color; }
+    .participants-list.simple .participant-row:focus { outline:2px solid rgba($primary-color,0.5); outline-offset:2px; }
+    .participants-list.simple .participant-row .selected-indicator { margin-left:auto; font-size:16px; width:16px; height:16px; }
+    .participants-list.simple .participant-row .color { width:14px; height:14px; border-radius:4px; border:1px solid #bbb; box-shadow:0 0 0 1px #fff inset; }
+    .participants-list.simple .participant-row .name { flex:1; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .side-loading, .side-error, .side-empty { text-align:center; padding:1rem .5rem; color:#555; display:flex; flex-direction:column; align-items:center; gap:.5rem; font-size:.75rem; }
+  }
+
+  // Ensure the moved selection panel contents receive the same visual treatment
+  .selection-panel-card.narrow {
+    mat-card-content.selection-panel-content, .selection-panel-card.narrow > .mat-card-content {
+      padding: 0; /* we'll style selection-info directly */
+    }
+
+    .selection-info {
+  padding: 1rem 1.25rem;
+      background-color: rgba($primary-color, 0.03);
+      border-radius: 6px;
+  /* reduce top gap so header sits closer to the features panel */
+  margin: 0.25rem 0 0 0;
+      color: rgba(0,0,0,0.9);
+
+      .selection-subtitle {
+        margin: 0 0 0.5rem 0;
+        color: $primary-color;
+        font-size: 0.98rem;
+        font-weight: 700;
+        display: block;
+      }
+
+      .sector-details {
+        display: block;
+        margin-top: 0.25rem;
+
+        .detail-item {
+          display: block;
+          gap: 0.25rem;
+          font-size: 0.9rem;
+          margin-bottom: 0.6rem;
+
+          .detail-label { display:block; font-weight:700; color: rgba(0,0,0,0.65); margin-bottom: 0.15rem; }
+          .detail-value { display:block; color: rgba(0,0,0,0.9); }
+        }
+      }
+    }
+  /* remove extra top padding from the mat-card-content so the selection-info can sit closer */
+  .reservation-panel-content { padding-top: 0 !important; }
+    // Compact blue header styling
+    mat-card-header {
+      padding: 0.5rem 1rem;
+    }
+
+    .mat-card-title {
+  color: $primary-color;
+  font-size: 0.75rem; /* match icon height */
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+    }
+
+    mat-icon {
+      color: $primary-color;
+      font-size: 14px; /* slightly smaller icon */
+      line-height: 1;
+    }
+
+    /* Stronger overrides to ensure Material defaults don't win */
+    &.selection-panel-card, &.selection-panel-card.narrow {
+      > .mat-card-header {
+        padding: 0.35rem 0.75rem !important;
+      }
+
+      .mat-card-title {
+        font-size: 0.9rem !important;
+        line-height: 1 !important;
+        margin: 0 !important;
+      }
+
+      mat-icon {
+        font-size: 16px !important;
+        vertical-align: middle;
+      }
+    }
+
+    /* Explicit class overrides for the selection header */
+    .selection-card-title {
+      font-size: 1.05rem !important; /* bigger label */
+      color: $primary-color !important;
+      font-weight: 700 !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 0.5rem !important;
+      white-space: nowrap !important; /* keep icon+label on one line */
+    }
+
+    .selection-card-icon {
+      font-size: 20px !important; /* bigger icon */
+      color: $primary-color !important;
+      margin-right: 0.25rem !important;
+      vertical-align: middle !important;
+  line-height: 1 !important;
+  /* small downward nudge so icon visually lines up with the label */
+  transform: translateY(4px) !important;
+    }
+
+    /* Make header container align items horizontally */
+    > .mat-card-header {
+      display: flex !important;
+      align-items: center !important;
+      gap: 0.5rem !important;
+      padding: 0.5rem 0.75rem !important;
+    }
+
+    .selection-deselect-btn {
+      width: 32px;
+      height: 32px;
+      min-width: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(0,0,0,0.6);
+  padding: 0 !important;
+  margin-right: 0.25rem !important;
+  z-index: 5;
+  /* nudge the button down to align with the title/icon */
+  transform: translateY(4px);
+    }
+  }
 }
 
 // Reservation mode layout adjustments
@@ -138,7 +366,7 @@ $border-radius: 12px;
     display: flex;
     flex-direction: column; // keep toolbar on top
   }
-  // Row that contains canvas + sidebar
+  // Row that contains canvas + sidebar (reservation-mode specific overrides)
   .map-row { 
     display:flex; 
     flex-direction:row; 
@@ -211,6 +439,33 @@ $border-radius: 12px;
   .venue-canvas-container *,
   canvas {
     cursor: default !important;
+  }
+}
+
+/* Ensure edit mode map uses the same visual height as the preview map
+   without affecting reservation or preview specific layouts. */
+.venue-map-editor:not(.preview-mode):not(.reservation-mode) {
+  /* Allow the surrounding card to size naturally instead of a fixed 700px */
+  .canvas-card {
+    height: auto !important;
+  }
+
+  /* Match the preview's map sizing (60vh with a sensible minimum) so the
+     edit canvas appears the same height as the preview map. Keep overflow
+     hidden to preserve the visual layout; internal scrolling for very
+     large stages is still available via the konva container if needed. */
+  .venue-canvas-container,
+  .custom-scroll-canvas {
+    width: 100% !important;
+    height: 78vh !important;
+    min-height: 680px !important;
+    overflow: hidden !important;
+  }
+
+  /* Ensure the konva canvas itself fits the container */
+  .konva-canvas {
+    max-height: 100% !important;
+    max-width: 100% !important;
   }
 }
 
@@ -417,6 +672,68 @@ $border-radius: 12px;
       }
     }
   }
+
+  // Apply the same selection-panel visuals when the panel is rendered as a right-side card
+  .selection-panel-card {
+    .selection-panel {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.5rem;
+      background-color: rgba($primary-color, 0.05);
+      border-top: 1px solid rgba($primary-color, 0.1);
+      
+      .selection-info {
+        h4 {
+          margin: 0 0 0.5rem 0;
+          color: $primary-color;
+          font-size: 1.1rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+        
+        .sector-details {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+          gap: 0.5rem;
+          
+          .detail-item {
+            display: flex;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            
+            .detail-label {
+              font-weight: 500;
+              color: rgba(0, 0, 0, 0.7);
+            }
+            
+            .detail-value {
+              color: rgba(0, 0, 0, 0.9);
+              
+              &.status {
+                padding: 0.1rem 0.5rem;
+                border-radius: 4px;
+                font-size: 0.75rem;
+                font-weight: 500;
+                text-transform: uppercase;
+                
+                &.active {
+                  background-color: rgba($success-color, 0.1);
+                  color: $success-color;
+                }
+                
+                &.inactive {
+                  background-color: rgba($warn-color, 0.1);
+                  color: $warn-color;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
   
   .instructions-panel {
     padding: 1rem 1.5rem;
@@ -477,15 +794,17 @@ $border-radius: 12px;
   border-radius: 8px;
   background-color: white;
   cursor: default;
-  min-width: 100%;
-  min-height: 100%;
+  /* allow shrinking inside flex layouts */
+  min-width: 0;
+  min-height: 0;
   box-sizing: border-box;
   transition: width 0.2s ease, height 0.2s ease; /* Smooth transition when resizing */
   
   // Ensure the canvas element inside takes full size
   canvas {
-    width: 100% !important;
-    height: 100% !important;
+    /* let the canvas render at its native size; container will provide scrollbars when needed */
+    width: auto !important;
+    height: auto !important;
     max-width: 100%;
     max-height: 100%;
   }

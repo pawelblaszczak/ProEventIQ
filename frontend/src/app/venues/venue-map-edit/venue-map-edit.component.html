@@ -71,6 +71,40 @@
     <!-- Toolbar -->
     <mat-card class="toolbar-card">
       <mat-card-content class="toolbar-content">
+          <!-- Allocation Actions (only in reservation mode) - moved to leftmost position -->
+          <div class="tool-group" *ngIf="mode === 'reservation'">
+            <h3 class="tool-group-title">
+              <mat-icon>assignment</mat-icon>
+              Allocation
+            </h3>
+            <div class="tool-buttons">
+              <button mat-icon-button
+                      (click)="allocateAll()"
+                      matTooltip="Allocate all">
+                <mat-icon>done_all</mat-icon>
+              </button>
+              <button mat-icon-button
+                      (click)="allocateSelected()"
+                      [disabled]="!selectedParticipantId() || selectedSectors().length === 0"
+                      matTooltip="Allocate selected">
+                <mat-icon>done_outline</mat-icon>
+              </button>
+              <button mat-icon-button
+                      (click)="clearAllAllocations()"
+                      matTooltip="Clear all"
+                      color="warn">
+                <mat-icon>clear_all</mat-icon>
+              </button>
+              <button mat-icon-button
+                      (click)="clearSelectedAllocations()"
+                      [disabled]="selectedSectors().length === 0"
+                      matTooltip="Clear selected"
+                      color="warn">
+                <mat-icon color="warn">remove</mat-icon>
+              </button>
+              <div class="vertical-divider"></div>
+            </div>
+          </div>
         <!-- Sector Actions (only in edit mode) -->
         <div class="tool-group" *ngIf="mode === 'edit'">
           <h3 class="tool-group-title">
@@ -170,6 +204,7 @@
                     matTooltip="Reset Zoom">
               Reset
             </button>
+            <div class="vertical-divider"></div>
           </div>
         </div>
         <!-- View Options (always visible) -->
@@ -189,6 +224,7 @@
             </button>
           </div>
         </div>
+        
       </mat-card-content>
     </mat-card>
 
@@ -206,68 +242,7 @@
             </div>
           </div>
 
-        <!-- Selection Info Panel - Moved to bottom -->
-        <div class="selection-panel" *ngIf="selectedSectors().length > 0 && mode === 'edit'">
-          <div class="selection-info">
-            @if (selectedSectors().length === 1) {
-              <h4>
-                <mat-icon>info</mat-icon>
-                Selected: {{ selectedSectors()[0].name }}
-              </h4>
-              <div class="sector-details">
-                <div class="detail-item">
-                  <span class="detail-label">Order:</span>
-                  <span class="detail-value">{{ selectedSectors()[0].orderNumber ?? '-' }}</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Position:</span>
-                  <span class="detail-value">                  
-                    X: {{ selectedSectors()[0].position?.x ?? 0 }}, 
-                    Y: {{ selectedSectors()[0].position?.y ?? 0 }}
-                  </span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Rotation:</span>
-                  <span class="detail-value">{{ selectedSectors()[0].rotation }}°</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Seats:</span>
-                  <span class="detail-value">{{ selectedSectors()[0].numberOfSeats ?? 0 }}</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Status:</span>
-                  <span class="detail-value status" 
-                        [class.active]="selectedSectors()[0].status === 'active'"
-                        [class.inactive]="selectedSectors()[0].status === 'inactive'">
-                    {{ selectedSectors()[0].status }}
-                  </span>
-                </div>
-              </div>
-            } @else {
-              <h4>
-                <mat-icon>info</mat-icon>
-                Multiple Selected ({{ selectedSectors().length }})
-              </h4>
-              <div class="sector-details">
-                <div class="detail-item">
-                  <span class="detail-label">Sectors:</span>
-                  <span class="detail-value">
-                    {{ getSelectedSectorNames() }}
-                  </span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Total Seats:</span>
-                  <span class="detail-value">
-                    {{ getTotalSelectedSeats() }}
-                  </span>
-                </div>
-              </div>
-            }
-          </div>
-          <button mat-icon-button (click)="deselectAll()" matTooltip="Deselect">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
+  <!-- Selection Info Panel was moved out of the canvas card and is rendered as a right-side panel when in edit mode -->
 
         <!-- Instructions -->
         <div class="instructions-panel" *ngIf="mode === 'edit'">
@@ -344,6 +319,79 @@
               </div>
             </div>
           }
+          </mat-card-content>
+        </mat-card>
+      }
+
+      <!-- Selection side panel (right side, visible in edit mode) -->
+      @if (mode === 'edit' && selectedSectors().length > 0) {
+        <mat-card class="reservation-panel-card narrow selection-panel-card">
+          <mat-card-header>
+            <div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
+              <mat-card-title class="selection-card-title" style="display:flex;align-items:center;gap:.5rem;">
+                <mat-icon class="selection-card-icon">info</mat-icon>
+                Selected
+              </mat-card-title>
+              <button mat-icon-button aria-label="Deselect" (click)="deselectAll()" class="selection-deselect-btn">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          </mat-card-header>
+          <mat-card-content class="reservation-panel-content">
+            <div class="selection-info">
+              @if (selectedSectors().length === 1) {
+                <div class="sector-details">
+                  <div class="detail-item">
+                    <span class="detail-label">Name:</span>
+                    <span class="detail-value">{{ selectedSectors()[0].name }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Order:</span>
+                    <span class="detail-value">{{ selectedSectors()[0].orderNumber ?? '-' }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Position:</span>
+                    <span class="detail-value">                  
+                      X: {{ selectedSectors()[0].position?.x ?? 0 }}, 
+                      Y: {{ selectedSectors()[0].position?.y ?? 0 }}
+                    </span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Rotation:</span>
+                    <span class="detail-value">{{ selectedSectors()[0].rotation }}°</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Seats:</span>
+                    <span class="detail-value">{{ selectedSectors()[0].numberOfSeats ?? 0 }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Status:</span>
+                    <span class="detail-value status" 
+                          [class.active]="selectedSectors()[0].status === 'active'"
+                          [class.inactive]="selectedSectors()[0].status === 'inactive'">
+                      {{ selectedSectors()[0].status }}
+                    </span>
+                  </div>
+                </div>
+              } @else {
+                <h4 class="selection-subtitle">Multiple Selected ({{ selectedSectors().length }})</h4>
+                <div class="sector-details">
+                  <div class="detail-item">
+                    <span class="detail-label">Sectors:</span>
+                    <span class="detail-value">
+                      {{ getSelectedSectorNames() }}
+                    </span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Total Seats:</span>
+                    <span class="detail-value">
+                      {{ getTotalSelectedSeats() }}
+                    </span>
+                  </div>
+                </div>
+              }
+            </div>
+            <!-- old bottom deselect button removed; use header button instead -->
           </mat-card-content>
         </mat-card>
       }

@@ -74,9 +74,32 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
    * Returns the number of seats reserved for a participant (from reservationData)
    */
   getReservedSeatsForParticipant(participant: Participant): number {
-    if (!participant || !this.reservationData) return 0;
-    // Count reservations for this participant
-    return this.reservationData.filter(r => r.participantId === participant.participantId).length;
+  if (!participant) return 0;
+  // Read pendingCountSignal so Angular tracks pending changes and updates template
+  void this.pendingCountSignal();
+    // Build a map of seatId -> authoritative participantId from reservationData
+    const seatAssignment = new Map<number, number | null>();
+    if (this.reservationData) {
+      this.reservationData.forEach(r => {
+        if (r.seatId != null) seatAssignment.set(r.seatId, r.participantId ?? null);
+      });
+    }
+
+    // Apply pending changes (overrides) so we compute the effective assignment
+    this.pendingReservationMap.forEach(p => {
+      if (p.seatId != null) {
+        // If pending participantId is undefined -> unassigned
+        seatAssignment.set(p.seatId, (p.participantId == null) ? null : p.participantId);
+      }
+    });
+
+    // Count seats currently assigned (authoritative overridden by pending)
+    let count = 0;
+    const pid = participant.participantId;
+    seatAssignment.forEach(assignedPid => {
+      if (assignedPid === pid) count++;
+    });
+    return count;
   }
   @ViewChild('canvasContainer', { static: false }) canvasContainer!: ElementRef<HTMLDivElement>;
   @Input() mode: 'preview' | 'edit' | 'reservation' = 'edit'; // Added 'reservation' mode
@@ -90,7 +113,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   @Output() reservationChange = new EventEmitter<{
     id?: number;
     eventId: number;
-    participantId?: number; // optional for unassignment
+  participantId?: number | null; // optional for unassignment (null = explicit unassign)
     seatId: number;
     oldParticipantId?: number;
   }>();
@@ -103,6 +126,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   participants = signal<Participant[]>([]);
   participantsLoading = signal(false);
   participantsError = signal<string | null>(null);
+  // Local signal to track pending reservation count for template reactivity
+  pendingCountSignal = signal(0);
   // Reservation mode participant selection
   selectedParticipantId = signal<number | null>(null);
   
@@ -138,6 +163,17 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     '#2196F3', '#03A9F4', '#00BCD4', '#009688', '#4CAF50',
     '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800'
   ];
+
+  // Track the original (backend) assignment for each seat so we can compute net changes
+  private initialSeatAssignments = new Map<number, number | null>();
+  // Map of pending reservation changes keyed by seatId for quick add/remove and deduplication
+  private pendingReservationMap = new Map<number, {
+    id?: number;
+    eventId: number;
+    participantId?: number | null;
+    seatId: number;
+    oldParticipantId?: number;
+  }>();
   
   private getParticipantColor(participantId: number | null): string {
     console.log('getParticipantColor called with participantId:', participantId);
@@ -184,7 +220,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   pendingReservationChanges: Array<{
     id?: number;
     eventId: number;
-    participantId?: number;
+  participantId?: number | null;
     seatId: number;
     oldParticipantId?: number;
   }> = [];
@@ -421,15 +457,75 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   private addPendingReservationChange(change: {
     id?: number;
     eventId: number;
-    participantId?: number;
+  participantId?: number | null;
     seatId: number;
     oldParticipantId?: number;
   }) {
-    // In reservation mode, immediately emit the change to parent component
-    // The parent will handle batching and saving
-    this.reservationChange.emit(change);
-    
-    console.log('Emitted reservation change:', change);
+    // Manage local pending map so we know the net state vs initial assignments.
+    // Also keep emitting the change to the parent for backward compatibility.
+    try {
+      const seatId = change.seatId;
+      const eventId = change.eventId;
+
+      // Find the Konva seat object to read current visual assignment
+      const seat = this.getSeatById(seatId);
+      const currentPid = seat ? (seat.getAttr('participantId') as number | null | undefined) ?? null : null;
+      const originalPid = this.initialSeatAssignments.has(seatId) ? this.initialSeatAssignments.get(seatId) ?? null : (seat ? (seat.getAttr('originalParticipantId') as number | null | undefined) ?? null : null);
+
+      if (currentPid === originalPid) {
+        // No net change for this seat -> remove any pending entry
+        if (this.pendingReservationMap.has(seatId)) {
+          this.pendingReservationMap.delete(seatId);
+        }
+      } else {
+        // There is a net change -> store/replace pending entry for this seat
+        // Always store participantId property explicitly.
+        // Use null to indicate an explicit unassignment so callers can distinguish
+        // "no pending info" (no map entry) from "pending unassign" (participantId === null).
+        const pending = {
+          id: change.id,
+          eventId,
+          participantId: currentPid === null ? null : currentPid,
+          seatId,
+          oldParticipantId: originalPid ?? undefined
+        };
+        this.pendingReservationMap.set(seatId, pending);
+      }
+
+      // Refresh the array and flag
+      this.pendingReservationChanges = Array.from(this.pendingReservationMap.values());
+      this.hasReservationChanges.set(this.pendingReservationChanges.length > 0);
+  // Update reactive pending count so templates depending on counts update immediately
+  this.pendingCountSignal.set(this.pendingReservationChanges.length);
+
+  // Note: do NOT emit incremental reservationChange here to avoid parent immediately
+  // applying the change and echoing reservationData back which would clear our
+  // local pending state. We will emit batch changes on save via
+  // saveReservationChanges() / reservationSave for parent persistence.
+  console.log('Managed reservation change:', change, 'pendingCount=', this.pendingReservationChanges.length);
+    } catch (e) {
+      console.error('Failed to add pending reservation change', e, change);
+      // Fallback: still emit so parent receives it
+      try { this.reservationChange.emit(change); } catch (er) { /* ignore */ }
+    }
+  }
+
+  // Helper to find a Konva seat circle by seatId across all sectors
+  private getSeatById(seatId: number): Konva.Circle | undefined {
+    let found: Konva.Circle | undefined;
+    this.sectorSeats.forEach(seats => {
+      if (found) return;
+      for (const s of seats) {
+        try {
+          const sid = s.getAttr('seatId') as number | undefined;
+          if (sid === seatId) {
+            found = s;
+            break;
+          }
+        } catch (e) { /* ignore */ }
+      }
+    });
+    return found;
   }
 
   // Helper method to find existing reservation ID for a seat
@@ -448,35 +544,38 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
   // Save all pending reservation changes
   private async saveReservationChanges() {
-    if (this.pendingReservationChanges.length === 0) return;
+    // Rebuild pendingReservationChanges from the authoritative map in case of any desync
+    this.pendingReservationChanges = Array.from(this.pendingReservationMap.values());
+    if (this.pendingReservationMap.size === 0 || this.pendingReservationChanges.length === 0) {
+      // Provide user feedback even when there are no changes to save
+      this.snackBar.open('No reservation changes to save.', 'Close', {
+        duration: 2000,
+        horizontalPosition: 'center',
+        verticalPosition: 'top'
+      });
+      // keep hasReservationChanges accurate
+      this.hasReservationChanges.set(false);
+      return;
+    }
     
     try {
       this.saving.set(true);
-      console.log('Saving reservation changes...', this.pendingReservationChanges);
-      
-      // Process each reservation change
+      console.log('Emitting reservation changes to parent...', this.pendingReservationChanges);
+
+      // Emit each pending change so parent updates its batch list
       for (const change of this.pendingReservationChanges) {
-        // Emit the change to the parent component
         this.reservationChange.emit(change);
       }
-      
-      // Clear pending changes
+
+      // Signal parent to persist the batch of changes
+      this.reservationSave.emit();
+
+      // Clear local pending changes and maps (parent will handle the actual HTTP save)
       this.pendingReservationChanges = [];
+      this.pendingReservationMap.clear();
       this.hasReservationChanges.set(false);
-      
-      this.snackBar.open('Reservation changes saved successfully!', 'Close', {
-        duration: 3000,
-        horizontalPosition: 'center',
-        verticalPosition: 'top'
-      });
-      
-    } catch (error) {
-      console.error('Error saving reservation changes:', error);
-      this.snackBar.open('Failed to save reservation changes. Please try again.', 'Close', {
-        duration: 5000,
-        horizontalPosition: 'center',
-        verticalPosition: 'top'
-      });
+  this.pendingCountSignal.set(0);
+
     } finally {
       this.saving.set(false);
     }
@@ -499,11 +598,18 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     this.sectorSeats.forEach(seats => allSeats.push(...seats));
     console.log('Total seats found:', allSeats.length);
     
-    // Clear existing assignments
+    // Reset local initial assignments and pending changes when reapplying
+    this.initialSeatAssignments.clear();
+    this.pendingReservationMap.clear();
+    this.pendingReservationChanges = [];
+    this.hasReservationChanges.set(false);
+  // Reset reactive pending count so participant panel updates
+  this.pendingCountSignal.set(0);
+
+    // Clear existing visual assignments; originalParticipantId will be set below when reservation exists
     allSeats.forEach(seat => {
-  seat.setAttr('participantId', null);
-  // Reset originalParticipantId when clearing - will be set again below if reservation exists
-  seat.setAttr('originalParticipantId', null);
+      seat.setAttr('participantId', null);
+      seat.setAttr('originalParticipantId', null);
       seat.fill(this.defaultSeatColor);
     });
     
@@ -520,6 +626,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
           seat.setAttr('participantId', reservation.participantId);
           seat.setAttr('originalParticipantId', reservation.participantId);
           seat.fill(participantColor);
+          // Record initial assignment for change tracking
+          this.initialSeatAssignments.set(reservation.seatId, reservation.participantId);
         }
       }
     });
@@ -1165,6 +1273,59 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     this.needsFullRender = true;
   }
 
+  // Update Konva visuals for a single sector (rotation, labels, outline)
+  private updateKonvaForSector(sector: EditableSector) {
+    if (!this.layer) return;
+    const sectorId = sector.sectorId!;
+    const group = this.sectorGroups.get(sectorId);
+    if (!group) {
+      // If the group hasn't been created yet, request a full render so it will be built
+      this.markNeedsFullRender();
+      return;
+    }
+
+    // Update rotation on group
+    try {
+      group.rotation(sector.rotation ?? 0);
+    } catch (e) {
+      // ignore
+    }
+
+    // Update text labels (name and seats) if present
+    try {
+      const texts = group.find('Text') as Konva.Text[];
+      if (texts && texts.length > 0) {
+        // First text is sector name
+        (texts[0] as Konva.Text).text(sector.name ?? 'Unnamed Sector');
+      }
+      if (texts && texts.length > 1) {
+        (texts[1] as Konva.Text).text(`Seats: ${sector.numberOfSeats ?? 0}`);
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    // Update outline appearance if exists
+    try {
+      const outline = group.findOne('.sector-outline') as Konva.Line;
+      if (outline) {
+        outline.stroke(this.getSectorStrokeColor(sector));
+        outline.strokeWidth(sector.isSelected ? 3 : 2);
+        outline.fill(this.getSectorColor(sector) + '33');
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    // Ensure seats/labels z-order and redraw
+    try {
+      this.fixLayerZOrder();
+      this.layer.batchDraw();
+    } catch (e) {
+      // ignore
+    }
+  }
+
   // Optimized seat rendering - inspired by KonvaTest approach
   private renderSeatsOptimized(group: Konva.Group, sector: EditableSector, seatPositions: {x: number, y: number, seatId?: number}[]) {
     const sectorId = sector.sectorId!;
@@ -1198,10 +1359,53 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         // Set the seatId attribute for reservation tracking
         if (pos.seatId) {
           seat.setAttr('seatId', pos.seatId);
-  }
+        }
 
-  // Initialize originalParticipantId to null for newly created seats
-  seat.setAttr('originalParticipantId', null);
+        // Initialize originalParticipantId to null for newly created seats
+        seat.setAttr('originalParticipantId', null);
+
+        // If we're in reservation mode, attempt to apply any existing reservation
+        // for this seat so recreated seats keep their assigned colors.
+        if (this.mode === 'reservation' && pos.seatId) {
+          // First prefer any pending (unsaved) reservation change for this seat so
+          // temporary allocations keep their colors when sectors are re-rendered.
+
+          const pending = this.pendingReservationMap.get(pos.seatId);
+          // Authoritative reservation from backend (if exists)
+          const reservation = this.reservationData?.find(r => r.seatId === pos.seatId);
+          // original assignment should come from backend/initial map, not from pending
+          const originalPid = reservation?.participantId ?? this.initialSeatAssignments.get(pos.seatId ?? -1) ?? null;
+          // If a pending entry exists we must honor it even if it explicitly sets participantId to null.
+          // Use presence of the 'participantId' property on the pending object as the signal.
+          let assignedPid: number | null = null;
+          if (pending && Object.prototype.hasOwnProperty.call(pending, 'participantId')) {
+            assignedPid = (pending as any).participantId ?? null;
+          } else if (reservation?.participantId != null) {
+            assignedPid = reservation.participantId;
+          } else if (this.initialSeatAssignments.has(pos.seatId ?? -1)) {
+            assignedPid = this.initialSeatAssignments.get(pos.seatId ?? -1) ?? null;
+          } else {
+            assignedPid = null;
+          }
+
+          if (assignedPid) {
+            // Store the current (possibly pending) assignment so fill/tooltip show correctly
+            seat.setAttr('participantId', assignedPid);
+            // Always store originalParticipantId from authoritative source, not pending
+            seat.setAttr('originalParticipantId', originalPid);
+            try {
+              seat.fill(this.getParticipantColor(assignedPid));
+            } catch (e) {
+              seat.fill(this.defaultSeatColor);
+            }
+            // Ensure we track initial assignments consistently (only authoritative/original)
+            if (pos.seatId && originalPid) this.initialSeatAssignments.set(pos.seatId, originalPid);
+          } else {
+            // No assignment (neither pending nor authoritative)
+            seat.setAttr('participantId', null);
+            seat.setAttr('originalParticipantId', originalPid);
+          }
+        }
   // Add simple event handlers like KonvaTest
         // Add simple event handlers like KonvaTest
         seat.on('mouseover', () => {
@@ -1302,6 +1506,31 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
           // IMPORTANT: When seats become visible, ensure they're on top of labels
           if (seatsVisible) {
             seat.moveToTop();
+          }
+          // When in reservation mode ensure seat fill reflects current assignment.
+          // Prefer any pending (unsaved) assignment stored in pendingReservationMap so
+          // temporary allocations persist across re-renders.
+          if (this.mode === 'reservation') {
+            const seatId = seat.getAttr('seatId') as number | undefined;
+            // Compute effective pid: prefer pending entry (including explicit null),
+            // otherwise fall back to existing seat attribute or initial assignment.
+            let pid = seat.getAttr('participantId') as number | null | undefined;
+            if (seatId != null) {
+              const pending = this.pendingReservationMap.get(seatId);
+              if (pending && Object.prototype.hasOwnProperty.call(pending, 'participantId')) {
+                // pending.participantId may be null to indicate explicit unassignment
+                pid = (pending as any).participantId ?? null;
+              }
+            }
+
+            if (pid != null) {
+              seat.fill(this.getParticipantColor(pid));
+              seat.setAttr('participantId', pid);
+            } else {
+              seat.fill(this.defaultSeatColor);
+              // ensure attribute is normalized
+              seat.setAttr('participantId', null);
+            }
           }
         }
       });
@@ -1496,30 +1725,52 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
       if (selectedPid == null) {
         if (currentPid) {
+          // compute reservation id for removal
           let reservationId: number | undefined;
           if (originalPid) reservationId = this.findReservationIdForParticipantSeat(originalPid, seatId);
           if (!reservationId && currentPid) reservationId = this.findReservationIdForParticipantSeat(currentPid, seatId);
           if (!reservationId) reservationId = this.findReservationIdForSeat(seatId);
+
+          // Update visual state first, then add pending change so tracking reads new state
+          seat.setAttr('participantId', null);
+          seat.fill(this.defaultSeatColor);
+          this.layer!.batchDraw();
+
           this.addPendingReservationChange({ id: reservationId, eventId, seatId, oldParticipantId: originalPid ?? currentPid });
         }
-        seat.setAttr('participantId', null);
-        seat.fill(this.defaultSeatColor);
       } else if (currentPid === selectedPid) {
         let reservationIdToggle: number | undefined;
         if (originalPid) reservationIdToggle = this.findReservationIdForParticipantSeat(originalPid, seatId);
         if (!reservationIdToggle) reservationIdToggle = this.findReservationIdForParticipantSeat(selectedPid, seatId);
         if (!reservationIdToggle) reservationIdToggle = this.findReservationIdForSeat(seatId);
-        this.addPendingReservationChange({ id: reservationIdToggle, eventId, seatId, oldParticipantId: originalPid ?? selectedPid });
+
+        // Unassign visually first
         seat.setAttr('participantId', null);
         seat.fill(this.defaultSeatColor);
+        this.layer!.batchDraw();
+
+        this.addPendingReservationChange({ id: reservationIdToggle, eventId, seatId, oldParticipantId: originalPid ?? selectedPid });
       } else {
         let existingReservationId: number | undefined;
         const pidToCheck = originalPid ?? currentPid;
         if (pidToCheck) existingReservationId = this.findReservationIdForParticipantSeat(pidToCheck, seatId);
         if (!existingReservationId) existingReservationId = this.findReservationIdForSeat(seatId);
-        this.addPendingReservationChange({ id: existingReservationId, eventId, participantId: selectedPid, seatId, oldParticipantId: originalPid ?? (currentPid || undefined) });
+        // Before assigning, enforce participant ticket limit
+        const participant = this.participants().find(p => p.participantId === selectedPid);
+        const tickets = Number(participant?.numberOfTickets) || 0;
+        const reserved = participant ? this.getReservedSeatsForParticipant(participant) : 0;
+        if (tickets > 0 && reserved >= tickets) {
+          // Participant has no remaining tickets — do not allow allocation
+          this.snackBar.open('Participant has reached their ticket limit.', 'Close', { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
+          return;
+        }
+
+        // Assign visually first
         seat.setAttr('participantId', selectedPid);
         seat.fill(this.getParticipantColor(selectedPid));
+        this.layer!.batchDraw();
+
+        this.addPendingReservationChange({ id: existingReservationId, eventId, participantId: selectedPid, seatId, oldParticipantId: originalPid ?? (currentPid || undefined) });
       }
       this.layer!.batchDraw();
     };
@@ -1890,7 +2141,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       this.selectedSector.set(updatedPrimary || null);
     }
     
-    this.hasChanges.set(true );
+  this.hasChanges.set(true );
+  // Immediately update Konva visuals for all rotated sectors
+  newSelectedSectors.forEach(s => this.updateKonvaForSector(s));
   }  // Add new sector
   addNewSector() {
     console.log('Adding new sector...');
@@ -1914,6 +2167,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     this.editableSectors.set(updatedSectors);
     this.selectedSector.set(newSector);
     this.hasChanges.set(true);
+  // Ensure the canvas renders the new sector immediately
+  this.markNeedsFullRender();
     console.log('New sector added:', newSector);
   }
   // Delete sector
@@ -1984,9 +2239,259 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
     this.editableSectors.set([...sectors, ...newSectors]);
     this.hasChanges.set(true);
+  // Ensure duplicated sectors appear immediately
+  this.markNeedsFullRender();
     
     console.log(`Duplicated ${selectedSectors.length} sectors`);
   }
+  // Allocation helpers for reservation mode (stubs)
+  public allocateAll(): void {
+    if (this.mode !== 'reservation') return;
+    console.log('allocateAll called');
+    const eventId = this.eventData?.eventId ?? this.eventId();
+    if (!eventId) {
+      this.snackBar.open('No event context available to allocate seats.', 'Close', { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
+      return;
+    }
+
+    if (!this.layer) {
+      console.warn('No konva layer available for allocation');
+      return;
+    }
+
+    const participants = this.participants() || [];
+    if (!participants || participants.length === 0) {
+      this.snackBar.open('No participants to allocate.', 'Close', { duration: 2000, horizontalPosition: 'center', verticalPosition: 'top' });
+      return;
+    }
+
+    // Collect sectors in a deterministic order (by sectorId then name fallback)
+    const sectors = (this.editableSectors() || []).slice().sort((a, b) => {
+      const aid = a.sectorId ?? 0;
+      const bid = b.sectorId ?? 0;
+      if (aid !== bid) return aid - bid;
+      const an = a.name ?? '';
+      const bn = b.name ?? '';
+      return an.localeCompare(bn);
+    });
+
+    // Helper to determine if a seat is marked as allocated/forFar (support a few attribute names)
+    const isSeatForFar = (seat: Konva.Circle) => {
+      try {
+        return Boolean(seat.getAttr('forFar') || seat.getAttr('allocatedForFar') || seat.getAttr('isForFar'));
+      } catch (e) {
+        return false;
+      }
+    };
+
+    let totalAllocated = 0;
+
+    // Iterate participants in given order and allocate up to their ticket count
+    for (const p of participants) {
+      const pid = p.participantId;
+      const tickets = Number(p.numberOfTickets) || 0;
+      const alreadyReserved = this.getReservedSeatsForParticipant(p);
+      let needed = Math.max(0, tickets - alreadyReserved);
+      if (needed <= 0) continue;
+
+      // Walk sectors and seats in order and allocate unassigned, non-far seats
+      for (const sector of sectors) {
+        if (needed <= 0) break;
+        const seats = this.sectorSeats.get(sector.sectorId!);
+        if (!seats || seats.length === 0) continue;
+
+        for (const seat of seats) {
+          if (needed <= 0) break;
+          try {
+            const seatId = seat.getAttr('seatId') as number | undefined;
+            if (!seatId) continue;
+
+            // Skip seats already assigned (effective assignment considers pending map)
+            const effectivePending = this.pendingReservationMap.get(seatId);
+            const effectivePid = (effectivePending && Object.prototype.hasOwnProperty.call(effectivePending, 'participantId')) ? (effectivePending as any).participantId : seat.getAttr('participantId');
+            if (effectivePid != null) continue;
+
+            // Skip seats marked for far allocation
+            if (isSeatForFar(seat)) continue;
+
+            // Assign visually first
+            seat.setAttr('participantId', pid);
+            seat.fill(this.getParticipantColor(pid));
+
+            // Determine reservation id and original participant for change record
+            const originalPid = seat.getAttr('originalParticipantId') as number | null | undefined;
+            let reservationId: number | undefined;
+            if (originalPid) reservationId = this.findReservationIdForParticipantSeat(originalPid, seatId);
+            if (!reservationId) reservationId = this.findReservationIdForSeat(seatId);
+
+            // Add pending change (parent will persist on save)
+            this.addPendingReservationChange({ id: reservationId, eventId, participantId: pid, seatId, oldParticipantId: originalPid ?? undefined });
+
+            needed--;
+            totalAllocated++;
+          } catch (e) {
+            console.error('Allocation error for a seat', e);
+            continue;
+          }
+        }
+      }
+    }
+
+    if (totalAllocated > 0) {
+      this.layer.batchDraw();
+      this.hasReservationChanges.set(true);
+      this.pendingCountSignal.set(this.pendingReservationChanges.length);
+      this.snackBar.open(`Allocated ${totalAllocated} seat(s) (pending).`, 'Close', { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
+    } else {
+      this.snackBar.open('No suitable seats found to allocate.', 'Close', { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
+    }
+  }
+
+  public async clearAllAllocations(): Promise<void> {
+    if (this.mode !== 'reservation') return;
+    console.log('clearAllAllocations called');
+
+    const eventId = this.eventData?.eventId ?? this.eventId();
+    if (!eventId) {
+      this.snackBar.open('No event context available to clear allocations.', 'Close', { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
+      return;
+    }
+
+    // Confirm destructive action with the user
+    const confirmed = await firstValueFrom(this.confirmationDialog.confirm({
+      title: 'Clear All Allocations',
+      message: 'Are you sure you want to clear all allocations? This will unassign all seats for this event (you can save or cancel afterwards).',
+      confirmButtonText: 'Yes, Clear',
+      cancelButtonText: 'Keep Allocations'
+    }));
+
+    if (!confirmed) return;
+
+    if (!this.layer) return;
+
+    // Collect all seats and emit a reservation change for each currently assigned seat
+    const allSeats: Konva.Circle[] = [];
+    this.sectorSeats.forEach(seats => allSeats.push(...seats));
+
+    let anyChanged = false;
+    allSeats.forEach(seat => {
+      try {
+        const currentPid = seat.getAttr('participantId') as number | null | undefined;
+        const originalPid = seat.getAttr('originalParticipantId') as number | null | undefined;
+        const seatId = seat.getAttr('seatId') as number | undefined;
+        if (!seatId) return;
+        if (currentPid == null) return; // nothing to clear
+
+        // Determine reservation id similar to single-seat handler
+        let reservationId: number | undefined;
+        if (originalPid) reservationId = this.findReservationIdForParticipantSeat(originalPid, seatId);
+        if (!reservationId && currentPid) reservationId = this.findReservationIdForParticipantSeat(currentPid, seatId);
+        if (!reservationId) reservationId = this.findReservationIdForSeat(seatId);
+
+        // Update visual state locally first (unassign seat), then add pending change so tracker reads new state
+        seat.setAttr('participantId', null);
+        seat.fill(this.defaultSeatColor);
+
+        // Emit the removal change so parent can persist or handle it
+        this.addPendingReservationChange({ id: reservationId, eventId, seatId, oldParticipantId: originalPid ?? currentPid });
+
+        anyChanged = true;
+      } catch (e) {
+        console.error('Failed to clear allocation for a seat', e);
+      }
+    });
+
+    if (anyChanged) {
+      this.layer.batchDraw();
+      this.hasReservationChanges.set(true);
+  this.pendingCountSignal.set(this.pendingReservationChanges.length);
+      this.snackBar.open('All allocations cleared (pending changes).', 'Close', { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
+    } else {
+      this.snackBar.open('No allocations to clear.', 'Close', { duration: 2000, horizontalPosition: 'center', verticalPosition: 'top' });
+    }
+  }
+
+  public allocateSelected(): void {
+    if (this.mode !== 'reservation') return;
+    console.log('allocateSelected called');
+    // TODO: allocate seats for selected participant within the selected sectors
+  }
+
+  /**
+   * Clear allocations only for seats inside the currently selected sectors.
+   * Prompts for confirmation before making pending unassignments.
+   */
+  public async clearSelectedAllocations(): Promise<void> {
+    if (this.mode !== 'reservation') return;
+    console.log('clearSelectedAllocations called');
+
+    const eventId = this.eventData?.eventId ?? this.eventId();
+    if (!eventId) {
+      this.snackBar.open('No event context available to clear allocations.', 'Close', { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
+      return;
+    }
+
+    // Confirm destructive action with the user
+    const confirmed = await firstValueFrom(this.confirmationDialog.confirm({
+      title: 'Clear Selected Allocations',
+      message: 'Are you sure you want to clear allocations only for the selected sector(s)? This will unassign seats inside the selected sectors (you can save or cancel afterwards).',
+      confirmButtonText: 'Yes, Clear Selected',
+      cancelButtonText: 'Keep Selected'
+    }));
+
+    if (!confirmed) return;
+
+    if (!this.layer) return;
+
+    const selected = this.selectedSectors() || [];
+    if (!selected || selected.length === 0) {
+      this.snackBar.open('No sectors selected to clear.', 'Close', { duration: 2000, horizontalPosition: 'center', verticalPosition: 'top' });
+      return;
+    }
+
+    // Collect seats for selected sectors
+    const seatsToClear: Konva.Circle[] = [];
+    for (const s of selected) {
+      const seats = this.sectorSeats.get(s.sectorId!);
+      if (seats && seats.length > 0) seatsToClear.push(...seats);
+    }
+
+    let anyChanged = false;
+    seatsToClear.forEach(seat => {
+      try {
+        const currentPid = seat.getAttr('participantId') as number | null | undefined;
+        const originalPid = seat.getAttr('originalParticipantId') as number | null | undefined;
+        const seatId = seat.getAttr('seatId') as number | undefined;
+        if (!seatId) return;
+        if (currentPid == null) return; // nothing to clear
+
+        // Determine reservation id similar to clearAllAllocations
+        let reservationId: number | undefined;
+        if (originalPid) reservationId = this.findReservationIdForParticipantSeat(originalPid, seatId);
+        if (!reservationId && currentPid) reservationId = this.findReservationIdForParticipantSeat(currentPid, seatId);
+        if (!reservationId) reservationId = this.findReservationIdForSeat(seatId);
+
+        // Update visual state (unassign seat), then add pending change so tracker reads new state
+        seat.setAttr('participantId', null);
+        seat.fill(this.defaultSeatColor);
+
+        this.addPendingReservationChange({ id: reservationId, eventId, seatId, oldParticipantId: originalPid ?? currentPid });
+        anyChanged = true;
+      } catch (e) {
+        console.error('Failed to clear allocation for a selected seat', e);
+      }
+    });
+
+    if (anyChanged) {
+      this.layer.batchDraw();
+      this.hasReservationChanges.set(true);
+      this.pendingCountSignal.set(this.pendingReservationChanges.length);
+      this.snackBar.open('Selected allocations cleared (pending changes).', 'Close', { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
+    } else {
+      this.snackBar.open('No allocations to clear in selected sectors.', 'Close', { duration: 2000, horizontalPosition: 'center', verticalPosition: 'top' });
+    }
+  }
+
   // Save and Cancel operations
   async saveChanges() {
     if (this.saving()) return;
@@ -2070,6 +2575,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         console.log('Cancelling reservation changes...');
         this.pendingReservationChanges = [];
         this.hasReservationChanges.set(false);
+  this.pendingCountSignal.set(0);
         
         // Reapply original reservations to reset visual state
         this.applyReservationsToSeats();
@@ -2289,6 +2795,9 @@ console.log("addSelectionIndicators2");
             s.sectorId === sector.sectorId ? { ...s, name: result } : s
           )
         );
+  // Immediately update Konva visuals for this sector
+  const updated = this.editableSectors().find(s => s.sectorId === sector.sectorId);
+  if (updated) this.updateKonvaForSector(updated);
       }
     });
   }
@@ -2392,8 +2901,7 @@ console.log("addSelectionIndicators2");
   // Public wrappers so template buttons can call save/cancel for both edit and reservation modes
   public async saveReservationChangesPublic(): Promise<void> {
     if (this.mode === 'reservation') {
-      // Delegate saving to parent when used as a child component
-      this.reservationSave.emit();
+      await this.saveReservationChanges();
       return;
     }
     await this.saveChanges();

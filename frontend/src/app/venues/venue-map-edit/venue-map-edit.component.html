@@ -85,7 +85,6 @@
               </button>
               <button mat-icon-button
                       (click)="allocateSelected()"
-                      [disabled]="!selectedParticipantId() || selectedSectors().length === 0"
                       matTooltip="Allocate selected">
                 <mat-icon>done_outline</mat-icon>
               </button>
@@ -97,7 +96,6 @@
               </button>
               <button mat-icon-button
                       (click)="clearSelectedAllocations()"
-                      [disabled]="selectedSectors().length === 0"
                       matTooltip="Clear selected"
                       color="warn">
                 <mat-icon color="warn">remove</mat-icon>

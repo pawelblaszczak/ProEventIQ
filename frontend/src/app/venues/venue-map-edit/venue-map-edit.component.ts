@@ -2414,7 +2414,132 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   public allocateSelected(): void {
     if (this.mode !== 'reservation') return;
     console.log('allocateSelected called');
-    // TODO: allocate seats for selected participant within the selected sectors
+
+    const eventId = this.eventData?.eventId ?? this.eventId();
+    if (!eventId) {
+      this.snackBar.open('No event context available to allocate seats.', 'Close', { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
+      return;
+    }
+
+    if (!this.layer) {
+      console.warn('No konva layer available for allocation');
+      return;
+    }
+
+    const selectedSectors = this.selectedSectors() || [];
+    const selectedParticipantId = this.selectedParticipantId();
+
+    // If nothing selected, inform the user
+    if ((!selectedSectors || selectedSectors.length === 0) && (selectedParticipantId == null)) {
+      this.snackBar.open('Please select sector(s), participant or both to allocate.', 'Close', { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
+      return;
+    }
+
+    // Determine target sectors: selected sectors if present, otherwise all sectors
+    let targetSectors: EditableSector[] = [];
+    if (selectedSectors && selectedSectors.length > 0) {
+      targetSectors = selectedSectors.slice();
+    } else {
+      targetSectors = (this.editableSectors() || []).slice();
+    }
+
+    // Determine participants to allocate: single selected participant or all participants
+    let participantsToAllocate: Participant[] = [];
+    if (selectedParticipantId != null) {
+      const p = this.participants().find(x => x.participantId === selectedParticipantId);
+      if (!p) {
+        this.snackBar.open('Selected participant not found.', 'Close', { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
+        return;
+      }
+      participantsToAllocate = [p];
+    } else {
+      participantsToAllocate = this.participants() || [];
+    }
+
+    if (!participantsToAllocate || participantsToAllocate.length === 0) {
+      this.snackBar.open('No participants to allocate.', 'Close', { duration: 2000, horizontalPosition: 'center', verticalPosition: 'top' });
+      return;
+    }
+
+    // Helper to determine if a seat is marked as allocated/forFar (support a few attribute names)
+    const isSeatForFar = (seat: Konva.Circle) => {
+      try {
+        return Boolean(seat.getAttr('forFar') || seat.getAttr('allocatedForFar') || seat.getAttr('isForFar'));
+      } catch (e) {
+        return false;
+      }
+    };
+
+    let totalAllocated = 0;
+
+    // Order sectors deterministically
+    const sectorsOrdered = targetSectors.slice().sort((a, b) => {
+      const aid = a.sectorId ?? 0;
+      const bid = b.sectorId ?? 0;
+      if (aid !== bid) return aid - bid;
+      const an = a.name ?? '';
+      const bn = b.name ?? '';
+      return an.localeCompare(bn);
+    });
+
+    // Iterate participants and allocate within the chosen sectors only
+    for (const p of participantsToAllocate) {
+      const pid = p.participantId;
+      const tickets = Number(p.numberOfTickets) || 0;
+      const alreadyReserved = this.getReservedSeatsForParticipant(p);
+      let needed = Math.max(0, tickets - alreadyReserved);
+      if (needed <= 0) continue;
+
+      for (const sector of sectorsOrdered) {
+        if (needed <= 0) break;
+        const seats = this.sectorSeats.get(sector.sectorId!);
+        if (!seats || seats.length === 0) continue;
+
+        for (const seat of seats) {
+          if (needed <= 0) break;
+          try {
+            const seatId = seat.getAttr('seatId') as number | undefined;
+            if (!seatId) continue;
+
+            // Skip seats already assigned (effective assignment considers pending map)
+            const effectivePending = this.pendingReservationMap.get(seatId);
+            const effectivePid = (effectivePending && Object.prototype.hasOwnProperty.call(effectivePending, 'participantId')) ? (effectivePending as any).participantId : seat.getAttr('participantId');
+            if (effectivePid != null) continue;
+
+            // Skip seats marked for far allocation
+            if (isSeatForFar(seat)) continue;
+
+            // Assign visually first
+            seat.setAttr('participantId', pid);
+            seat.fill(this.getParticipantColor(pid));
+
+            // Determine reservation id and original participant for change record
+            const originalPid = seat.getAttr('originalParticipantId') as number | null | undefined;
+            let reservationId: number | undefined;
+            if (originalPid) reservationId = this.findReservationIdForParticipantSeat(originalPid, seatId);
+            if (!reservationId) reservationId = this.findReservationIdForSeat(seatId);
+
+            // Add pending change (parent will persist on save)
+            this.addPendingReservationChange({ id: reservationId, eventId, participantId: pid, seatId, oldParticipantId: originalPid ?? undefined });
+
+            needed--;
+            totalAllocated++;
+          } catch (e) {
+            console.error('Allocation error for a seat', e);
+            continue;
+          }
+        }
+      }
+    }
+
+    if (totalAllocated > 0) {
+      this.layer.batchDraw();
+      this.hasReservationChanges.set(true);
+      this.pendingCountSignal.set(this.pendingReservationChanges.length);
+      this.snackBar.open(`Allocated ${totalAllocated} seat(s) (pending).`, 'Close', { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
+    } else {
+      this.snackBar.open('No suitable seats found to allocate.', 'Close', { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
+    }
   }
 
   /**
@@ -2431,29 +2556,76 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       return;
     }
 
+    if (!this.layer) return;
+
+    const selected = this.selectedSectors() || [];
+    const selectedParticipantId = this.selectedParticipantId();
+
+    // If nothing selected, inform the user per requirement
+    if ((!selected || selected.length === 0) && (selectedParticipantId == null)) {
+      this.snackBar.open('Please select sector(s), participant or both to clear.', 'Close', { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
+      return;
+    }
+
+    // Build confirmation prompt text depending on selection
+    let title = 'Clear Allocations';
+    let message = '';
+    if (selected && selected.length > 0 && selectedParticipantId != null) {
+      const participant = this.participants().find(p => p.participantId === selectedParticipantId);
+      const pname = participant?.name ?? `participant ${selectedParticipantId}`;
+      title = 'Clear Selected Allocations';
+      message = `Are you sure you want to clear allocations for ${pname} inside the selected sector(s)? This will unassign matching seats (you can save or cancel afterwards).`;
+    } else if (selected && selected.length > 0) {
+      title = 'Clear Selected Allocations';
+      message = 'Are you sure you want to clear allocations only for the selected sector(s)? This will unassign seats inside the selected sectors (you can save or cancel afterwards).';
+    } else if (selectedParticipantId != null) {
+      const participant = this.participants().find(p => p.participantId === selectedParticipantId);
+      const pname = participant?.name ?? `participant ${selectedParticipantId}`;
+      title = 'Clear Participant Allocations';
+      message = `Are you sure you want to clear allocations for ${pname} across the venue? This will unassign all seats currently reserved for this participant (you can save or cancel afterwards).`;
+    }
+
     // Confirm destructive action with the user
     const confirmed = await firstValueFrom(this.confirmationDialog.confirm({
-      title: 'Clear Selected Allocations',
-      message: 'Are you sure you want to clear allocations only for the selected sector(s)? This will unassign seats inside the selected sectors (you can save or cancel afterwards).',
-      confirmButtonText: 'Yes, Clear Selected',
-      cancelButtonText: 'Keep Selected'
+      title,
+      message,
+      confirmButtonText: 'Yes, Clear',
+      cancelButtonText: 'Keep'
     }));
 
     if (!confirmed) return;
 
-    if (!this.layer) return;
-
-    const selected = this.selectedSectors() || [];
-    if (!selected || selected.length === 0) {
-      this.snackBar.open('No sectors selected to clear.', 'Close', { duration: 2000, horizontalPosition: 'center', verticalPosition: 'top' });
-      return;
+    // Collect seats based on selection: selected sectors if provided, otherwise all seats
+    const seatsToConsider: Konva.Circle[] = [];
+    if (selected && selected.length > 0) {
+      for (const s of selected) {
+        const seats = this.sectorSeats.get(s.sectorId!);
+        if (seats && seats.length > 0) seatsToConsider.push(...seats);
+      }
+    } else {
+      this.sectorSeats.forEach(seats => seatsToConsider.push(...seats));
     }
 
-    // Collect seats for selected sectors
-    const seatsToClear: Konva.Circle[] = [];
-    for (const s of selected) {
-      const seats = this.sectorSeats.get(s.sectorId!);
-      if (seats && seats.length > 0) seatsToClear.push(...seats);
+    // Filter seats when a participant is selected: only clear seats assigned to that participant
+    const seatsToClear = seatsToConsider.filter(seat => {
+      try {
+        const currentPid = seat.getAttr('participantId') as number | null | undefined;
+        if (selectedParticipantId != null) {
+          return currentPid === selectedParticipantId;
+        }
+        return currentPid != null;
+      } catch (e) {
+        return false;
+      }
+    });
+
+    if (!seatsToClear || seatsToClear.length === 0) {
+      if (selectedParticipantId != null) {
+        this.snackBar.open('No allocations to clear for the selected participant in the chosen scope.', 'Close', { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
+      } else {
+        this.snackBar.open('No allocations to clear in selected sectors.', 'Close', { duration: 2000, horizontalPosition: 'center', verticalPosition: 'top' });
+      }
+      return;
     }
 
     let anyChanged = false;
@@ -2488,7 +2660,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       this.pendingCountSignal.set(this.pendingReservationChanges.length);
       this.snackBar.open('Selected allocations cleared (pending changes).', 'Close', { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
     } else {
-      this.snackBar.open('No allocations to clear in selected sectors.', 'Close', { duration: 2000, horizontalPosition: 'center', verticalPosition: 'top' });
+      this.snackBar.open('No allocations were changed.', 'Close', { duration: 2000, horizontalPosition: 'center', verticalPosition: 'top' });
     }
   }
 

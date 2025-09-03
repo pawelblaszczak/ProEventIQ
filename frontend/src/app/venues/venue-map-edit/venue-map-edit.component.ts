@@ -102,7 +102,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     return count;
   }
   @ViewChild('canvasContainer', { static: false }) canvasContainer!: ElementRef<HTMLDivElement>;
-  @Input() mode: 'preview' | 'edit' | 'reservation' = 'edit'; // Added 'reservation' mode
+  @Input() mode: 'preview' | 'edit' | 'reservation' | 'reservation-preview' = 'edit'; // Added 'reservation' and 'reservation-preview' modes
   @Input() venueData: Venue | null = null; // Allow venue data to be passed in
   @Input() eventData: Event | null = null; // Event context for reservation header
   @Input() reservationData: Reservation[] = []; // Existing reservations for the event
@@ -181,7 +181,11 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       console.log('Returning default color for null participantId');
       return this.defaultSeatColor;
     }
-    const p = this.participants().find(pp => pp.participantId === participantId);
+  // Prefer the reactive participants list; fall back to the input participantData to avoid
+  // race conditions where the parent passed participantData but we haven't synced the signal yet.
+  const reactiveList = this.participants();
+  const sourceList = (reactiveList && reactiveList.length > 0) ? reactiveList : (this.participantData ?? []);
+  const p = sourceList.find(pp => pp.participantId === participantId);
     console.log('Found participant:', p);
     
     // Use participant's defined color or generate one based on ID
@@ -232,6 +236,11 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     }
     return this.hasChanges();
   });
+
+  // Template-friendly helper to check for reservation-like modes (interactive + preview)
+  public isReservationLike(): boolean {
+    return this.mode === 'reservation' || this.mode === 'reservation-preview';
+  }
   showGrid = signal(true);
   gridSize = 20;
   
@@ -288,10 +297,10 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     
     // Watch for reservation and participant data changes (reservation mode)
     effect(() => {
-      if (this.mode === 'reservation' && this.konvaInitialized) {
-        // Apply existing reservations to seats when participants or konva state changes
+      // Apply reservations when in reservation-like modes and Konva is ready
+      if ((this.mode === 'reservation' || this.mode === 'reservation-preview') && this.konvaInitialized) {
         this.applyReservationsToSeats();
-        console.log('Effect: Applied reservations to seats');
+        console.log('Effect: Applied reservations to seats (reservation-like mode)');
       }
     });
     
@@ -320,8 +329,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   }
 
   ngOnChanges(changes: SimpleChanges) {
-    // Handle input data changes for reservation mode
-    if (this.mode === 'reservation') {
+    // Handle input data changes for reservation-like modes (interactive reservation and read-only preview)
+    if (this.mode === 'reservation' || this.mode === 'reservation-preview') {
       // If parent provided event data, capture its id for navigation
       if (changes['eventData'] && this.eventData) {
         try {
@@ -348,7 +357,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         shouldApplyReservations = true;
       }
       
-      if (shouldApplyReservations) {
+  if (shouldApplyReservations) {
         // Apply reservations to seats after the view is initialized
         setTimeout(() => {
           this.applyReservationsToSeats();
@@ -374,7 +383,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       this.venue.set(this.venueData);
       this.loading.set(false);
       this.initializeEditableSectors(this.venueData);
-    } else if (this.mode === 'reservation' && this.venueData) {
+    } else if ((this.mode === 'reservation' || this.mode === 'reservation-preview') && this.venueData) {
       // Reservation mode: use passed venue data and initialize participants/reservations
       this.venue.set(this.venueData);
       this.loading.set(false);
@@ -585,6 +594,11 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   private applyReservationsToSeats() {
     console.log('applyReservationsToSeats called');
     console.log('reservationData:', this.reservationData);
+    // Ensure participants signal is populated from input if it's empty to avoid race issues
+    if ((this.participants() == null || this.participants().length === 0) && this.participantData && this.participantData.length > 0) {
+      console.log('applyReservationsToSeats: populating participants from participantData input');
+      this.participants.set(this.participantData);
+    }
     console.log('participants:', this.participants());
     console.log('layer exists:', !!this.layer);
     
@@ -1364,9 +1378,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         // Initialize originalParticipantId to null for newly created seats
         seat.setAttr('originalParticipantId', null);
 
-        // If we're in reservation mode, attempt to apply any existing reservation
-        // for this seat so recreated seats keep their assigned colors.
-        if (this.mode === 'reservation' && pos.seatId) {
+  // If we're in reservation-like mode, attempt to apply any existing reservation
+  // for this seat so recreated seats keep their assigned colors.
+  if ((this.mode === 'reservation' || this.mode === 'reservation-preview') && pos.seatId) {
           // First prefer any pending (unsaved) reservation change for this seat so
           // temporary allocations keep their colors when sectors are re-rendered.
 
@@ -1445,7 +1459,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
           }
         });
 
-        seat.on('mouseout', () => {
+          seat.on('mouseout', () => {
           this.stage!.container().style.cursor = 'default';
           // Restore previous stroke and stroke width
           const prevStroke = seat.getAttr('_prevStroke');
@@ -1461,7 +1475,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
           // Also restore fill if a previous fill was saved (backwards-compatible)
           const prevFill = seat.getAttr('_prevFill');
-          if (this.mode === 'reservation') {
+          if (this.mode === 'reservation' || this.mode === 'reservation-preview') {
             const pid = seat.getAttr('participantId') as number | null | undefined;
             if (pid) {
               seat.fill(this.getParticipantColor(pid));
@@ -1510,7 +1524,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
           // When in reservation mode ensure seat fill reflects current assignment.
           // Prefer any pending (unsaved) assignment stored in pendingReservationMap so
           // temporary allocations persist across re-renders.
-          if (this.mode === 'reservation') {
+          if (this.mode === 'reservation' || this.mode === 'reservation-preview') {
             const seatId = seat.getAttr('seatId') as number | undefined;
             // Compute effective pid: prefer pending entry (including explicit null),
             // otherwise fall back to existing seat attribute or initial assignment.
@@ -1598,7 +1612,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
               
                 // Set tooltip text with sector name, row name, seat number, and participant name if reserved
                 let tooltipText = `Sector: ${sector.name || 'Unknown'}\nRow: ${rowName}\nSeat: ${seatNumber}`;
-                if (this.mode === 'reservation') {
+                if (this.mode === 'reservation' || this.mode === 'reservation-preview') {
                   const pid = seat.getAttr('participantId') as number | null | undefined;
                   if (pid) {
                     const participant = this.participants().find(p => p.participantId === pid);
@@ -1682,7 +1696,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
             // Also restore fill if a previous fill was saved (backwards-compatible)
             const prevFill = seat.getAttr('_prevFill');
-            if (this.mode === 'reservation') {
+            if (this.mode === 'reservation' || this.mode === 'reservation-preview') {
               const pid = seat.getAttr('participantId') as number | null | undefined;
               if (pid) {
                 seat.fill(this.getParticipantColor(pid));
@@ -1906,8 +1920,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     event.cancelBubble = true;
     event.evt?.stopPropagation();
     
-    // Don't allow selection in preview mode
-    if (this.mode === 'preview') return;
+  // Don't allow selection in preview modes
+  if (this.mode === 'preview' || this.mode === 'reservation-preview') return;
     
     this.selectSector(sector, event.evt?.ctrlKey || event.evt?.metaKey);
   }
@@ -3087,4 +3101,17 @@ console.log("addSelectionIndicators2");
     }
     this.cancelChanges();
   }
+  // UI event wrappers used from template to guard interactions in preview mode
+  onParticipantClick(p: Participant) {
+    if (this.mode !== 'reservation') return;
+    this.selectParticipant(p);
+  }
+
+  onParticipantKey(p: Participant, event: any) {
+    if (this.mode !== 'reservation') return;
+    // Prevent default space scroll if available
+    try { (event as any)?.preventDefault?.(); } catch (e) { /* ignore */ }
+    this.selectParticipant(p);
+  }
+
 }

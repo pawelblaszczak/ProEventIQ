@@ -18,6 +18,7 @@ import { ProEventIQService } from '../../api/api/pro-event-iq.service';
 import { ConfirmationDialogService, ColorService } from '../../shared';
 import { ColorPickerDialogComponent } from './color-picker-dialog';
 import { Participant } from '../../api/model/participant';
+import { Reservation } from '../../api/model/reservation';
 import { VenueMapEditComponent } from '../../venues/venue-map-edit/venue-map-edit.component';
 import { EventService } from '../event.service';
 
@@ -58,6 +59,7 @@ export class EventDetailComponent implements OnInit {
   public loading = signal(true);
   public error = signal<string | null>(null);
   public participants = signal<Participant[]>([]);
+  public reservations = signal<Reservation[]>([]);
   public editingParticipant = signal<string | null>(null);
 
   /** Returns the sum of numberOfTickets for all participants */
@@ -96,6 +98,7 @@ export class EventDetailComponent implements OnInit {
       if (id !== null && !isNaN(id)) {
         this.loadEvent(id);
         this.loadParticipants(id);
+  this.loadReservations(id);
       }
     });
   }
@@ -142,6 +145,16 @@ export class EventDetailComponent implements OnInit {
       error: (err) => {
         console.error('Error loading participants:', err);
         this.participants.set([]);
+      }
+    });
+  }
+
+  private loadReservations(eventId: number) {
+    this.eventApi.getReservation(eventId).subscribe({
+      next: (reservations) => this.reservations.set(reservations ?? []),
+      error: (err) => {
+        console.error('Error loading reservations:', err);
+        this.reservations.set([]);
       }
     });
   }

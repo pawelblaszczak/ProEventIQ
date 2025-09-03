@@ -266,8 +266,11 @@
     </div>
     <mat-card-content class="map-preview-content">
       <app-venue-map-edit 
-        [mode]="'preview'" 
-        [venueData]="venue()">
+        [mode]="'reservation-preview'" 
+        [venueData]="venue()"
+        [eventData]="event()"
+  [reservationData]="reservations()"
+        [participantData]="participants()">
       </app-venue-map-edit>
     </mat-card-content>
   </mat-card>

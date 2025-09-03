@@ -12,9 +12,9 @@
 </app-error-display>
 
 <div *ngIf="venue()" class="venue-map-editor animate-fade-in" 
-     [class.reservation-mode]="mode==='reservation'"
-     [class.preview-mode]="mode==='preview'">
-  <!-- Header with venue info and actions (edit & reservation modes) -->
+  [class.reservation-mode]="mode==='reservation' || mode==='reservation-preview'"
+  [class.preview-mode]="mode==='preview'">
+  <!-- Header with venue info and actions (edit & interactive reservation modes only) -->
   <div class="editor-header" *ngIf="mode === 'edit' || mode === 'reservation'">
     <div class="venue-info">
       <h1 class="venue-name">
@@ -27,7 +27,7 @@
         }
       </h1>
       <p class="venue-location">
-        @if (mode === 'reservation') {
+  @if (isReservationLike()) {
           {{ venue()?.name }}
           <span *ngIf="venue()?.address"> – {{ venue()?.address }}</span>
           <span *ngIf="venue()?.city">, {{ venue()?.city }}</span>
@@ -228,7 +228,7 @@
 
     <!-- Canvas Area -->
     <!-- Map row (canvas + optional reservation sidebar) -->
-    <div class="map-row" [class.with-reservation]="mode==='reservation'">
+  <div class="map-row" [class.with-reservation]="mode==='reservation' || mode==='reservation-preview'">
       <mat-card class="canvas-card">
         <mat-card-content class="canvas-content">
           <!-- Canvas -->
@@ -271,7 +271,7 @@
       </mat-card>
 
       <!-- Reservation side panel (right side) -->
-      @if (mode === 'reservation') {
+  @if (mode === 'reservation') {
         <mat-card class="reservation-panel-card narrow">
           <mat-card-header>
             <mat-card-title style="display:flex;align-items:center;gap:.5rem;">
@@ -303,9 +303,9 @@
                 matTooltip="{{ p.name }} ({{ p.numberOfTickets }} tickets)"
                 role="listitem"
                 tabindex="0"
-                (click)="selectParticipant(p)"
-                (keydown.enter)="selectParticipant(p)"
-                (keydown.space)="selectParticipant(p); $event.preventDefault()"
+                (click)="onParticipantClick(p)"
+                (keydown.enter)="onParticipantKey(p, $event)"
+                (keydown.space)="onParticipantKey(p, $event)"
                 [class.selected]="isParticipantSelected(p)"
                 [attr.aria-selected]="isParticipantSelected(p)"
               >

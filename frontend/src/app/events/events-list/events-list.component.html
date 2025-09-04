@@ -99,7 +99,9 @@
     <div class="events-list">
       @for (event of filteredEvents(); track event.eventId) {
         <mat-card class="event-item" [routerLink]="['/events', event.eventId]">
-          <mat-card-content class="event-content">
+          <!-- Use CSS grid with fixed column widths to keep the error column aligned across all rows: date | details | error | seat | actions -->
+          <!-- Increase seat-status column to give more room for the badge/text -->
+          <mat-card-content class="event-content" style="display:grid; grid-template-columns: 72px 1fr 36px minmax(200px, 280px) 48px; align-items:center; gap:16px;">
             <div class="event-date-section">
               <div class="date-block">
                 <div class="date-day">{{ formatDateOnly(event.dateTime) }}</div>
@@ -107,7 +109,7 @@
               </div>
             </div>
             
-            <div class="event-details">
+            <div class="event-details" style="min-width:0;">
               <div class="event-header">
                 <h3 class="event-title">{{ event.showName || 'Untitled Show' }}</h3>
               </div>
@@ -132,6 +134,11 @@
               </div>
             </div>
             
+            <!-- Fixed-width error column so the warning icon stays in the same horizontal position for every row -->
+            <div class="error-column" style="width:36px; display:flex; align-items:center; justify-content:center;">
+              <mat-icon *ngIf="event.hasAllocationErrors" color="warn" style="font-size:20px; line-height:20px; transform: translateY(2px);" matTooltip="Allocation errors for this event">warning</mat-icon>
+            </div>
+
             <div class="seat-status">
               <div class="seat-indicator" [ngClass]="getReservationClass(event)" style="background: #f3f3f3; border-radius: 999px; padding: 0 12px; display: inline-flex; align-items: center; gap: 4px; min-height: 28px;">
                 <mat-icon [style.color]="getSeatStatusColor(event)">event_seat</mat-icon>

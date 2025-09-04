@@ -192,3 +192,60 @@ CREATE TABLE user_details (
 
 
 
+
+
+DELIMITER $$
+
+CREATE FUNCTION has_allocation_errors(p_event_id INT) RETURNS VARCHAR(1)
+    READS SQL DATA
+    DETERMINISTIC
+BEGIN
+    DECLARE v_total_tickets INT DEFAULT 0;
+    DECLARE v_venue_id INT;
+    DECLARE v_venue_seats INT DEFAULT 0;
+    DECLARE v_allocated INT DEFAULT 0;
+    DECLARE v_has_error BOOLEAN DEFAULT FALSE;
+
+    -- total tickets requested by all participants for the event
+    SELECT IFNULL(SUM(number_of_tickets), 0) INTO v_total_tickets
+    FROM participant
+    WHERE event_id = p_event_id;
+
+    -- find venue for event
+    SELECT venue_id INTO v_venue_id
+    FROM event
+    WHERE event_id = p_event_id
+    LIMIT 1;
+
+    -- if event not found, consider it an error
+    IF v_venue_id IS NULL THEN
+        RETURN 'Y';
+    END IF;
+
+    -- total seats available in the venue
+    SET v_venue_seats = get_venue_seat_count(v_venue_id);
+
+    -- number of seats actually allocated (reservations) for the event
+    SELECT COUNT(*) INTO v_allocated
+    FROM seat_reservation
+    WHERE event_id = p_event_id;
+
+    -- Check 1: requested tickets exceed venue capacity
+    IF v_total_tickets > v_venue_seats THEN
+        SET v_has_error = TRUE;
+    END IF;
+
+    -- Check 2: allocated seats don't match requested tickets
+    IF v_allocated <> v_total_tickets THEN
+        SET v_has_error = TRUE;
+    END IF;
+
+    RETURN IF(v_has_error, 'Y', 'N');
+END$$
+
+DELIMITER ;
+
+
+
+
+

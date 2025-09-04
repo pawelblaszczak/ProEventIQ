@@ -1,9 +1,10 @@
-import { Component, signal, ChangeDetectionStrategy, inject } from '@angular/core';
+import { Component, signal, ChangeDetectionStrategy, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { MaterialModule } from './material.module';
 import { MAT_TOOLTIP_DEFAULT_OPTIONS, MatTooltipDefaultOptions } from '@angular/material/tooltip';
 import { KeycloakAuthService } from './auth/keycloak/keycloak.service';
+import { UserService } from './shared/services/user.service';
 
 // Custom tooltip behavior
 export const myTooltipDefaults: MatTooltipDefaultOptions = {
@@ -25,9 +26,10 @@ export const myTooltipDefaults: MatTooltipDefaultOptions = {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class MainLayoutComponent {
+export class MainLayoutComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly auth = inject(KeycloakAuthService);
+  private readonly userService = inject(UserService);
   
   isExpanded = signal<boolean>(true);
   
@@ -40,10 +42,22 @@ export class MainLayoutComponent {
   }
 
   displayName(): string {
+    // Prefer application user details full name when available
+    const ud = this.userService.userDetails();
+    if (ud && ud.name) {
+      return ud.name;
+    }
+
+    // If no full name, prefer email in the toolbar (matches UI expectation)
     const p = this.auth.profile();
     if (!p) return '';
-  const fullName = [p['given_name'], p['family_name']].filter(Boolean).join(' ');
-  return (p['name'] as string) || fullName || (p['preferred_username'] as string) || 'User';
+
+    if (p['email']) {
+      return p['email'] as string;
+    }
+
+    const fullName = [p['given_name'], p['family_name']].filter(Boolean).join(' ');
+    return (p['name'] as string) || fullName || (p['preferred_username'] as string) || 'User';
   }
 
   login(): void {
@@ -56,5 +70,17 @@ export class MainLayoutComponent {
 
   navigateToMyAccount(): void {
     this.router.navigate(['/my-account']);
+  }
+
+  ngOnInit(): void {
+    // Ensure we have application user details loaded so toolbar can show full name
+    try {
+      if (this.auth.isAuthenticated() && !this.userService.hasUserDetails()) {
+        // Subscribe once to trigger loading; errors handled in service
+        this.userService.loadCurrentUserDetails().subscribe({ next: () => {}, error: () => {} });
+      }
+    } catch (e) {
+      // no-op: defensive in case services are not ready
+    }
   }
 }

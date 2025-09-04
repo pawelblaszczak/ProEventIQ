@@ -247,29 +247,33 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 0 8px;
+      padding: 0 12px;
       
       .seat-indicator {
-        display: flex;
+        display: inline-flex;
         align-items: center;
         justify-content: center;
-        height: 32px; // increased from 22px
-        padding: 0 16px; // increased from 8px
+        height: 40px;
+        padding: 0 20px;
         border-radius: 16px; // slightly larger for bigger indicator
         line-height: 1;
         
-        mat-icon {
-          font-size: 22px; // increased from 14px
-          width: 22px;
-          height: 22px;
-          line-height: 1;
-          margin-right: 8px; // more space for bigger icon
-        }
+          mat-icon {
+            font-size: 22px; // keep bigger icon
+            width: 22px;
+            height: 22px;
+            line-height: 1;
+            margin-right: 10px; // slightly more space
+            flex-shrink: 0;
+          }
         
-        .seat-text {
-          font-size: 16px; // increased from 12px
-          line-height: 1;
-        }
+          .seat-text {
+            font-size: 16px; // keep bigger text
+            line-height: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
       }
     }
     

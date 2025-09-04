@@ -62,7 +62,6 @@ interface EditableSector extends Sector {
     MatToolbarModule,
     MatTooltipModule,
     RouterModule,
-    ChangeSectorNameDialogComponent,
     ErrorDisplayComponent
   ],
   templateUrl: './venue-map-edit.component.html',
@@ -157,7 +156,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   private needsFullRender = false; // Flag to control when full re-render is needed
   private seatTooltip: Konva.Label | null = null; // Tooltip for seat information
   // Reservation seat coloring helpers
-  private readonly defaultSeatColor = '#90A4AE';
+  // Unallocated seats should render white
+  private readonly defaultSeatColor = '#f0f0f0';
   private readonly participantColors = [
     '#FF5722', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5', 
     '#2196F3', '#03A9F4', '#00BCD4', '#009688', '#4CAF50',
@@ -900,6 +900,35 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     
     // Redraw the layer to apply visibility changes
     if (this.layer) {
+  // If seats are visible now, remove any previously added allocation overlays
+  if (seatsVisible) {
+        try {
+          this.sectorGroups.forEach(group => {
+            try {
+              const allocGroup = group.findOne('.sector-allocation-group') as Konva.Group;
+              if (allocGroup) allocGroup.destroy();
+            } catch (e) { /* ignore per-group errors */ }
+            try {
+              const allocRect = group.findOne('.sector-allocation-fill') as Konva.Rect;
+              if (allocRect) allocRect.destroy();
+            } catch (e) { /* ignore per-group errors */ }
+          });
+        } catch (e) {
+          // ignore overlay cleanup errors
+        }
+      }
+
+  // If seats became hidden again and we're in reservation modes, re-create overlays
+  if (!seatsVisible && (this.mode === 'reservation-preview' || this.mode === 'reservation')) {
+        try {
+          // Create lightweight overlays only (don't fully re-render sectors) to avoid
+          // long-running operations during zoom. This updates allocation fills only.
+          this.createAllocationOverlays();
+        } catch (e) {
+          console.error('Failed to create allocation overlays', e);
+        }
+      }
+
       this.layer.batchDraw();
     }
   }
@@ -1279,6 +1308,108 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       this.onSectorDragEnd(sector, group);
     });
 
+    // --- Reservation-preview sector allocation overlay ---
+    // Show a proportional filled area for the sector when seats are not visible
+    // (zoom < 1.8) and we're in reservation-preview mode. The overlay is a
+    // clipped rectangle whose visible width equals the allocated percentage
+    // of seats and is clipped to the sector polygon (convex hull).
+    try {
+      // Remove any previous allocation overlay when re-creating the group
+      const prev = group.findOne('.sector-allocation-fill') as Konva.Rect;
+      if (prev) prev.destroy();
+
+      const currentZoom = this.zoomLevel();
+      const seatsVisible = currentZoom >= 1.79; // same threshold as seats
+      if (this.mode === 'reservation-preview' && !seatsVisible && seatPositions && seatPositions.length > 0) {
+        // Compute convex hull for clipping region
+        const hull = (seatPositions.length > 2) ? this.getConvexHull(seatPositions) : seatPositions;
+
+        // Compute bounding box for the hull
+        const minX = Math.min(...hull.map(p => p.x));
+        const maxX = Math.max(...hull.map(p => p.x));
+        const minY = Math.min(...hull.map(p => p.y));
+        const maxY = Math.max(...hull.map(p => p.y));
+        const bboxWidth = Math.max(1, maxX - minX);
+        const bboxHeight = Math.max(1, maxY - minY);
+
+        // Collect seatIds for this sector
+        const seatIds: number[] = [];
+        if (sector.rows) {
+          sector.rows.forEach(r => {
+            if (r.seats) r.seats.forEach(s => { if (s && s.seatId) seatIds.push(s.seatId); });
+          });
+        }
+
+        const totalSeats = seatIds.length || (sector.numberOfSeats ?? seatPositions.length) || 0;
+
+        // Count allocated seats considering pending changes first, then authoritative reservations
+        let allocatedCount = 0;
+        if (totalSeats > 0) {
+          seatIds.forEach(id => {
+            // pendingReservationMap may explicitly set participantId to null
+            const pending = this.pendingReservationMap.get(id);
+            if (pending && Object.prototype.hasOwnProperty.call(pending, 'participantId')) {
+              if ((pending as any).participantId != null) allocatedCount++;
+              return;
+            }
+            // check authoritative reservationData
+            const res = this.reservationData?.find(r => r.seatId === id && r.participantId != null);
+            if (res) allocatedCount++;
+          });
+        }
+
+        const ratio = totalSeats > 0 ? Math.max(0, Math.min(1, allocatedCount / totalSeats)) : 0;
+
+        if (ratio > 0) {
+          // Create a group that will clip its children to the polygon (hull).
+          // The group's origin is placed at minX/minY so the rect can be local to it.
+          const allocGroup = new Konva.Group({
+            x: minX,
+            y: minY,
+            listening: false,
+            name: 'sector-allocation-group'
+          });
+
+          // Define clipping based on hull coordinates adjusted to group origin
+          allocGroup.clipFunc((ctx: any) => {
+            if (!hull || hull.length === 0) return;
+            ctx.beginPath();
+            ctx.moveTo(hull[0].x - minX, hull[0].y - minY);
+            for (let i = 1; i < hull.length; i++) ctx.lineTo(hull[i].x - minX, hull[i].y - minY);
+            ctx.closePath();
+            ctx.clip();
+          });
+
+          const allocRect = new Konva.Rect({
+              x: 0,
+              y: 0,
+              width: bboxWidth * ratio,
+              height: bboxHeight,
+              fill: this.getSectorAccentColor(sector),
+              opacity: 0.92,
+              name: 'sector-allocation-fill',
+              listening: false
+            });
+
+          allocGroup.add(allocRect);
+          // Add behind seats/labels but above outline fill
+          group.add(allocGroup);
+          allocGroup.moveToBottom();
+          // Ensure sector labels are on top of the allocation fill
+          try {
+            const texts = group.find('Text');
+            texts.forEach(node => (node as Konva.Node).moveToTop());
+          } catch (e) { /* ignore */ }
+          // Ensure outline remains visible on top of the fill
+          const outlineNode = group.findOne('.sector-outline') as Konva.Line;
+          if (outlineNode) outlineNode.moveToTop();
+        }
+      }
+    } catch (e) {
+      // don't let overlay errors break sector rendering
+      console.error('Failed to create sector allocation overlay', e);
+    }
+
     return group;
   }
 
@@ -1362,9 +1493,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
           x: pos.x,
           y: pos.y,
           radius: seatRadius,
-          fill: '#90A4AE', // Material design color
+          fill: this.defaultSeatColor,
           stroke: '#37474F',
-          strokeWidth: 0.5,
+          strokeWidth: 0.9,
           name: `seat-${index}`,
           visible: seatsVisible, // Set initial visibility based on zoom
           listening: true
@@ -1827,6 +1958,122 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   }
   private cross(o: {x: number, y: number}, a: {x: number, y: number}, b: {x: number, y: number}) {
     return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+  }
+
+  // Lightweight overlay creation for reservation-preview mode. This only builds
+  // the clipped allocation fills and avoids recreating entire sector groups which
+  // is expensive during zoom operations.
+  private createAllocationOverlays(): void {
+    if (!this.layer) return;
+
+    const threshold = 1.79;
+    const seatsVisible = this.zoomLevel() >= threshold;
+    if (seatsVisible) return; // nothing to do when seats are visible
+
+    const sectors = this.editableSectors() || [];
+    sectors.forEach(sector => {
+      const sectorId = sector.sectorId!;
+      const group = this.sectorGroups.get(sectorId);
+      if (!group) return;
+
+      // Remove existing overlay(s)
+      try {
+        const prev = group.findOne('.sector-allocation-group') as Konva.Group;
+        if (prev) prev.destroy();
+      } catch (e) { /* ignore */ }
+
+      // Build seatPositions from cached seats if available, otherwise try sector.rows
+      const seats = this.sectorSeats.get(sectorId) || [];
+      const seatPositions: {x:number,y:number,seatId?:number}[] = [];
+      if (seats && seats.length > 0) {
+        seats.forEach(s => {
+          seatPositions.push({ x: s.x(), y: s.y(), seatId: s.getAttr('seatId') });
+        });
+      } else if (sector.rows) {
+        // Fallback: regenerate positions similar to drawSectorShape scale
+        const seatRadius = 3;
+        const seatSpacing = 2;
+        let maxRowLength = 0;
+        sector.rows.forEach(row => { if (row.seats) maxRowLength = Math.max(maxRowLength, row.seats.length); });
+        sector.rows.forEach((row, rowIdx) => {
+          if (!row.seats) return;
+          row.seats.forEach((seat, seatIdx) => {
+            const scaleFactor = 0.4;
+            const rowY = rowIdx * (seatRadius * 2 + seatSpacing) * scaleFactor;
+            const rowOffset = (maxRowLength - (row.seats?.length||0)) * (seatRadius + seatSpacing/2) * scaleFactor;
+            const x = (seatIdx * (seatRadius * 2 + seatSpacing) + rowOffset) * scaleFactor;
+            const y = rowY;
+            seatPositions.push({ x, y, seatId: seat.seatId });
+          });
+        });
+      }
+
+      if (!seatPositions || seatPositions.length === 0) return;
+
+      // convex hull and bbox
+      const hull = seatPositions.length > 2 ? this.getConvexHull(seatPositions) : seatPositions;
+      const minX = Math.min(...hull.map(p => p.x));
+      const maxX = Math.max(...hull.map(p => p.x));
+      const minY = Math.min(...hull.map(p => p.y));
+      const maxY = Math.max(...hull.map(p => p.y));
+      const bboxWidth = Math.max(1, maxX - minX);
+      const bboxHeight = Math.max(1, maxY - minY);
+
+      // gather seatIds
+      const seatIds: number[] = [];
+      if (sector.rows) {
+        sector.rows.forEach(r => { if (r.seats) r.seats.forEach(s => { if (s && s.seatId) seatIds.push(s.seatId); }); });
+      } else {
+        seatPositions.forEach(p => { if (p.seatId) seatIds.push(p.seatId); });
+      }
+
+      const totalSeats = seatIds.length || (sector.numberOfSeats ?? seatPositions.length) || 0;
+      let allocatedCount = 0;
+      if (totalSeats > 0) {
+        seatIds.forEach(id => {
+          const pending = this.pendingReservationMap.get(id);
+          if (pending && Object.prototype.hasOwnProperty.call(pending, 'participantId')) {
+            if ((pending as any).participantId != null) allocatedCount++;
+            return;
+          }
+          const res = this.reservationData?.find(r => r.seatId === id && r.participantId != null);
+          if (res) allocatedCount++;
+        });
+      }
+
+      const ratio = totalSeats > 0 ? Math.max(0, Math.min(1, allocatedCount / totalSeats)) : 0;
+      if (ratio <= 0) return;
+
+      // Create clipping group and rect (same approach as drawSectorShape)
+      try {
+        const allocGroup = new Konva.Group({ x: minX, y: minY, listening: false, name: 'sector-allocation-group' });
+        allocGroup.clipFunc((ctx: any) => {
+          if (!hull || hull.length === 0) return;
+          ctx.beginPath();
+          ctx.moveTo(hull[0].x - minX, hull[0].y - minY);
+          for (let i = 1; i < hull.length; i++) ctx.lineTo(hull[i].x - minX, hull[i].y - minY);
+          ctx.closePath();
+          ctx.clip();
+        });
+
+  const allocRect = new Konva.Rect({ x: 0, y: 0, width: bboxWidth * ratio, height: bboxHeight, fill: this.getSectorAccentColor(sector), opacity: 1, name: 'sector-allocation-fill', listening: false });
+        allocGroup.add(allocRect);
+        group.add(allocGroup);
+        // Ensure sector labels are on top of the allocation fill
+        try {
+          const texts = group.find('Text');
+          texts.forEach(node => (node as Konva.Node).moveToTop());
+        } catch (e) { /* ignore */ }
+        // keep outline visible
+        const outline = group.findOne('.sector-outline') as Konva.Line;
+        if (outline) outline.moveToTop();
+      } catch (e) {
+        // ignore overlay creation errors
+      }
+    });
+
+    // single draw at end
+    this.layer.batchDraw();
   }
 
   // Restrict canvas panning so the grid always covers the visible area
@@ -2867,13 +3114,24 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   getSectorColor(sector: EditableSector): string {
     if (sector.isSelected) return '#2196f3';
     // Removed yellow/orange color for dragging
-    return sector.status === Sector.StatusEnum.Active ? '#4caf50' : '#f44336';
+  // Use neutral light grey for non-selected sectors
+  return '#f5f5f5';
   }
 
   getSectorStrokeColor(sector: EditableSector): string {
     if (sector.isSelected) return '#1976d2';
     // Removed orange stroke for dragging
     return '#333';
+  }
+
+  // Accent color used for allocation overlays and other highlights.
+  // Keeps the original active/inactive colors while sector background is grey.
+  getSectorAccentColor(sector: EditableSector): string {
+  // Allocation overlay should be a slightly darker grey than the sector background
+  // so it remains visible when sector backgrounds are light grey.
+  if (sector.isSelected) return '#1976d2'; // keep a distinct darker blue for selected sectors
+  // Make non-selected allocation overlay noticeably darker for better contrast
+  return '#9e9e9e'; // sufficiently darker grey than sector background (#f5f5f5)
   }
 
   // Helper methods for template

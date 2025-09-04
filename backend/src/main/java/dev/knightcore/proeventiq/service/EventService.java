@@ -244,6 +244,9 @@ public class EventService {
         } else {
             dto.setNumberOfTickets(0);
         }
+    // Set hasAllocationErrors using DB-side computed column (Formula)
+    Boolean hasErrBool = entity.getHasAllocationErrors();
+    dto.setHasAllocationErrors(hasErrBool != null ? hasErrBool : false);
         return dto;
     }
 

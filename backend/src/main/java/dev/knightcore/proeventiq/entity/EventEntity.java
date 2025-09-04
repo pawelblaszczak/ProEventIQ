@@ -1,6 +1,7 @@
 package dev.knightcore.proeventiq.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.Formula;
 import java.time.LocalDateTime;
 
 @Entity
@@ -28,6 +29,16 @@ public class EventEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "venue_id", insertable = false, updatable = false)
     private VenueEntity venue;
+
+    // Has allocation errors computed by DB function: returns 'Y' or 'N'
+    @Formula("has_allocation_errors(event_id)")
+    private String hasAllocationErrorsRaw;
+
+    @Transient
+    public Boolean getHasAllocationErrors() {
+        if (hasAllocationErrorsRaw == null) return null;
+        return "Y".equalsIgnoreCase(hasAllocationErrorsRaw);
+    }
 
     // Constructors
     public EventEntity() {}

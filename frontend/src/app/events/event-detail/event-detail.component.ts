@@ -12,6 +12,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDialog } from '@angular/material/dialog';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Event as ApiEvent } from '../../api/model/event';
 import { Venue } from '../../api/model/venue';
 import { ProEventIQService } from '../../api/api/pro-event-iq.service';
@@ -33,6 +34,7 @@ import { EventService } from '../event.service';
     MatProgressSpinnerModule,
     MatDividerModule,
     MatChipsModule,
+  MatTooltipModule,
     RouterModule,
     MatTableModule,
     MatFormFieldModule,
@@ -68,6 +70,39 @@ export class EventDetailComponent implements OnInit {
     return Array.isArray(list) ? list.reduce((sum, p) => sum + (p.numberOfTickets || 0), 0) : 0;
   }
 
+  /** Returns how many seats are currently allocated for a participant (based on reservations) */
+  public getAllocatedSeats(participantId?: number | null): number {
+    if (participantId == null) return 0;
+    const res = this.reservations();
+    if (!Array.isArray(res) || res.length === 0) return 0;
+    return res.filter(r => r.participantId === participantId && r.seatId != null).length;
+  }
+
+  /** Returns true when participant has all requested tickets allocated */
+  public isFullyAllocated(participant: Participant | null | undefined): boolean {
+    if (!participant) return true;
+    const requested = participant.numberOfTickets ?? 0;
+    const allocated = this.getAllocatedSeats(participant.participantId ?? null);
+    // Fully allocated only when allocated equals requested
+    if (requested === 0) return allocated === 0;
+    return allocated === requested;
+  }
+
+  /** Returns a user-facing hint about allocation status for tooltip */
+  public getAllocationHint(participant: Participant | null | undefined): string {
+    if (!participant) return 'No participant information';
+    const requested = participant.numberOfTickets ?? 0;
+    const allocated = this.getAllocatedSeats(participant.participantId ?? null);
+    if (requested === 0) {
+      if (allocated === 0) return 'Participant has no tickets requested';
+      return `Participant requested no tickets but ${allocated} seat(s) are allocated`;
+    }
+    if (allocated === 0) return `No seats allocated (${allocated}/${requested})`;
+    if (allocated < requested) return `Only ${allocated} of ${requested} seats allocated`;
+    if (allocated > requested) return `Overallocated: ${allocated} seats assigned for ${requested} requested (over by ${allocated - requested})`;
+    return `All seats allocated (${allocated}/${requested})`;
+  }
+
   /** Returns the seat status text in format: "reserved/total (percentage%)" */
   public getSeatStatusText(): string {
     const venue = this.venue();
@@ -86,6 +121,29 @@ export class EventDetailComponent implements OnInit {
     const reserved = this.getTotalTickets();
     const total = venue.numberOfSeats ?? 0;
     return this.eventService.getSeatStatusColor(reserved, total);
+  }
+
+  /** Returns true when total requested tickets exceed venue capacity */
+  public isTotalOverbooked(): boolean {
+    const venue = this.venue();
+    if (!venue) return false;
+    const totalSeats = venue.numberOfSeats ?? 0;
+    if (totalSeats === 0) return false;
+    return this.getTotalTickets() > totalSeats;
+  }
+
+  /** Tooltip/hint for total tickets vs venue capacity */
+  public getTotalAllocationHint(): string {
+    const venue = this.venue();
+    const totalTickets = this.getTotalTickets();
+    const totalSeats = venue?.numberOfSeats ?? 0;
+    if (!venue) return `Total tickets: ${totalTickets}`;
+    if (totalSeats === 0) return `Total tickets: ${totalTickets} (venue capacity unknown)`;
+    const pct = Math.round((totalTickets / totalSeats) * 100);
+    if (totalTickets > totalSeats) {
+      return `Total tickets ${totalTickets}/${totalSeats} (${pct}%) — over by ${totalTickets - totalSeats} ticket(s)`;
+    }
+    return `Total tickets ${totalTickets}/${totalSeats} (${pct}%)`;
   }
 
   ngOnInit() {

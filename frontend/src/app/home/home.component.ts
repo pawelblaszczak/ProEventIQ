@@ -29,10 +29,10 @@ export class HomeComponent {
     {
       icon: 'event_seat',
       title: 'Smart Seating Management',
-      description: 'Optimize your venue with intelligent seating arrangements and real-time capacity management',
+      description: 'Optimize your venue with intelligent seating arrangements and capacity management',
       benefits: [
         'Dynamic seat allocation',
-        'Real-time availability tracking',
+        'Availability tracking',
         'Accessibility compliance',
         'Revenue optimization'
       ]
@@ -53,17 +53,17 @@ export class HomeComponent {
       title: 'Powerful Analytics',
       description: 'Make data-driven decisions with comprehensive analytics and detailed reporting tools',
       benefits: [
-        'Real-time dashboards',
-        'Performance metrics',
-        'Predictive insights',
-        'Custom reports'
+  'Comprehensive reporting',
+  'Performance metrics',
+  'Predictive insights',
+  'Custom reports'
       ]
     }
   ];
 
   testimonials: Testimonial[] = [
     {
-      text: 'ProEventIQ has revolutionized how we manage our venues. The analytics insights have helped us increase our booking efficiency by 40%.',
+  text: 'ProEventIQ has revolutionized how we manage our venues. The analytics insights have helped us significantly improve our booking efficiency.',
       author: 'Sarah Johnson',
       role: 'Event Director, MetroCenter'
     },

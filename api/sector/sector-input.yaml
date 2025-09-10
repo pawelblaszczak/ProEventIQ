@@ -19,3 +19,8 @@ SectorInput:
     status:
       type: string
       enum: [active, inactive]        
+    # If provided, server should clone rows/seats from the referenced sector into the newly created sector
+    sourceSectorId:
+      type: integer
+      format: int64
+      nullable: true

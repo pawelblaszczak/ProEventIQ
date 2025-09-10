@@ -48,7 +48,13 @@ public class SectorService {
         entity.setPriceCategory(input.priceCategory());
         entity.setStatus(input.status());
         entity.setVenue(venue);
-        return toDTO(sectorRepository.save(entity));
+        SectorEntity saved = sectorRepository.saveAndFlush(entity);
+        // If a sourceSectorId is provided, copy seat layout from source sector using stored procedure.
+        // @Modifying added to repository method to avoid ResultSet navigation errors.
+        if (input.sourceSectorId() != null) {
+            sectorRepository.copySectorSeats(input.sourceSectorId(), saved.getSectorId());
+        }
+        return toDTO(saved);
     }
 
     @Transactional(readOnly = true)

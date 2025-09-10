@@ -273,6 +273,51 @@ $border-radius: 12px;
           .detail-value { display:block; color: rgba(0,0,0,0.9); }
         }
       }
+      /* Nudge the inline edit icon slightly lower to align visually with the sector name */
+      /* Layout: allow the detail-value to be a flexible row so input can take available width */
+      .sector-details .detail-item .detail-value {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+      }
+
+      .inline-edit-btn {
+        transform: translateY(2px);
+        flex: 0 0 32px;
+        min-width: 32px;
+        height: 32px;
+        width: 32px;
+        padding: 0 !important;
+      }
+
+      /* Inline edit input should expand to fill remaining space in the detail-value container */
+      .inline-edit-input {
+        flex: 1 1 auto;
+        width: 100%;
+        max-width: none;
+        padding: 6px 8px;
+        font-size: 0.95rem;
+        border-radius: 6px;
+        border: 1px solid #ddd;
+        box-sizing: border-box;
+        margin-right: 6px;
+      }
+      .inline-edit-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        width: 100%;
+        margin-top: 6px;
+      }
+      .inline-edit-actions { flex: 0 0 auto; display: flex; gap: 6px; }
+      .inline-edit-actions.below {
+        display: flex;
+        justify-content: center; /* center the save & cancel buttons */
+        width: 100%;
+        gap: 12px;
+        margin-top: 10px;
+      }
     }
   /* remove extra top padding from the mat-card-content so the selection-info can sit closer */
   .reservation-panel-content { padding-top: 0 !important; }
@@ -290,11 +335,8 @@ $border-radius: 12px;
   gap: 0.35rem;
     }
 
-    mat-icon {
-      color: $primary-color;
-      font-size: 14px; /* slightly smaller icon */
-      line-height: 1;
-    }
+  /* Don't force every icon to primary; header & named classes handle their own colors */
+  /* mat-icon { intentionally removed } */
 
     /* Stronger overrides to ensure Material defaults don't win */
     &.selection-panel-card, &.selection-panel-card.narrow {
@@ -335,6 +377,12 @@ $border-radius: 12px;
   transform: translateY(4px) !important;
     }
 
+  /* Ensure inline action icons inherit their button's themed color */
+  button.mat-icon-button.mat-primary mat-icon { color: $primary-color !important; }
+  button.mat-icon-button.mat-warn mat-icon { color: $warn-color !important; }
+  /* Allow future accent usage */
+  button.mat-icon-button.mat-accent mat-icon { color: $accent-color !important; }
+
     /* Make header container align items horizontally */
     > .mat-card-header {
       display: flex !important;
@@ -343,20 +391,31 @@ $border-radius: 12px;
       padding: 0.5rem 0.75rem !important;
     }
 
-    .selection-deselect-btn {
+  .selection-deselect-btn {
       width: 32px;
       height: 32px;
       min-width: 32px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      color: rgba(0,0,0,0.6);
-  padding: 0 !important;
-  margin-right: 0.25rem !important;
-  z-index: 5;
-  /* nudge the button down to align with the title/icon */
-  transform: translateY(4px);
+      padding: 0 !important;
+      margin-right: 0.25rem !important;
+      z-index: 5;
+      /* nudge the button down to align with the title/icon */
+      transform: translateY(4px);
     }
+
+    /* Ensure inline edit buttons and action buttons use the button's color for their icons */
+    .inline-edit-btn {
+      transform: translateY(2px);
+      flex: 0 0 32px;
+      min-width: 32px;
+      height: 32px;
+      width: 32px;
+      padding: 0 !important;
+    }
+
+    /* inline edit action buttons intentionally have no color override so their mat-icon-button color applies */
   }
 }
 

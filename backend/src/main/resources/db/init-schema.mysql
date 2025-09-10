@@ -243,6 +243,80 @@ BEGIN
     RETURN IF(v_has_error, 'Y', 'N');
 END$$
 
+
+
+DELIMITER ;
+
+-- =============================================================
+-- Procedure: copy_sector_seats
+-- Purpose:   Copies the full seat layout (seat_rows + seats) from a
+--            source sector to a destination sector. All existing
+--            seat_rows (and cascading seats) in the destination sector
+--            are removed first. Keeps order_number and names intact.
+-- Params:    p_source_sector_id INT - sector to copy FROM
+--            p_destination_sector_id INT - sector to copy TO
+-- Notes:     - Aborts with an error if source == destination
+--            - If source has no seat_rows, destination will simply be cleared
+--            - Uses temporary tables for mapping old->new seat_row IDs
+-- =============================================================
+DELIMITER $$
+CREATE PROCEDURE copy_sector_seats(IN p_source_sector_id INT, IN p_destination_sector_id INT)
+MODIFIES SQL DATA
+BEGIN
+    -- Prevent accidental self-copy
+    IF p_source_sector_id = p_destination_sector_id THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Source and destination sector must differ';
+    END IF;
+    -- Ensure temp tables from previous pooled-connection usage are gone
+    DROP TEMPORARY TABLE IF EXISTS tmp_source_rows;
+    DROP TEMPORARY TABLE IF EXISTS tmp_row_id_map;
+
+    -- Clear destination (seat deletion cascades via FK when seat_rows removed)
+    DELETE FROM seat_row WHERE sector_id = p_destination_sector_id;
+
+    -- Capture source seat_rows (if any)
+    CREATE TEMPORARY TABLE tmp_source_rows AS
+        SELECT seat_row_id AS old_seat_row_id,
+               name,
+               order_number
+          FROM seat_row
+         WHERE sector_id = p_source_sector_id
+         ORDER BY order_number;
+
+    SET @row_count := (SELECT COUNT(*) FROM tmp_source_rows);
+
+    IF @row_count > 0 THEN
+        -- Insert new seat_rows for destination keeping order_number & name
+        INSERT INTO seat_row (sector_id, name, order_number)
+            SELECT p_destination_sector_id, name, order_number
+              FROM tmp_source_rows
+             ORDER BY order_number;
+
+        -- Map old seat_row_ids to new ones via unique (sector_id, order_number)
+        CREATE TEMPORARY TABLE tmp_row_id_map AS
+            SELECT s.old_seat_row_id,
+                   r.seat_row_id AS new_seat_row_id
+              FROM tmp_source_rows s
+              JOIN seat_row r ON r.sector_id = p_destination_sector_id
+                              AND r.order_number = s.order_number;
+
+        -- Copy seats using the mapping
+        INSERT INTO seat (seat_row_id, order_number, position_x, position_y, price_category, status)
+            SELECT m.new_seat_row_id,
+                   st.order_number,
+                   st.position_x,
+                   st.position_y,
+                   st.price_category,
+                   st.status
+              FROM seat st
+              JOIN tmp_row_id_map m ON st.seat_row_id = m.old_seat_row_id
+             ORDER BY m.new_seat_row_id, st.order_number;
+    END IF;
+
+    -- Drop temp tables explicitly so pooled connection stays clean
+    DROP TEMPORARY TABLE IF EXISTS tmp_row_id_map;
+    DROP TEMPORARY TABLE IF EXISTS tmp_source_rows;
+END$$
 DELIMITER ;
 
 

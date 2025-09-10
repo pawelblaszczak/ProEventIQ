@@ -80,6 +80,15 @@ public class ReportService {
             PDPage newPage = new PDPage(PDRectangle.A4);
             document.addPage(newPage);
             PDPageContentStream cs = new PDPageContentStream(document, newPage);
+            // Ensure the newly created content stream has a sensible default font set so callers
+            // that immediately beginText()/showText() don't hit PDFBox's "Must call setFont() before showText()" error.
+            // Use a standard built-in font (Helvetica) at a reasonable default size.
+            try {
+                // Use the PDType1Font constructor with a Standard14Fonts name (safe fallback)
+                cs.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 12);
+            } catch (Exception ignored) {
+                // If setting the default font fails for any reason, ignore -- callers should set fonts explicitly.
+            }
             float newY = newPage.getMediaBox().getHeight() - margin;
             return new PageState(newPage, cs, newY);
         }
@@ -179,7 +188,6 @@ public class ReportService {
 
                 // Centered title: Reservation confirmation with organizer logo on the right
                 String reportTitle = "Reservation confirmation";
-                contentStream.setFont(headerFont, 20);
                 float titleWidth = headerFont.getStringWidth(reportTitle) / 1000 * 20;
                 float pageWidth = page.getMediaBox().getWidth();
                 float titleX = (pageWidth - titleWidth) / 2;
@@ -189,6 +197,7 @@ public class ReportService {
                 
                 // Draw title
                 contentStream.beginText();
+                contentStream.setFont(headerFont, 20);
                 contentStream.newLineAtOffset(titleX, yPosition);
                 safeShowText(contentStream, reportTitle);
                 contentStream.endText();
@@ -213,8 +222,8 @@ public class ReportService {
                     // ensure space for organizer block
                     var _ps = ensurePageHasSpace(document, page, contentStream, margin, yPosition, 100);
                     page = _ps.page; contentStream = _ps.contentStream; yPosition = _ps.yPosition;
-                    contentStream.setFont(headerFont, 14);
                     contentStream.beginText();
+                    contentStream.setFont(headerFont, 14);
                     contentStream.newLineAtOffset(margin, yPosition);
                     safeShowText(contentStream, "Event organizer");
                     contentStream.endText();
@@ -228,8 +237,8 @@ public class ReportService {
                     String organizerAddress = organizer.getAddress() != null ? organizer.getAddress() : "N/A";
 
                     // Organizer name
-                    contentStream.setFont(bodyFont, 12);
                     contentStream.beginText();
+                    contentStream.setFont(bodyFont, 12);
                     contentStream.newLineAtOffset(margin + 20, yPosition);
                     safeShowText(contentStream, "Name: " + organizerName);
                     contentStream.endText();
@@ -237,6 +246,7 @@ public class ReportService {
                     
                     // Organizer email
                     contentStream.beginText();
+                    contentStream.setFont(bodyFont, 12);
                     contentStream.newLineAtOffset(margin + 20, yPosition);
                     safeShowText(contentStream, "Email: " + organizerEmail);
                     contentStream.endText();
@@ -244,6 +254,7 @@ public class ReportService {
                     
                     // Organizer address
                     contentStream.beginText();
+                    contentStream.setFont(bodyFont, 12);
                     contentStream.newLineAtOffset(margin + 20, yPosition);
                     safeShowText(contentStream, "Address: " + organizerAddress);
                     contentStream.endText();
@@ -391,26 +402,28 @@ public class ReportService {
             // Sector title
             var _psSect = ensurePageHasSpace(document, page, contentStream, margin, yPosition, 40);
             page = _psSect.page; contentStream = _psSect.contentStream; yPosition = _psSect.yPosition;
-            contentStream.setFont(headerFont, 12);
             contentStream.beginText();
+            contentStream.setFont(headerFont, 12);
             contentStream.newLineAtOffset(margin + 10, yPosition);
             safeShowText(contentStream, "Sector: " + sectorEntry.getKey());
             contentStream.endText();
             yPosition -= lineHeight;
 
             // Table header
-            contentStream.setFont(headerFont, 11);
             contentStream.beginText();
+            contentStream.setFont(headerFont, 11);
             contentStream.newLineAtOffset(col1X, yPosition);
             safeShowText(contentStream, "Row");
             contentStream.endText();
 
             contentStream.beginText();
+            contentStream.setFont(headerFont, 11);
             contentStream.newLineAtOffset(col2X, yPosition);
             safeShowText(contentStream, "Seats");
             contentStream.endText();
 
             contentStream.beginText();
+            contentStream.setFont(headerFont, 11);
             contentStream.newLineAtOffset(col3X, yPosition);
             safeShowText(contentStream, "Total");
             contentStream.endText();
@@ -795,8 +808,12 @@ public class ReportService {
     
     private void safeShowText(PDPageContentStream contentStream, String text) throws IOException {
         if (text == null) {
-            contentStream.showText("");
-            return;
+            try {
+                contentStream.showText("");
+                return;
+            } catch (IllegalStateException | IllegalArgumentException ise) {
+                // fall through to font-fixing logic below
+            }
         }
         
         try {
@@ -821,6 +838,37 @@ public class ReportService {
                     String aggressivelySanitized = polishReplaced.replaceAll("[^\\x00-\\x7F]", "?");
                     contentStream.showText(aggressivelySanitized);
                 }
+            }
+        } catch (IllegalStateException ise) {
+            // This indicates setFont() was not called on the content stream. Try to recover by
+            // setting a safe fallback font and retrying the same sanitization sequence.
+            log.warn("Content stream missing font when showing text, attempting to set fallback font and retry: {}", ise.getMessage());
+            try {
+                contentStream.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 12);
+            } catch (Exception ignore) {}
+
+            try {
+                contentStream.showText(text);
+                return;
+            } catch (IllegalArgumentException e) {
+                try {
+                    String basicSanitized = sanitizeText(text);
+                    contentStream.showText(basicSanitized);
+                    return;
+                } catch (IllegalArgumentException e2) {
+                    String polishReplaced = replacePolishCharacters(sanitizeText(text));
+                    try {
+                        contentStream.showText(polishReplaced);
+                        return;
+                    } catch (IllegalArgumentException e3) {
+                        String aggressivelySanitized = polishReplaced.replaceAll("[^\\x00-\\x7F]", "?");
+                        contentStream.showText(aggressivelySanitized);
+                        return;
+                    }
+                }
+            } catch (IllegalStateException e4) {
+                // If it still fails, rethrow so caller can handle/log
+                throw e4;
             }
         }
     }

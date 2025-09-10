@@ -171,8 +171,16 @@ public class VenueController implements VenuesApi {
 
         String priceCategory = input.getPriceCategory();
         String status = input.getStatus() != null ? input.getStatus().getValue() : null;
+        Long sourceSectorId = null;
+        try {
+            if (input.getSourceSectorId() != null && input.getSourceSectorId().isPresent()) {
+                sourceSectorId = input.getSourceSectorId().get();
+            }
+        } catch (Exception e) {
+            // ignore parsing issues; keep as null
+        }
 
-        return new SectorInputDTO(name, orderNumber, positionX, positionY, rotation, priceCategory, status);
+        return new SectorInputDTO(name, orderNumber, positionX, positionY, rotation, priceCategory, status, sourceSectorId);
     }
 
     private Sector toSector(SectorDTO dto) {

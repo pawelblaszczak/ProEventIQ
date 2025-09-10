@@ -44,7 +44,13 @@ interface EditableSector extends Sector {
   isSelected: boolean;
   isDragging: boolean;
   rotation: number;
+  // Optional runtime-only marker used when a sector was created by duplicating an existing sector
+  duplicatedFromSectorId?: number | null;
 }
+
+// Silence console.log for this component to reduce noisy output in browser console.
+// We intentionally keep console.error and console.warn active so real issues still surface.
+;(console as any).log = () => {};
 
 @Component({
   selector: 'app-venue-map-edit',
@@ -219,6 +225,16 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   editableSectors = signal<EditableSector[]>([]);
   selectedSectors = signal<EditableSector[]>([]);
   selectedSector = signal<EditableSector | null>(null); // Keep for backward compatibility
+  // Immutable snapshot of the venue sectors as originally loaded (used to revert changes on cancel)
+  private originalSectorsSnapshot: Sector[] | null = null;
+  // Map from sectorId -> original order number captured at load time
+  private originalSectorOrderMap = new Map<number, number | null>();
+  // Inline editing state for sector name in selection panel
+  editingSectorId = signal<number | null>(null);
+  editingSectorName = signal<string>('');
+  // Inline editing state for sector order number
+  editingOrderSectorId = signal<number | null>(null);
+  editingSectorOrder = signal<number>(1);
   hasChanges = signal(false);  // Grid settings
   hasReservationChanges = signal(false);  // Track reservation changes in reservation mode
   pendingReservationChanges: Array<{
@@ -263,6 +279,11 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     });    // Set up effects to watch for changes (must be in constructor for injection context)
     effect(() => {
       if (this.editableSectors().length > 0 && this.layer) {
+        try {
+          const trace = this.editableSectors().map(s => ({ sectorId: s.sectorId, orderNumber: s.orderNumber }));
+          console.log('Effect: editableSectors changed (trace):', trace);
+          try { console.log('Effect (JSON):', JSON.stringify(trace)); } catch(_) { /* ignore */ }
+        } catch (e) { /* ignore logging errors */ }
         // Only do a full re-render if no sectors are currently being dragged
         const hasDraggingSectors = this.editableSectors().some(s => s.isDragging);
         
@@ -469,7 +490,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   participantId?: number | null;
     seatId: number;
     oldParticipantId?: number;
-  }) {
+  }, options?: { skipRefresh?: boolean }) {
     // Manage local pending map so we know the net state vs initial assignments.
     // Also keep emitting the change to the parent for backward compatibility.
     try {
@@ -504,14 +525,19 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       // Refresh the array and flag
       this.pendingReservationChanges = Array.from(this.pendingReservationMap.values());
       this.hasReservationChanges.set(this.pendingReservationChanges.length > 0);
-  // Update reactive pending count so templates depending on counts update immediately
-  this.pendingCountSignal.set(this.pendingReservationChanges.length);
+      // Update reactive pending count so templates depending on counts update immediately
+      this.pendingCountSignal.set(this.pendingReservationChanges.length);
 
-  // Note: do NOT emit incremental reservationChange here to avoid parent immediately
-  // applying the change and echoing reservationData back which would clear our
-  // local pending state. We will emit batch changes on save via
-  // saveReservationChanges() / reservationSave for parent persistence.
-  console.log('Managed reservation change:', change, 'pendingCount=', this.pendingReservationChanges.length);
+      // Only refresh visuals/labels when caller doesn't opt-out (bulk operations opt-out)
+      if (!options?.skipRefresh) {
+        // Update sector allocation labels to reflect changed pending assignments
+        this.refreshSectorAllocationLabels();
+        // Note: do NOT emit incremental reservationChange here to avoid parent immediately
+        // applying the change and echoing reservationData back which would clear our
+        // local pending state. We will emit batch changes on save via
+        // saveReservationChanges() / reservationSave for parent persistence.
+        console.log('Managed reservation change:', change, 'pendingCount=', this.pendingReservationChanges.length);
+      }
     } catch (e) {
       console.error('Failed to add pending reservation change', e, change);
       // Fallback: still emit so parent receives it
@@ -551,6 +577,61 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     return existingReservation?.id;
   }
 
+  // Compute how many of the provided seatIds are currently allocated.
+  // Considers pending changes (this.pendingReservationMap) first, then
+  // the original backend assignments (this.initialSeatAssignments) and
+  // finally falls back to reservationData if needed.
+  private computeAllocatedSeatsForSeatIds(seatIds: number[]): number {
+    let allocated = 0;
+    for (const sid of seatIds) {
+      if (sid == null) continue;
+      // Pending change override (explicit null means unassigned)
+      const pending = this.pendingReservationMap.get(sid);
+      if (pending) {
+        if (pending.participantId != null) allocated++;
+        continue;
+      }
+
+      // Original assignment recorded when applyReservationsToSeats ran
+      if (this.initialSeatAssignments.has(sid)) {
+        const orig = this.initialSeatAssignments.get(sid);
+        if (orig != null) allocated++;
+        continue;
+      }
+
+      // Fallback: search reservationData for this seat
+      const res = this.reservationData.find(r => r.seatId === sid);
+      if (res && res.participantId != null) allocated++;
+    }
+    return allocated;
+  }
+
+  // Refresh the seats labels for all sectors so allocation counts reflect
+  // pending and initial assignments. This is called when pendingReservationMap
+  // or initial assignments change so the Konva labels update live.
+  private refreshSectorAllocationLabels(): void {
+    if (!this.layer) return;
+    try {
+      this.sectorLabels.forEach((lbl, sectorId) => {
+        try {
+          // Gather seatIds for this sector from cached Konva seat objects
+          const seats = this.sectorSeats.get(sectorId) ?? [];
+          const seatIds: number[] = seats.map(s => s.getAttr('seatId')).filter((id: any) => typeof id === 'number');
+          const total = seatIds.length > 0 ? seatIds.length : (this.editableSectors().find(s => s.sectorId === sectorId)?.numberOfSeats ?? 0);
+          const text = this.isReservationLike()
+            ? `Seats: ${this.computeAllocatedSeatsForSeatIds(seatIds)} / ${total}`
+            : `Seats: ${total}`;
+          lbl.seats.text(text);
+        } catch (e) {
+          // ignore per-sector label errors
+        }
+      });
+      this.layer.batchDraw();
+    } catch (e) {
+      // ignore refresh errors
+    }
+  }
+
   // Save all pending reservation changes
   private async saveReservationChanges() {
     // Rebuild pendingReservationChanges from the authoritative map in case of any desync
@@ -584,6 +665,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       this.pendingReservationMap.clear();
       this.hasReservationChanges.set(false);
   this.pendingCountSignal.set(0);
+  // Refresh labels to reflect that pending changes were committed/cleared
+  this.refreshSectorAllocationLabels();
 
     } finally {
       this.saving.set(false);
@@ -648,6 +731,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     
     this.layer.batchDraw();
     console.log('applyReservationsToSeats completed');
+  // Ensure labels reflect new authoritative initial assignments
+  this.refreshSectorAllocationLabels();
   }
 
   private initializeKonva() {
@@ -801,7 +886,24 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   }  private initializeEditableSectors(venue: Venue) {
     if (venue.sectors) {
       const editableSectors: EditableSector[] = venue.sectors.map(sector => {
-        // Use existing position or calculate a default based on index
+      // Use existing position or calculate a default based on index
+      // Capture a deep immutable snapshot of sectors so we can revert changes on cancel
+      try {
+        this.originalSectorsSnapshot = JSON.parse(JSON.stringify(venue.sectors || []));
+      } catch (e) {
+        this.originalSectorsSnapshot = (venue.sectors || []).map(s => ({ ...s }));
+      }
+      // Debug: log snapshot order numbers
+      try {
+        console.log('Captured originalSectorsSnapshot orders:', (this.originalSectorsSnapshot || []).map(s => ({ sectorId: s.sectorId, orderNumber: s.orderNumber })));
+      } catch (e) { /* ignore */ }
+      // Capture original order numbers for quick restore on cancel
+      try {
+        this.originalSectorOrderMap.clear();
+        (venue.sectors || []).forEach(s => {
+          if (s && typeof s.sectorId === 'number') this.originalSectorOrderMap.set(s.sectorId, s.orderNumber ?? null);
+        });
+      } catch (e) { /* ignore */ }
         const defaultPosition = sector.position ?? { 
           x: 100 + (Math.random() * 200), 
           y: 100 + (Math.random() * 200) 
@@ -1222,8 +1324,12 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     }
 
     // Add sector name and seat count labels inside the sector - maintain readable size
+    // Build display name with order number if defined
+    const displayName = (sector.orderNumber != null && sector.orderNumber > 0)
+      ? `${sector.orderNumber}. ${sector.name ?? 'Unnamed Sector'}`
+      : (sector.name ?? 'Unnamed Sector');
     const nameText = new Konva.Text({
-      text: sector.name ?? 'Unnamed Sector',
+      text: displayName,
       x: centroidX - (labelWidth / 2), // Center label horizontally
       y: centroidY - 20, // Slightly above center
       width: labelWidth,
@@ -1250,8 +1356,26 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
     group.add(nameText);
 
+    // Compute total seat IDs for this sector when possible
+    let sectorSeatIds: number[] = [];
+    if (sector.rows && Array.isArray(sector.rows)) {
+      sector.rows.forEach(row => {
+        if (row.seats && Array.isArray(row.seats)) {
+          row.seats.forEach(s => { if (s && typeof s.seatId === 'number') sectorSeatIds.push(s.seatId); });
+        }
+      });
+    }
+
+    // If we could not enumerate seatIds, fall back to numberOfSeats
+    const totalSeatsForLabel = sectorSeatIds.length > 0 ? sectorSeatIds.length : (sector.numberOfSeats ?? 0);
+
+    // For reservation-like modes show allocated/total, otherwise show total only
+    const seatsLabelText = (this.isReservationLike())
+      ? `Seats: ${this.computeAllocatedSeatsForSeatIds(sectorSeatIds)} / ${totalSeatsForLabel}`
+      : `Seats: ${totalSeatsForLabel}`;
+
     const seatsText = new Konva.Text({
-      text: `Seats: ${sector.numberOfSeats ?? 0}`,
+      text: seatsLabelText,
       x: centroidX - (labelWidth / 2),
       y: centroidY + 4, // Slightly below center
       width: labelWidth,
@@ -1277,6 +1401,10 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     });
 
     group.add(seatsText);
+    // Cache labels for later live updates
+    try {
+      if (sector.sectorId != null) this.sectorLabels.set(sector.sectorId, { name: nameText, seats: seatsText });
+    } catch (e) { /* ignore labeling cache errors */ }
 
     // IMPORTANT: Add seats AFTER labels to ensure seats appear on top when visible
     // This fixes the z-index issue where seats were under labels at zoom >= 180%
@@ -1410,6 +1538,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       console.error('Failed to create sector allocation overlay', e);
     }
 
+    
     return group;
   }
 
@@ -1440,11 +1569,25 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     try {
       const texts = group.find('Text') as Konva.Text[];
       if (texts && texts.length > 0) {
-        // First text is sector name
-        (texts[0] as Konva.Text).text(sector.name ?? 'Unnamed Sector');
+        // First text is sector name (with order number if defined)
+        const displayName = (sector.orderNumber != null && sector.orderNumber > 0)
+          ? `${sector.orderNumber}. ${sector.name ?? 'Unnamed Sector'}`
+          : (sector.name ?? 'Unnamed Sector');
+        (texts[0] as Konva.Text).text(displayName);
       }
       if (texts && texts.length > 1) {
-        (texts[1] as Konva.Text).text(`Seats: ${sector.numberOfSeats ?? 0}`);
+        try {
+          // Determine seatIds for this sector from cached seats if possible
+          const seats = this.sectorSeats.get(sector.sectorId! ) ?? [];
+          const seatIds: number[] = seats.map(s => s.getAttr('seatId')).filter((id: any) => typeof id === 'number');
+          const total = seatIds.length > 0 ? seatIds.length : (sector.numberOfSeats ?? 0);
+          const seatsText = this.isReservationLike()
+            ? `Seats: ${this.computeAllocatedSeatsForSeatIds(seatIds)} / ${total}`
+            : `Seats: ${total}`;
+          (texts[1] as Konva.Text).text(seatsText);
+        } catch (e) {
+          (texts[1] as Konva.Text).text(`Seats: ${sector.numberOfSeats ?? 0}`);
+        }
       }
     } catch (e) {
       // ignore
@@ -2191,6 +2334,13 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   selectSector(sector: EditableSector, addToSelection = false) {
     console.log('Selecting sector:', sector.name, 'Add to selection:', addToSelection);
     const sectors = this.editableSectors();
+    // If an inline edit is active for a different sector, cancel it so we don't keep stale edit state
+    try {
+      const editingId = this.editingSectorId();
+      if (editingId != null && editingId !== sector.sectorId) {
+        this.cancelInlineEdit();
+      }
+    } catch (e) { /* ignore */ }
     
     if (addToSelection) {
       // Multi-selection with Ctrl
@@ -2227,7 +2377,6 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     
     console.log('Selected sectors count:', this.selectedSectors().length);
   }  
-  
   deselectAll() {
     console.log('Deselecting all sectors');
     const sectors = this.editableSectors();
@@ -2238,6 +2387,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     this.editableSectors.set(updatedSectors);
     this.selectedSectors.set([]);
     this.selectedSector.set(null);
+  // Cancel any inline editing when deselecting
+  try { this.cancelInlineEdit(); } catch (e) { /* ignore */ }
     
     // Add this line to trigger a redraw
     this.markNeedsFullRender();
@@ -2409,9 +2560,13 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   addNewSector() {
     console.log('Adding new sector...');
     const sectors = this.editableSectors();
+    // Determine next order number as max of existing orderNumbers + 1
+    const maxOrder = sectors.reduce((m, s) => Math.max(m, s.orderNumber ?? 0), 0);
+    const nextOrderNumber = maxOrder + 1;
     const newSector: EditableSector = {
       sectorId: -1,
       name: `Sector ${sectors.length + 1}`,
+      orderNumber: nextOrderNumber,
       position: { x: 200, y: 200 },
       numberOfSeats: 0,
       priceCategory: 'Standard',
@@ -2464,6 +2619,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
           this.selectedSectors.set([]);
           this.selectedSector.set(null);
                    this.hasChanges.set(true);
+          // Recalculate sequential order numbers after deletion so there are no gaps
+          this.recountSectorOrders();
           this.renderSectors(); // Force canvas update after deletion
           console.log('Sector(s) deleted:', selectedIds);
           if (errorOccurred) {
@@ -2480,7 +2637,19 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     const selectedSectors = this.selectedSectors();
     if (selectedSectors.length === 0) return;
 
+    // Prevent duplicating sectors that have not been persisted yet.
+    // Unsaved sectors use sectorId === -1 (created locally) or may have no id.
+    const unsaved = selectedSectors.filter(s => s.sectorId == null || s.sectorId === -1);
+    if (unsaved.length > 0) {
+      this.snackBar.open('Cannot duplicate unsaved sector(s). Please save the sector first.', 'Close', { duration: 4000, horizontalPosition: 'center', verticalPosition: 'top' });
+      return;
+    }
+
     const sectors = this.editableSectors();
+    // Determine starting order number the same way addNewSector does
+    const maxOrder = sectors.reduce((m, s) => Math.max(m, s.orderNumber ?? 0), 0);
+    let nextOrderNumber = maxOrder + 1;
+
     const newSectors: EditableSector[] = [];
 
     selectedSectors.forEach((selectedSector, index) => {
@@ -2488,12 +2657,16 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         ...selectedSector,
         sectorId: -1,
         name: `${selectedSector.name} Copy`,
+        orderNumber: nextOrderNumber++,
         position: {
           x: (selectedSector.position?.x ?? 0) + 50,
           y: (selectedSector.position?.y ?? 0) + 50
         },
-        isSelected: false,
-        isDragging: false
+  isSelected: false,
+  isDragging: false,
+  // remember where this sector was duplicated from so backend can clone seats/rows
+  // keep as a runtime-only property; it's not part of the Sector interface
+  duplicatedFromSectorId: selectedSector.sectorId
       };
       newSectors.push(duplicatedSector);
     });
@@ -2504,6 +2677,17 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   this.markNeedsFullRender();
     
     console.log(`Duplicated ${selectedSectors.length} sectors`);
+  }
+
+  /**
+   * Return true when duplicating is allowed for the current selection.
+   * Disallow duplication when no sectors selected or any selected sector is unsaved (sectorId == null or -1).
+   */
+  canDuplicateSelectedSectors(): boolean {
+    const selected = this.selectedSectors() || [];
+    if (!selected || selected.length === 0) return false;
+    // If any selected sector is temporary/unsaved (sectorId null/undefined or -1), disallow duplication
+    return selected.every(s => s.sectorId != null && s.sectorId !== -1);
   }
   // Allocation helpers for reservation mode (stubs)
   public allocateAll(): void {
@@ -2526,8 +2710,11 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       return;
     }
 
-    // Collect sectors in a deterministic order (by sectorId then name fallback)
+    // Build helper maps and a flat ordered seat list to avoid repeated nested loops
     const sectors = (this.editableSectors() || []).slice().sort((a, b) => {
+      const ao = (a.orderNumber ?? Number.MAX_SAFE_INTEGER);
+      const bo = (b.orderNumber ?? Number.MAX_SAFE_INTEGER);
+      if (ao !== bo) return ao - bo;
       const aid = a.sectorId ?? 0;
       const bid = b.sectorId ?? 0;
       if (aid !== bid) return aid - bid;
@@ -2536,73 +2723,86 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       return an.localeCompare(bn);
     });
 
-    // Helper to determine if a seat is marked as allocated/forFar (support a few attribute names)
     const isSeatForFar = (seat: Konva.Circle) => {
-      try {
-        return Boolean(seat.getAttr('forFar') || seat.getAttr('allocatedForFar') || seat.getAttr('isForFar'));
-      } catch (e) {
-        return false;
-      }
+      try { return Boolean(seat.getAttr('forFar') || seat.getAttr('allocatedForFar') || seat.getAttr('isForFar')); } catch (e) { return false; }
     };
+
+    // Flatten seats in sector order to a single array for efficient scanning
+    const flatSeats: { seat: Konva.Circle; seatId: number }[] = [];
+    for (const sector of sectors) {
+      const seats = this.sectorSeats.get(sector.sectorId!);
+      if (!seats || seats.length === 0) continue;
+      for (const s of seats) {
+        const sid = s.getAttr('seatId') as number | undefined;
+        if (!sid) continue;
+        flatSeats.push({ seat: s, seatId: sid });
+      }
+    }
+
+    if (flatSeats.length === 0) {
+      this.snackBar.open('No suitable seats found to allocate.', 'Close', { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
+      return;
+    }
+
+    // effectiveAssignment contains current owner for each seat considering reservationData and pendingMap
+    const effectiveAssignment = new Map<number, number | null>();
+    (this.reservationData || []).forEach(r => { if (r.seatId != null) effectiveAssignment.set(r.seatId, r.participantId ?? null); });
+    this.pendingReservationMap.forEach(p => { if (p.seatId != null && Object.prototype.hasOwnProperty.call(p, 'participantId')) effectiveAssignment.set(p.seatId, p.participantId === undefined ? null : p.participantId); });
+
+    // reservedCount tracks how many seats each participant currently has (effective)
+    const reservedCount = new Map<number, number>();
+    effectiveAssignment.forEach((pid) => { if (pid != null) reservedCount.set(pid, (reservedCount.get(pid) || 0) + 1); });
+
+    // map reservation id by seat for change records
+    const reservationIdBySeat = new Map<number, number>();
+    (this.reservationData || []).forEach(r => { if (r.seatId != null && r.id != null) reservationIdBySeat.set(r.seatId, r.id); });
 
     let totalAllocated = 0;
 
-    // Iterate participants in given order and allocate up to their ticket count
+    // For each participant, walk the flatSeats and allocate until their ticket quota is met
     for (const p of participants) {
       const pid = p.participantId;
+      if (pid == null) continue;
       const tickets = Number(p.numberOfTickets) || 0;
-      const alreadyReserved = this.getReservedSeatsForParticipant(p);
-      let needed = Math.max(0, tickets - alreadyReserved);
+      const already = reservedCount.get(pid) || 0;
+      let needed = Math.max(0, tickets - already);
       if (needed <= 0) continue;
 
-      // Walk sectors and seats in order and allocate unassigned, non-far seats
-      for (const sector of sectors) {
+      for (const entry of flatSeats) {
         if (needed <= 0) break;
-        const seats = this.sectorSeats.get(sector.sectorId!);
-        if (!seats || seats.length === 0) continue;
+        try {
+          const seat = entry.seat;
+          const seatId = entry.seatId;
+          const eff = effectiveAssignment.get(seatId);
+          if (eff != null) continue; // already allocated
+          if (isSeatForFar(seat)) continue; // skip far seats
 
-        for (const seat of seats) {
-          if (needed <= 0) break;
-          try {
-            const seatId = seat.getAttr('seatId') as number | undefined;
-            if (!seatId) continue;
+          // assign visually and update effective maps
+          seat.setAttr('participantId', pid);
+          seat.fill(this.getParticipantColor(pid));
+          effectiveAssignment.set(seatId, pid);
+          reservedCount.set(pid, (reservedCount.get(pid) || 0) + 1);
 
-            // Skip seats already assigned (effective assignment considers pending map)
-            const effectivePending = this.pendingReservationMap.get(seatId);
-            const effectivePid = (effectivePending && Object.prototype.hasOwnProperty.call(effectivePending, 'participantId')) ? (effectivePending as any).participantId : seat.getAttr('participantId');
-            if (effectivePid != null) continue;
+          const originalPid = seat.getAttr('originalParticipantId') as number | null | undefined;
+          const reservationId = reservationIdBySeat.get(seatId) ?? undefined;
+          this.addPendingReservationChange({ id: reservationId, eventId, participantId: pid, seatId, oldParticipantId: originalPid ?? undefined }, { skipRefresh: true });
 
-            // Skip seats marked for far allocation
-            if (isSeatForFar(seat)) continue;
-
-            // Assign visually first
-            seat.setAttr('participantId', pid);
-            seat.fill(this.getParticipantColor(pid));
-
-            // Determine reservation id and original participant for change record
-            const originalPid = seat.getAttr('originalParticipantId') as number | null | undefined;
-            let reservationId: number | undefined;
-            if (originalPid) reservationId = this.findReservationIdForParticipantSeat(originalPid, seatId);
-            if (!reservationId) reservationId = this.findReservationIdForSeat(seatId);
-
-            // Add pending change (parent will persist on save)
-            this.addPendingReservationChange({ id: reservationId, eventId, participantId: pid, seatId, oldParticipantId: originalPid ?? undefined });
-
-            needed--;
-            totalAllocated++;
-          } catch (e) {
-            console.error('Allocation error for a seat', e);
-            continue;
-          }
+          needed--;
+          totalAllocated++;
+        } catch (e) {
+          console.error('Allocation error for a seat', e);
+          continue;
         }
       }
     }
 
     if (totalAllocated > 0) {
+      this.refreshSectorAllocationLabels();
       this.layer.batchDraw();
       this.hasReservationChanges.set(true);
       this.pendingCountSignal.set(this.pendingReservationChanges.length);
       this.snackBar.open(`Allocated ${totalAllocated} seat(s) (pending).`, 'Close', { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
+      try { this.createAllocationOverlays(); } catch (e) { /* ignore */ }
     } else {
       this.snackBar.open('No suitable seats found to allocate.', 'Close', { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
     }
@@ -2635,7 +2835,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     this.sectorSeats.forEach(seats => allSeats.push(...seats));
 
     let anyChanged = false;
-    allSeats.forEach(seat => {
+  allSeats.forEach(seat => {
       try {
         const currentPid = seat.getAttr('participantId') as number | null | undefined;
         const originalPid = seat.getAttr('originalParticipantId') as number | null | undefined;
@@ -2653,8 +2853,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         seat.setAttr('participantId', null);
         seat.fill(this.defaultSeatColor);
 
-        // Emit the removal change so parent can persist or handle it
-        this.addPendingReservationChange({ id: reservationId, eventId, seatId, oldParticipantId: originalPid ?? currentPid });
+  // Emit the removal change so parent can persist or handle it. Use skipRefresh
+  // to avoid expensive per-seat label redraws during large bulk operations.
+  this.addPendingReservationChange({ id: reservationId, eventId, seatId, oldParticipantId: originalPid ?? currentPid }, { skipRefresh: true });
 
         anyChanged = true;
       } catch (e) {
@@ -2663,10 +2864,16 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     });
 
     if (anyChanged) {
+      // Single refresh after batch changes
+      this.refreshSectorAllocationLabels();
       this.layer.batchDraw();
       this.hasReservationChanges.set(true);
-  this.pendingCountSignal.set(this.pendingReservationChanges.length);
+      this.pendingCountSignal.set(this.pendingReservationChanges.length);
       this.snackBar.open('All allocations cleared (pending changes).', 'Close', { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
+      // Refresh overlays immediately when seats are hidden (zoomed out)
+      try {
+        this.createAllocationOverlays();
+      } catch (e) { /* ignore overlay refresh errors */ }
     } else {
       this.snackBar.open('No allocations to clear.', 'Close', { duration: 2000, horizontalPosition: 'center', verticalPosition: 'top' });
     }
@@ -2733,8 +2940,12 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
     let totalAllocated = 0;
 
-    // Order sectors deterministically
+    // Order sectors by explicit orderNumber first so allocations start from lowest-order
+    // sectors, then fall back to sectorId and name for deterministic ties.
     const sectorsOrdered = targetSectors.slice().sort((a, b) => {
+      const ao = (a.orderNumber ?? Number.MAX_SAFE_INTEGER);
+      const bo = (b.orderNumber ?? Number.MAX_SAFE_INTEGER);
+      if (ao !== bo) return ao - bo;
       const aid = a.sectorId ?? 0;
       const bid = b.sectorId ?? 0;
       if (aid !== bid) return aid - bid;
@@ -2780,8 +2991,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
             if (originalPid) reservationId = this.findReservationIdForParticipantSeat(originalPid, seatId);
             if (!reservationId) reservationId = this.findReservationIdForSeat(seatId);
 
-            // Add pending change (parent will persist on save)
-            this.addPendingReservationChange({ id: reservationId, eventId, participantId: pid, seatId, oldParticipantId: originalPid ?? undefined });
+            // Add pending change (parent will persist on save) - skip per-seat refresh
+            this.addPendingReservationChange({ id: reservationId, eventId, participantId: pid, seatId, oldParticipantId: originalPid ?? undefined }, { skipRefresh: true });
 
             needed--;
             totalAllocated++;
@@ -2794,6 +3005,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     }
 
     if (totalAllocated > 0) {
+      // Single refresh after bulk allocations
+      this.refreshSectorAllocationLabels();
       this.layer.batchDraw();
       this.hasReservationChanges.set(true);
       this.pendingCountSignal.set(this.pendingReservationChanges.length);
@@ -2890,7 +3103,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     }
 
     let anyChanged = false;
-    seatsToClear.forEach(seat => {
+  seatsToClear.forEach(seat => {
       try {
         const currentPid = seat.getAttr('participantId') as number | null | undefined;
         const originalPid = seat.getAttr('originalParticipantId') as number | null | undefined;
@@ -2908,7 +3121,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         seat.setAttr('participantId', null);
         seat.fill(this.defaultSeatColor);
 
-        this.addPendingReservationChange({ id: reservationId, eventId, seatId, oldParticipantId: originalPid ?? currentPid });
+        // Use skipRefresh to coalesce UI updates during bulk operations
+        this.addPendingReservationChange({ id: reservationId, eventId, seatId, oldParticipantId: originalPid ?? currentPid }, { skipRefresh: true });
         anyChanged = true;
       } catch (e) {
         console.error('Failed to clear allocation for a selected seat', e);
@@ -2916,10 +3130,14 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     });
 
     if (anyChanged) {
+      // Single refresh after batch changes
+      this.refreshSectorAllocationLabels();
       this.layer.batchDraw();
       this.hasReservationChanges.set(true);
       this.pendingCountSignal.set(this.pendingReservationChanges.length);
       this.snackBar.open('Selected allocations cleared (pending changes).', 'Close', { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
+      // Refresh overlays to reflect cleared allocations when seats are hidden
+      try { this.createAllocationOverlays(); } catch (e) { /* ignore */ }
     } else {
       this.snackBar.open('No allocations were changed.', 'Close', { duration: 2000, horizontalPosition: 'center', verticalPosition: 'top' });
     }
@@ -2944,12 +3162,35 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     try {
       this.saving.set(true);
       console.log('Saving venue changes...');
-      
-      // Save all sectors
+      // Only save sectors that are new or have actual changes compared to the original snapshot
+      const originalMap = new Map<number, Sector>();
+      if (this.originalSectorsSnapshot && Array.isArray(this.originalSectorsSnapshot)) {
+        this.originalSectorsSnapshot.forEach(s => {
+          if (s && typeof s.sectorId === 'number') originalMap.set(s.sectorId, s);
+        });
+      }
+
+      const isSectorDifferent = (s: EditableSector, o?: Sector): boolean => {
+        if (!o) return true; // no original -> treat as new/changed
+        // Compare basic editable fields. Expand if you allow editing more.
+        if ((s.name ?? '') !== (o.name ?? '')) return true;
+        if ((s.orderNumber ?? null) !== (o.orderNumber ?? null)) return true;
+        const sx = s.position?.x ?? null;
+        const sy = s.position?.y ?? null;
+        const ox = o.position?.x ?? null;
+        const oy = o.position?.y ?? null;
+        if (sx !== ox || sy !== oy) return true;
+        if ((s.rotation ?? 0) !== (o.rotation ?? 0)) return true;
+        if ((s.priceCategory ?? '') !== (o.priceCategory ?? '')) return true;
+        if ((s.status ?? '') !== (o.status ?? '')) return true;
+        // seats/rows deep-diff is intentionally omitted for performance; include if needed
+        return false;
+      };
+
       for (const sector of this.editableSectors()) {
         if (sector.sectorId === -1) {
           // Create new sector
-          const sectorInput = {
+          const sectorInput: any = {
             name: sector.name ?? '',
             orderNumber: sector.orderNumber,
             position: sector.position,
@@ -2957,8 +3198,17 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
             priceCategory: sector.priceCategory,
             status: sector.status
           };
+          // If this sector was created by duplication, let backend clone rows/seats atomically
+          if ((sector as any).duplicatedFromSectorId) {
+            sectorInput.sourceSectorId = (sector as any).duplicatedFromSectorId;
+          }
           await firstValueFrom(this.venueApi.addSector(venueId, sectorInput));
         } else {
+          const original = originalMap.get(sector.sectorId!);
+          if (!isSectorDifferent(sector, original)) {
+            // skip unchanged sector
+            continue;
+          }
           // Update existing sector properties
           const sectorInput = {
             name: sector.name ?? '',
@@ -3033,9 +3283,83 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       
       // Reload the venue to reset all changes
       const venueId = this.venueId();
-      if (venueId) {
-        this.fetchVenue(venueId);
+      // Prefer full rebuild from the immutable snapshot captured at load time so both array order and orderNumber are restored
+      if (this.originalSectorsSnapshot) {
+        // Log current state before restore for debugging
+        try {
+          const before = this.editableSectors().map(s => ({ sectorId: s.sectorId, orderNumber: s.orderNumber }));
+          console.log('Editable sectors BEFORE restore:', before);
+          try { console.log('Editable sectors BEFORE restore (JSON):', JSON.stringify(before)); } catch(_) { /* ignore */ }
+        } catch (e) { /* ignore */ }
+        try {
+          const snap = (this.originalSectorsSnapshot || []).map(s => ({ sectorId: s.sectorId, orderNumber: s.orderNumber }));
+          console.log('Restoring from originalSectorsSnapshot (exact):', snap);
+          try { console.log('Restoring snapshot (JSON):', JSON.stringify(snap)); } catch(_) { /* ignore */ }
+        } catch (e) { /* ignore */ }
+
+        // Use the exact-preserving restore helper so array order and original orderNumbers are retained
+        try {
+          this.restoreEditableSectorsToSnapshot();
+          if (this.layer) {
+            // Ensure groups are rebuilt and visuals updated immediately
+            this.renderSectors();
+            this.layer.batchDraw();
+          } else {
+            this.markNeedsFullRender();
+          }
+        } catch (e) {
+          console.error('Error while restoring from snapshot:', e);
+          this.markNeedsFullRender();
+        }
+
+        // Debug: log current editable sectors after restore
+        try {
+          const afterLog = this.editableSectors().map(s => ({ sectorId: s.sectorId, orderNumber: s.orderNumber }));
+          console.log('Editable sectors AFTER exact restore:', afterLog);
+          try { console.log('Editable sectors AFTER exact restore (JSON):', JSON.stringify(afterLog)); } catch(_) { /* ignore */ }
+        } catch (e) { /* ignore */ }
+        // FORCE: ensure existing Konva groups reflect restored order numbers immediately
+        try {
+          const after = this.editableSectors();
+          after.forEach(s => {
+            try {
+              // If a group exists, update its text nodes explicitly
+              const g = this.sectorGroups.get(s.sectorId ?? -1);
+              if (g) {
+                const texts = g.find('Text') as Konva.Text[];
+                const nameText = texts && texts.length > 0 ? (texts[0] as Konva.Text).text() : null;
+                console.log('Post-restore Konva text for sectorId=' + (s.sectorId ?? -1) + ':', nameText);
+                // Ensure label content is synchronized with restored sector
+                this.updateKonvaForSector(s as EditableSector);
+              }
+            } catch (ee) { /* per-sector ignore */ }
+          });
+          if (this.layer) this.layer.batchDraw();
+        } catch (e) {
+          console.error('Post-restore Konva check failed', e);
+        }
+      } else {
+        // Fallback: restore by original order map or re-fetch
+        const origMap = this.originalSectorOrderMap;
+        if (origMap && origMap.size > 0) {
+          const sectors = this.editableSectors().map(s => ({ ...s }));
+          sectors.forEach(sec => {
+            if (sec.sectorId != null && origMap.has(sec.sectorId)) {
+              sec.orderNumber = origMap.get(sec.sectorId) ?? sec.orderNumber;
+            }
+          });
+          this.editableSectors.set(sectors as EditableSector[]);
+          this.selectedSectors.set([]);
+          this.selectedSector.set(null);
+          try { if (this.layer) { this.renderSectors(); this.layer.batchDraw(); } else { this.markNeedsFullRender(); } } catch (e) { this.markNeedsFullRender(); }
+        } else {
+          const venueId = this.venueId();
+          if (venueId) this.fetchVenue(venueId);
+        }
       }
+
+  // Do not immediately re-fetch the venue here; restoring from the local snapshot ensures the UI shows the original orders.
+  // If you want a fresh authoritative refresh, reload manually or navigate back to the venue list.
     }
   }  // Navigation
   editSectorSeats() {
@@ -3244,6 +3568,224 @@ console.log("addSelectionIndicators2");
   if (updated) this.updateKonvaForSector(updated);
       }
     });
+  }
+
+  // Inline edit helpers for selection panel
+  startInlineEdit(sector: EditableSector) {
+    if (!sector) return;
+    // Only allow inline edit in edit mode
+    if (this.mode !== 'edit') return;
+    this.editingSectorId.set(sector.sectorId ?? null);
+    this.editingSectorName.set(sector.name ?? '');
+    // Focus will be handled by template; mark no change yet
+  }
+
+  cancelInlineEdit() {
+    this.editingSectorId.set(null);
+    this.editingSectorName.set('');
+  }
+
+  commitInlineEdit() {
+    const sectorId = this.editingSectorId();
+    if (sectorId == null) return;
+    const newName = (this.editingSectorName() ?? '').trim();
+    // Update editableSectors and selectedSectors
+    this.editableSectors.update(sectors => sectors.map(s => s.sectorId === sectorId ? { ...s, name: newName } : s));
+    this.selectedSectors.update(sel => sel.map(s => s.sectorId === sectorId ? { ...s, name: newName } : s));
+    if (this.selectedSector() && this.selectedSector()!.sectorId === sectorId) {
+      this.selectedSector.set({ ...(this.selectedSector() as EditableSector), name: newName });
+    }
+    this.hasChanges.set(true);
+    // Update Konva visuals for the sector immediately
+    const updated = this.editableSectors().find(s => s.sectorId === sectorId);
+    if (updated) this.updateKonvaForSector(updated);
+    // Clear inline edit state
+    this.editingSectorId.set(null);
+    this.editingSectorName.set('');
+  }
+
+  // ===== Inline Order Editing Methods =====
+  startInlineOrderEdit(sector: EditableSector) {
+    if (!sector) return;
+    if (this.mode !== 'edit') return;
+    this.editingOrderSectorId.set(sector.sectorId ?? null);
+    const val = (sector.orderNumber ?? 1);
+    this.editingSectorOrder.set(val < 1 ? 1 : val);
+  }
+
+  cancelInlineOrderEdit() {
+    this.editingOrderSectorId.set(null);
+    this.editingSectorOrder.set(1);
+  }
+
+  onOrderInput(raw: any) {
+    let v = Number(raw);
+    if (isNaN(v) || v < 1) v = 1;
+  const max = this.getMaxOrder();
+    if (v > max) v = max;
+    this.editingSectorOrder.set(v);
+  }
+
+  commitInlineOrderEdit() {
+    const sectorId = this.editingOrderSectorId();
+    if (sectorId == null) return;
+    const sectors = [...this.editableSectors()];
+    if (sectors.length === 0) { this.editingOrderSectorId.set(null); return; }
+    // Normalize first: sort by existing orderNumber then reassign sequential
+    sectors.sort((a,b) => (a.orderNumber ?? 0) - (b.orderNumber ?? 0));
+    sectors.forEach((s,i) => s.orderNumber = i + 1);
+
+    const targetIdx = sectors.findIndex(s => s.sectorId === sectorId);
+    if (targetIdx === -1) { this.editingOrderSectorId.set(null); return; }
+    const target = sectors[targetIdx];
+    let newOrder = this.editingSectorOrder();
+    if (newOrder < 1) newOrder = 1;
+    const max = sectors.length; // after normalization max is count
+    if (newOrder > max) newOrder = max;
+    const oldOrder = target.orderNumber ?? (targetIdx + 1);
+    if (newOrder === oldOrder) { this.editingOrderSectorId.set(null); return; }
+
+    // Remove target and re-insert at new index (newOrder - 1)
+    sectors.splice(targetIdx, 1);
+    sectors.splice(newOrder - 1, 0, target);
+    // Reassign order numbers sequentially
+    sectors.forEach((s,i) => s.orderNumber = i + 1);
+
+    // Commit
+    const updated = sectors.map(s => ({ ...s }));
+    this.editableSectors.set(updated);
+    const selIds = new Set(this.selectedSectors().map(s => s.sectorId));
+    this.selectedSectors.set(updated.filter(s => selIds.has(s.sectorId)));
+    if (this.selectedSector()) {
+      const refreshed = updated.find(s => s.sectorId === (this.selectedSector() as EditableSector).sectorId);
+      if (refreshed) this.selectedSector.set(refreshed);
+    }
+    this.hasChanges.set(true);
+    // Immediately update Konva labels for all affected sectors so the order is visible on the map
+    try {
+      updated.forEach(s => {
+        // If a group exists for this sector, update its visuals; otherwise ensure it's rendered
+        const groupExists = this.sectorGroups.has(s.sectorId ?? -1);
+        if (!groupExists) {
+          // Force creation for missing groups
+          this.renderSectors();
+        } else {
+          this.updateKonvaForSector(s as EditableSector);
+        }
+      });
+      // Ensure layer redraw
+      if (this.layer) this.layer.batchDraw();
+    } catch (e) {
+      // Fall back to full render if anything goes wrong
+      this.markNeedsFullRender();
+      this.renderSectors();
+    }
+
+    this.editingOrderSectorId.set(null);
+  }
+
+  getMaxOrder(): number {
+    // Max valid order is current number of sectors (after normalization this matches highest orderNumber)
+    return this.editableSectors().length || 1;
+  }
+
+  private ensureSequentialOrders() {
+    const sectors = [...this.editableSectors()];
+    // Sort by current orderNumber (nulls last)
+    sectors.sort((a,b) => {
+      const ao = a.orderNumber ?? Number.MAX_SAFE_INTEGER;
+      const bo = b.orderNumber ?? Number.MAX_SAFE_INTEGER;
+      return ao - bo;
+    });
+    // Reassign sequentially starting at 1
+    let counter = 1;
+    const reassigned = sectors.map(s => ({ ...s, orderNumber: counter++ }));
+    this.editableSectors.set(reassigned);
+  }
+
+  // Rebuild editableSectors from a plain Sector[] snapshot and force a render
+  private buildEditableSectorsFromSectors(sectors: Sector[] | null) {
+    if (!sectors) return;
+    // Build editable sectors and ensure orderNumber is explicitly set (preserve original if available)
+    const editableSectors: EditableSector[] = sectors.map((sector, idx) => {
+      const defaultPosition = sector.position ?? { x: 100 + (Math.random() * 200), y: 100 + (Math.random() * 200) };
+      const orderNum = (sector.orderNumber != null && sector.orderNumber > 0) ? sector.orderNumber : idx + 1;
+      return {
+        ...sector,
+        orderNumber: orderNum,
+        isSelected: false,
+        isDragging: false,
+        rotation: sector.rotation ?? 0,
+        position: defaultPosition
+      };
+    });
+    // Normalize to ensure unique sequential numbers in case snapshot had duplicates
+    editableSectors.sort((a,b) => (a.orderNumber ?? Number.MAX_SAFE_INTEGER) - (b.orderNumber ?? Number.MAX_SAFE_INTEGER));
+    editableSectors.forEach((s,i) => s.orderNumber = i + 1);
+    this.editableSectors.set(editableSectors as EditableSector[]);
+    this.selectedSectors.set([]);
+    this.selectedSector.set(null);
+    this.markNeedsFullRender();
+  }
+
+  // Restore editable sectors exactly as in the original snapshot: same array order and same orderNumber values
+  private restoreEditableSectorsToSnapshot() {
+    if (!this.originalSectorsSnapshot) return;
+    const snapshot = this.originalSectorsSnapshot;
+    // Build editable sectors preserving the snapshot array order
+    const editable: EditableSector[] = snapshot.map((s) => {
+      const defaultPosition = s.position ?? { x: 100 + (Math.random() * 200), y: 100 + (Math.random() * 200) };
+      return {
+        ...s,
+        orderNumber: s.orderNumber ?? 1,
+        isSelected: false,
+        isDragging: false,
+        rotation: s.rotation ?? 0,
+        position: defaultPosition
+      } as EditableSector;
+    });
+    // Ensure unique sequential orderNumbers if snapshot had duplicates: preserve original values otherwise
+    const seen = new Set<number>();
+    let nextSeq = 1;
+    editable.forEach(s => {
+      const on = s.orderNumber ?? nextSeq;
+      if (on && !seen.has(on)) {
+        seen.add(on);
+      } else {
+        // assign next available sequential
+        while (seen.has(nextSeq)) nextSeq++;
+        s.orderNumber = nextSeq++;
+      }
+    });
+    this.editableSectors.set(editable);
+    this.selectedSectors.set([]);
+    this.selectedSector.set(null);
+    this.markNeedsFullRender();
+  }
+
+  private recountSectorOrders() {
+    const sectors = [...this.editableSectors()];
+    if (sectors.length === 0) return;
+    sectors.sort((a,b) => (a.orderNumber ?? Number.MAX_SAFE_INTEGER) - (b.orderNumber ?? Number.MAX_SAFE_INTEGER));
+    sectors.forEach((s,i) => s.orderNumber = i + 1);
+    this.editableSectors.set(sectors);
+    // Update selections to point to updated objects
+    const selIds = new Set(this.selectedSectors().map(s => s.sectorId));
+    if (selIds.size > 0) {
+      this.selectedSectors.set(sectors.filter(s => selIds.has(s.sectorId)));
+    }
+    if (this.selectedSector()) {
+      const refreshed = sectors.find(s => s.sectorId === (this.selectedSector() as EditableSector).sectorId);
+      if (refreshed) this.selectedSector.set(refreshed); else this.selectedSector.set(null);
+    }
+    // IMPORTANT: ensure updated order numbers are reflected in canvas labels
+    try {
+      sectors.forEach(s => this.updateKonvaForSector(s));
+      this.layer?.batchDraw();
+    } catch (e) {
+      // If incremental update fails, request full render fallback
+      this.markNeedsFullRender();
+    }
   }
 
   zoomIn() {

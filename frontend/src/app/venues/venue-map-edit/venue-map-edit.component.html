@@ -115,10 +115,10 @@
                     matTooltip="Add New Sector">
               <mat-icon>add</mat-icon>
             </button>
-            <button mat-icon-button 
-                    (click)="duplicateSector()"
-                    [disabled]="selectedSectors().length === 0"
-                    matTooltip="Duplicate Sector">
+      <button mat-icon-button 
+        (click)="duplicateSector()"
+        [disabled]="!canDuplicateSelectedSectors()"
+        matTooltip="Duplicate Sector">
               <mat-icon>content_copy</mat-icon>
             </button>
             <button mat-icon-button 
@@ -127,12 +127,7 @@
                     matTooltip="Edit Sector Seats">
               <mat-icon>event_seat</mat-icon>
             </button>
-            <button mat-icon-button 
-                    (click)="openChangeSectorNameDialog()"
-                    [disabled]="selectedSectors().length !== 1"
-                    matTooltip="Change Name">
-              <mat-icon>drive_file_rename_outline</mat-icon>
-            </button>
+            <!-- Change Name button removed per request -->
             <button mat-icon-button 
                     (click)="deleteSector()"
                     [disabled]="selectedSectors().length === 0"
@@ -330,7 +325,7 @@
                 <mat-icon class="selection-card-icon">info</mat-icon>
                 Selected
               </mat-card-title>
-              <button mat-icon-button aria-label="Deselect" (click)="deselectAll()" class="selection-deselect-btn">
+              <button mat-icon-button color="primary" aria-label="Deselect" (click)="deselectAll()" class="selection-deselect-btn">
                 <mat-icon>close</mat-icon>
               </button>
             </div>
@@ -341,11 +336,65 @@
                 <div class="sector-details">
                   <div class="detail-item">
                     <span class="detail-label">Name:</span>
-                    <span class="detail-value">{{ selectedSectors()[0].name }}</span>
+                    <!-- When editing, place the input on a full-width row below the label -->
+                    <ng-container *ngIf="editingSectorId() === selectedSectors()[0].sectorId; else nameView">
+                      <div class="inline-edit-row">
+                        <input class="inline-edit-input" type="text"
+                               [value]="editingSectorName()"
+                               (input)="editingSectorName.set($any($event.target).value)"
+                               (keydown.enter)="commitInlineEdit()"
+                               (keydown.escape)="cancelInlineEdit()"
+                               aria-label="Edit sector name" />
+                      </div>
+                      <div class="inline-edit-actions below">
+                        <button mat-icon-button color="primary" aria-label="Accept name change" (click)="commitInlineEdit()" matTooltip="Accept">
+                          <mat-icon>done</mat-icon>
+                        </button>
+                        <button mat-icon-button color="warn" aria-label="Reject name change" (click)="cancelInlineEdit()" matTooltip="Reject">
+                          <mat-icon>close</mat-icon>
+                        </button>
+                      </div>
+                    </ng-container>
+                    <ng-template #nameView>
+                      <span class="detail-value">
+                        <span class="name-text">{{ selectedSectors()[0].name }}</span>
+                        <button mat-icon-button color="primary" class="inline-edit-btn" aria-label="Edit name" (click)="startInlineEdit(selectedSectors()[0])" matTooltip="Edit name">
+                          <mat-icon>edit</mat-icon>
+                        </button>
+                      </span>
+                    </ng-template>
                   </div>
                   <div class="detail-item">
                     <span class="detail-label">Order:</span>
-                    <span class="detail-value">{{ selectedSectors()[0].orderNumber ?? '-' }}</span>
+                    <!-- Inline edit for order number -->
+                    <ng-container *ngIf="editingOrderSectorId() === selectedSectors()[0].sectorId; else orderView">
+                      <div class="inline-edit-row">
+         <input class="inline-edit-input" type="number" step="1"
+           [min]="1"
+           [max]="getMaxOrder()"
+                               [value]="editingSectorOrder()"
+                               (input)="onOrderInput($any($event.target).value)"
+                               (keydown.enter)="commitInlineOrderEdit()"
+                               (keydown.escape)="cancelInlineOrderEdit()"
+                               aria-label="Edit sector order" />
+                      </div>
+                      <div class="inline-edit-actions below">
+                        <button mat-icon-button color="primary" aria-label="Accept order change" (click)="commitInlineOrderEdit()" matTooltip="Accept">
+                          <mat-icon>done</mat-icon>
+                        </button>
+                        <button mat-icon-button color="warn" aria-label="Reject order change" (click)="cancelInlineOrderEdit()" matTooltip="Reject">
+                          <mat-icon>close</mat-icon>
+                        </button>
+                      </div>
+                    </ng-container>
+                    <ng-template #orderView>
+                      <span class="detail-value">
+                        <span class="name-text">{{ selectedSectors()[0].orderNumber ?? '-' }}</span>
+                        <button mat-icon-button color="primary" class="inline-edit-btn" aria-label="Edit order" (click)="startInlineOrderEdit(selectedSectors()[0])" matTooltip="Edit order">
+                          <mat-icon>edit</mat-icon>
+                        </button>
+                      </span>
+                    </ng-template>
                   </div>
                   <div class="detail-item">
                     <span class="detail-label">Position:</span>

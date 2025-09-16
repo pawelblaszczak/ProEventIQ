@@ -100,10 +100,22 @@ public class SeatService {
                 }
             }
         }
+        // Ensure temporary changes are flushed so subsequent logic sees the updated order numbers
+        entityManager.flush();
     }
 
     private SeatRowEntity findExistingRowByNameAndSector(List<SeatRowEntity> existingRows, SeatRowInput rowInput, SectorEntity sector) {
-        // Find by name first (more reliable than order number which can change)
+        // Prefer matching by ID if client provided it (prevents accidental inserts when editing)
+        if (rowInput.getSeatRowId() != null) {
+            Long id = rowInput.getSeatRowId();
+            for (SeatRowEntity row : existingRows) {
+                if (row.getSeatRowId() != null && row.getSeatRowId().equals(id)) {
+                    return row;
+                }
+            }
+        }
+
+        // Fallback: find by name within the same sector
         return existingRows.stream()
                 .filter(row -> rowInput.getName().equals(row.getName()) && row.getSector().equals(sector))
                 .findFirst()

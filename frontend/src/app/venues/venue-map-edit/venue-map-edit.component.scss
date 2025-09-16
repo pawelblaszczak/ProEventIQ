@@ -518,7 +518,8 @@ $border-radius: 12px;
     width: 100% !important;
     height: 78vh !important;
     min-height: 680px !important;
-    overflow: hidden !important;
+  /* allow scrolling in edit mode the same as preview/reservation */
+  overflow: auto !important;
   }
 
   /* Ensure the konva canvas itself fits the container */

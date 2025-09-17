@@ -994,4 +994,5 @@ $border-radius: 12px;
 // Konva tooltips are rendered directly, no need for CSS display property
 :host ::ng-deep .konvajs-content {
   position: relative;
+  background-color: white; // Ensure consistent white background when scrolling
 }

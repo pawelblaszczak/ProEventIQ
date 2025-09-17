@@ -1326,9 +1326,14 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       const hull = this.getConvexHull(seatPositions);
       if (hull.length > 2) {
         const points = hull.flatMap(p => [p.x, p.y]);
-        const strokeColor = this.getSectorStrokeColor(sector);
-  const fillBase = this.getSectorColor(sector);
-  const fillColor = fillBase + '33';
+  const strokeColor = this.getSectorStrokeColor(sector);
+  // When seats are hidden (zoomed out) and we're in a reservation-like view
+  // we want allocation overlays to be visible through the sector fill.
+  // Otherwise prefer a solid fill so unselected sectors are clearly visible.
+  const threshold = 1.79; // keep consistent with seat visibility logic
+  const seatsVisibleLocal = this.zoomLevel() >= threshold;
+  const shouldUseTransparentFill = !seatsVisibleLocal && this.isReservationLike();
+        const fillColor = shouldUseTransparentFill ? this.withAlpha(this.getSectorColor(sector), 0.25) : this.getSectorColor(sector);
         
         outline = new Konva.Line({
           points,
@@ -1447,13 +1452,15 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
           }
         }
 
-        const placeholder = new Konva.Rect({
+  const placeholder = new Konva.Rect({
           x: centroidX - width / 2,
           y: centroidY - height / 2,
           width: width,
           height: height,
-          // Slightly lighter fill than larger sectors to reduce visual weight
-          fill: this.getSectorColor(sector) + '40',
+          // Slightly lighter fill than larger sectors to reduce visual weight.
+          // Use a semi-transparent fill only when seats are hidden in reservation-like views
+          // so allocation overlays remain visible. Otherwise use solid background color.
+          fill: (!this.isReservationLike() || this.zoomLevel() >= 1.79) ? this.getSectorColor(sector) : this.withAlpha(this.getSectorColor(sector), 0.25),
           stroke: this.getSectorStrokeColor(sector),
           strokeWidth: sector.isSelected ? 3 : 2,
           cornerRadius: Math.min(8, Math.round(Math.min(width, height) / 6)),
@@ -1873,7 +1880,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     // of seats and is clipped to the sector polygon (convex hull).
     try {
       // Remove any previous allocation overlay when re-creating the group
-      const prev = group.findOne('.sector-allocation-fill') as Konva.Rect;
+      const prev = group.findOne('.sector-allocation-group') as Konva.Group;
       if (prev) prev.destroy();
 
       const currentZoom = this.zoomLevel();
@@ -1893,9 +1900,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         // Collect seatIds for this sector
         const seatIds: number[] = [];
         if (sector.rows) {
-          sector.rows.forEach(r => {
-            if (r.seats) r.seats.forEach(s => { if (s && s.seatId) seatIds.push(s.seatId); });
-          });
+          sector.rows.forEach(r => { if (r.seats) r.seats.forEach(s => { if (s && s.seatId) seatIds.push(s.seatId); }); });
+        } else {
+          seatPositions.forEach(p => { if (p.seatId) seatIds.push(p.seatId); });
         }
 
         const totalSeats = seatIds.length || (sector.numberOfSeats ?? seatPositions.length) || 0;
@@ -1904,13 +1911,11 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         let allocatedCount = 0;
         if (totalSeats > 0) {
           seatIds.forEach(id => {
-            // pendingReservationMap may explicitly set participantId to null
             const pending = this.pendingReservationMap.get(id);
             if (pending && Object.prototype.hasOwnProperty.call(pending, 'participantId')) {
               if ((pending as any).participantId != null) allocatedCount++;
               return;
             }
-            // check authoritative reservationData
             const res = this.reservationData?.find(r => r.seatId === id && r.participantId != null);
             if (res) allocatedCount++;
           });
@@ -2041,10 +2046,19 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     // Update outline appearance if exists
     try {
       const outline = group.findOne('.sector-outline') as Konva.Line;
-      if (outline) {
+        if (outline) {
         outline.stroke(this.getSectorStrokeColor(sector));
         outline.strokeWidth(sector.isSelected ? 3 : 2);
-        outline.fill(this.getSectorColor(sector) + '33');
+        // Match draw logic: use a transparent fill only when seats are hidden so
+        // allocation overlays remain visible; otherwise use solid sector color.
+        const threshold = 1.79;
+        const seatsVisibleLocal = this.zoomLevel() >= threshold;
+        const shouldUseTransparentFill = !seatsVisibleLocal && this.isReservationLike();
+        if (shouldUseTransparentFill) {
+          outline.fill(this.withAlpha(this.getSectorColor(sector), 0.25));
+        } else {
+          outline.fill(this.getSectorColor(sector));
+        }
       }
     } catch (e) {
       // ignore
@@ -2652,9 +2666,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
           const texts = group.find('Text');
           texts.forEach(node => (node as Konva.Node).moveToTop());
         } catch (e) { /* ignore */ }
-        // keep outline visible
-        const outline = group.findOne('.sector-outline') as Konva.Line;
-        if (outline) outline.moveToTop();
+        // Ensure outline remains visible on top of the fill
+        const outlineNode = group.findOne('.sector-outline') as Konva.Line;
+        if (outlineNode) outlineNode.moveToTop();
       } catch (e) {
         // ignore overlay creation errors
       }
@@ -3299,15 +3313,12 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         if (!reservationId && currentPid) reservationId = this.findReservationIdForParticipantSeat(currentPid, seatId);
         if (!reservationId) reservationId = this.findReservationIdForSeat(seatId);
 
-        // Update visual state locally first (unassign seat), then add pending change so tracker reads new state
+        // Update visual state locally first (unassign seat), then add pending change so tracking reads new state
         seat.setAttr('participantId', null);
         seat.fill(this.defaultSeatColor);
+        this.layer!.batchDraw();
 
-  // Emit the removal change so parent can persist or handle it. Use skipRefresh
-  // to avoid expensive per-seat label redraws during large bulk operations.
-  this.addPendingReservationChange({ id: reservationId, eventId, seatId, oldParticipantId: originalPid ?? currentPid }, { skipRefresh: true });
-
-        anyChanged = true;
+        this.addPendingReservationChange({ id: reservationId, eventId, seatId, oldParticipantId: originalPid ?? currentPid });
       } catch (e) {
         console.error('Failed to clear allocation for a seat', e);
       }
@@ -3420,6 +3431,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         for (const seat of seats) {
           if (needed <= 0) break;
           try {
+           
             const seatId = seat.getAttr('seatId') as number | undefined;
             if (!seatId) continue;
 
@@ -3564,7 +3576,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         // Determine reservation id similar to clearAllAllocations
         let reservationId: number | undefined;
         if (originalPid) reservationId = this.findReservationIdForParticipantSeat(originalPid, seatId);
-        if (!reservationId && currentPid) reservationId = this.findReservationIdForParticipantSeat(currentPid, seatId);
+        if (!reservationId) reservationId = this.findReservationIdForParticipantSeat(currentPid, seatId);
         if (!reservationId) reservationId = this.findReservationIdForSeat(seatId);
 
         // Update visual state (unassign seat), then add pending change so tracker reads new state
@@ -3886,16 +3898,46 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
   // Get sector color based on selection and status
   getSectorColor(sector: EditableSector): string {
-    if (sector.isSelected) return '#2196f3';
-    // Removed yellow/orange color for dragging
-  // Use neutral light grey for non-selected sectors
-  return '#f5f5f5';
+    // Keep selected sector accent color as before
+    if (sector && sector.isSelected) return '#2196f3';
+
+    // Unselected sectors: use a slightly darker light grey for better contrast
+    return '#f5f5f5';
   }
 
   getSectorStrokeColor(sector: EditableSector): string {
     if (sector.isSelected) return '#1976d2';
     // Removed orange stroke for dragging
     return '#333';
+  }
+
+  // Utility: return an rgba color string applying the given alpha to a hex (#rrggbb) or rgb(a) input.
+  private withAlpha(color: string, alpha: number): string {
+    try {
+      if (!color) return `rgba(0,0,0,${alpha})`;
+      const c = color.trim();
+      // If already an rgba string, replace alpha
+      const rgbaMatch = c.match(/rgba?\(([^)]+)\)/i);
+      if (rgbaMatch) {
+        const parts = rgbaMatch[1].split(',').map(p => p.trim());
+        const r = Number(parts[0]);
+        const g = Number(parts[1]);
+        const b = Number(parts[2]);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      }
+      // Hex format: #rrggbb
+      const hex = c.replace('#', '');
+      if (hex.length === 6) {
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      }
+      // fallback: return original color (Konva may accept it) with no alpha change
+      return color;
+    } catch (e) {
+      return color;
+    }
   }
 
   // Accent color used for allocation overlays and other highlights.

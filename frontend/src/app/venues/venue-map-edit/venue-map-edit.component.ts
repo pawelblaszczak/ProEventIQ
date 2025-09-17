@@ -324,6 +324,14 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         console.log('Effect: Applied reservations to seats (reservation-like mode)');
       }
     });
+
+    // Re-apply z-ordering when mode changes so external hints remain on top across modes
+    effect(() => {
+      // Access mode as reactive dependency via a dummy signal if needed (mode is @Input primitive)
+      if (this.konvaInitialized) {
+        try { this.fixLayerZOrder(); this.layer?.batchDraw(); } catch { /* ignore */ }
+      }
+    });
     
     // Add keyboard event listeners
     window.addEventListener('keydown', this.handleKeyDown);
@@ -931,12 +939,49 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     if (background) background.moveToBottom();
     const gridLines = this.layer.find('.grid-line');
     gridLines.forEach(line => { if (background) line.moveUp(); });
-    this.sectorGroups.forEach(group => { group.moveToTop(); });
-    
-    // Ensure tooltip is always at the top if it exists
-    if (this.seatTooltip) {
-      this.seatTooltip.moveToTop();
-    }
+    // We want small-sector external label hints (those that create an external bg rect)
+    // to always appear above other sectors so they are never occluded. We mark such
+    // groups with the attribute `hasExternalLabel` when building them.
+    const withExternal: Konva.Group[] = [];
+    const withoutExternal: Konva.Group[] = [];
+    this.sectorGroups.forEach(group => {
+      if (group.getAttr('hasExternalLabel')) {
+        withExternal.push(group);
+      } else {
+        withoutExternal.push(group);
+      }
+    });
+
+    // First ensure all non-external groups are ordered (relative order preserved),
+    // then promote all external-label groups to the very top so their hints stay visible.
+    withoutExternal.forEach(g => g.moveToTop());
+    withExternal.forEach(g => g.moveToTop());
+
+    // After promoting groups, individually promote the external label elements (leader/bg/text)
+    // so they sit above any subsequently added overlay rectangles inside other groups.
+    try {
+      // Move leaders first (they should sit behind their backgrounds but above sector fills)
+      withExternal.forEach(g => {
+        const leader = g.findOne('.sector-label-leader');
+        if (leader) leader.moveToTop();
+      });
+      // Then move backgrounds
+      withExternal.forEach(g => {
+        const bg = g.findOne('.sector-label-bg');
+        if (bg) bg.moveToTop();
+      });
+      // Finally move the text nodes so they are on top of everything else
+      withExternal.forEach(g => {
+        g.find('Text').forEach(t => (t as Konva.Node).moveToTop());
+      });
+      // Also bring any reparented external label nodes (attr externalLabel) to top
+      this.layer?.find((n: any) => n.getAttr && n.getAttr('externalLabel')).forEach(n => {
+        try { (n as Konva.Node).moveToTop(); } catch { /* ignore */ }
+      });
+    } catch { /* ignore z-order promotion failures */ }
+
+    // Ensure tooltip is always at the absolute top if it exists
+    if (this.seatTooltip) this.seatTooltip.moveToTop();
   }
 
   private renderGrid() {
@@ -1104,6 +1149,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         const selectionChanged = existingSector?.isSelected !== sector.isSelected;
         
         if (selectionChanged) {
+          // CLEANUP: remove any external label nodes that were re-parented to the layer
+          // for this sector (they persist after group.destroy otherwise and keep showing)
+          try { this.removeExternalLabelNodesForSector(sectorId); } catch { /* ignore */ }
           existingGroup.destroy();
           this.sectorGroups.delete(sectorId);
           // IMPORTANT: also clear cached Konva objects so they are rebuilt for new group
@@ -1132,22 +1180,48 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     this.updateSeatTooltipHandlers();
   // Re-apply seat visibility rule in case of group recreation
   this.updateSeatsVisibility(this.zoomLevel());
+
+  // Force a pass to reposition any external labels (small-sector hints) so
+  // they appear correctly immediately after (re)creation at current zoom.
+  try { this.repositionExternalLabels(); } catch { /* ignore */ }
     
     // Single draw call at the end - like KonvaTest
     this.layer.batchDraw();
   }
 
+  // Recompute absolute positions for all external (reparented) sector label nodes.
+  // This ensures correct initial placement at non-100% zoom right after selection
+  // or re-render, without waiting for a drag event.
+  private repositionExternalLabels(): void {
+    if (!this.layer) return;
+    try {
+      this.sectorGroups.forEach(group => {
+        if (group.getAttr && group.getAttr('hasExternalLabel')) {
+          const fn = group.getAttr('_updateExternalPositions');
+            if (typeof fn === 'function') {
+              try { fn(); } catch { /* per-group ignore */ }
+            }
+        }
+      });
+      this.layer.batchDraw();
+    } catch { /* ignore overall */ }
+  }
+
   private removeSector(sectorId: number) {
     const group = this.sectorGroups.get(sectorId);
+    // Remove any external label nodes that were reparented to the layer
+    try { this.removeExternalLabelNodesForSector(sectorId); } catch { /* ignore */ }
     if (group) {
       group.destroy();
       this.sectorGroups.delete(sectorId);
     }
-    
+
     // Clean up cached objects
     this.sectorSeats.delete(sectorId);
     this.sectorOutlines.delete(sectorId);
     this.sectorLabels.delete(sectorId);
+    // Redraw layer to remove remnants immediately
+    try { this.layer?.batchDraw(); } catch { /* ignore */ }
   }
 
   private createSectorGroup(sector: EditableSector): Konva.Group | null {
@@ -1286,12 +1360,13 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     }
 
     // Calculate bounding box width for label centering - ensure labels are visible even at smaller scale
-    let labelWidth = 140; // Increased from 120 for better visibility
-    let minX = 0, maxX = 0, minY = 0;
+  let labelWidth = 140; // Increased from 120 for better visibility
+  let minX = 0, maxX = 0, minY = 0, maxY = 0;
     if (seatPositions.length > 0) {
       minX = Math.min(...seatPositions.map(p => p.x));
       maxX = Math.max(...seatPositions.map(p => p.x));
-      minY = Math.min(...seatPositions.map(p => p.y));
+  minY = Math.min(...seatPositions.map(p => p.y));
+  maxY = Math.max(...seatPositions.map(p => p.y));
       labelWidth = Math.max(100, maxX - minX + seatRadius * 4); // Ensure minimum readable width
     }
 
@@ -1323,7 +1398,85 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       }
     }
 
-    // Add sector name and seat count labels inside the sector - maintain readable size
+    // Small-sector placeholder: ensure sectors with 1-2 seats are visible and clickable
+    // (because convex-hull outline requires >=3 points and labels may be hidden for very small sectors)
+      if (seatPositions.length > 0 && seatPositions.length <= 2) {
+      try {
+        // compute bbox to size the placeholder reasonably
+        const pxMin = Math.min(...seatPositions.map(p => p.x));
+        const pxMax = Math.max(...seatPositions.map(p => p.x));
+        const pyMin = Math.min(...seatPositions.map(p => p.y));
+        const pyMax = Math.max(...seatPositions.map(p => p.y));
+        const bboxW = Math.max(4, pxMax - pxMin);
+        const bboxH = Math.max(4, pyMax - pyMin);
+
+        // Dynamic sizing tuned for miniature sectors:
+        //  - 1 seat: small rounded square (18x18)
+        //  - 2 seats: width/height derived from actual seat spread + tight padding
+        // Goal: visually proportional to 3–4 seat triangles/squares without dominating.
+        const isSingle = seatPositions.length === 1;
+        const PAD_X_BASE = 6;
+        const PAD_Y_BASE = 5;
+        const dx = seatPositions.length === 2 ? Math.abs(seatPositions[0].x - seatPositions[1].x) : 0;
+        const dy = seatPositions.length === 2 ? Math.abs(seatPositions[0].y - seatPositions[1].y) : 0;
+        // Additional stretch to accommodate diagonal arrangement but keep compact
+        const spreadW = Math.max(bboxW, dx);
+        const spreadH = Math.max(bboxH, dy);
+        const PAD_X = isSingle ? 5 : PAD_X_BASE;
+        const PAD_Y = isSingle ? 5 : PAD_Y_BASE;
+        const minSize = 16; // minimum side
+        const maxW = 54; // tighter upper bound
+        const maxH = 44;
+        let width = isSingle ? 18 : spreadW + PAD_X * 2;
+        let height = isSingle ? 18 : spreadH + PAD_Y * 2;
+        width = Math.min(maxW, Math.max(minSize, width));
+        height = Math.min(maxH, Math.max(minSize, height));
+        // If two seats are nearly collinear horizontally or vertically, compress the orthogonal dimension
+        if (!isSingle && seatPositions.length === 2) {
+          if (dx > dy * 1.6) {
+            // Mostly horizontal line of 2 seats: shrink height
+            height = Math.max(minSize, Math.min(height, 20));
+          } else if (dy > dx * 1.6) {
+            // Mostly vertical line of 2 seats: shrink width
+            width = Math.max(minSize, Math.min(width, 20));
+          }
+        }
+
+        const placeholder = new Konva.Rect({
+          x: centroidX - width / 2,
+          y: centroidY - height / 2,
+          width: width,
+          height: height,
+          // Slightly lighter fill than larger sectors to reduce visual weight
+          fill: this.getSectorColor(sector) + '40',
+          stroke: this.getSectorStrokeColor(sector),
+          strokeWidth: sector.isSelected ? 3 : 2,
+          cornerRadius: Math.min(8, Math.round(Math.min(width, height) / 6)),
+          name: 'sector-placeholder',
+          listening: true
+        });
+
+        // Interactions: click/hover should behave like the outline
+        placeholder.on('click', (e) => {
+          e.cancelBubble = true;
+          this.onSectorRectClick(sector, e);
+        });
+        placeholder.on('mouseenter', () => {
+          if (this.mode === 'edit') this.stage!.container().style.cursor = 'grab';
+        });
+        placeholder.on('mouseleave', () => {
+          this.stage!.container().style.cursor = 'default';
+        });
+
+        group.add(placeholder);
+        // keep placeholder behind labels but above seat fills
+        placeholder.moveToBottom();
+      } catch (e) {
+        // non-fatal
+      }
+    }
+
+  // Add sector name and seat count labels inside the sector - maintain readable size
     // Build display name with order number if defined
     const displayName = (sector.orderNumber != null && sector.orderNumber > 0)
       ? `${sector.orderNumber}. ${sector.name ?? 'Unnamed Sector'}`
@@ -1334,8 +1487,13 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       y: centroidY - 20, // Slightly above center
       width: labelWidth,
       align: 'center',
-      fontSize: 16, // Increased from 14 for better visibility at smaller scale
-      fill: '#000', // Pure black font color
+  fontSize: 16, // Increased from 14 for better visibility at smaller scale
+  fill: 'rgba(0,0,0,0.85)', // darker text for higher contrast
+  shadowColor: 'rgba(0,0,0,0.25)',
+  shadowBlur: 6,
+  shadowOffsetX: 0,
+  shadowOffsetY: 1,
+  shadowOpacity: 0.5,
       fontStyle: 'bold',
       listening: true // Enable clicking on labels
     });
@@ -1380,9 +1538,14 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       y: centroidY + 4, // Slightly below center
       width: labelWidth,
       align: 'center',
-      fontSize: 14, // Increased from 12 for better visibility
-      fill: '#000', // Pure black font color
-      opacity: 0.85,
+  fontSize: 14, // Increased from 12 for better visibility
+  fill: 'rgba(0,0,0,0.7)', // slightly lighter than name but still legible
+  shadowColor: 'rgba(0,0,0,0.18)',
+  shadowBlur: 4,
+  shadowOffsetX: 0,
+  shadowOffsetY: 1,
+  shadowOpacity: 0.45,
+  opacity: 0.95,
       listening: true // Enable clicking on labels
     });
 
@@ -1401,8 +1564,270 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     });
 
     group.add(seatsText);
-    // Cache labels for later live updates
+    // If the sector is very small, hide labels by default to avoid overlap/noise.
+    // Reveal labels on hover or when the sector is selected so they remain accessible.
     try {
+      const bboxWidth = (seatPositions.length > 0) ? (maxX - minX) : 0;
+      const bboxHeight = (seatPositions.length > 0) ? (maxY - minY) : 0;
+      const SMALL_WIDTH_PX = 120; // threshold width under which labels are hidden
+      const SMALL_HEIGHT_PX = 60; // threshold height under which labels are hidden
+      const isSmallSector = (seatPositions.length > 0) && (bboxWidth < SMALL_WIDTH_PX || bboxHeight < SMALL_HEIGHT_PX);
+
+      if (isSmallSector) {
+        // For very small sectors place the labels outside the sector to avoid
+        // overlapping the shape. Add a small leader line and a subtle background
+        // rectangle behind the texts so they remain readable.
+  // Base margin placing external label bubble away from sector edge.
+  // Slightly increased to avoid the bubble visually touching the shape.
+  const OUTER_LABEL_MARGIN = 22; // increased base gap for non-rotated small sectors
+        try {
+          // Position labels to the right of the sector bounding box by default
+          const outsideX = maxX + OUTER_LABEL_MARGIN;
+          const outsideY = centroidY - 10;
+
+          nameText.x(outsideX);
+          nameText.y(outsideY);
+          // Adjust width so the text wraps if needed but keep compact
+          nameText.width(Math.max(labelWidth, 80));
+
+          seatsText.x(outsideX);
+          seatsText.y(outsideY + (nameText.height() + 6));
+          seatsText.width(Math.max(labelWidth, 80));
+
+          // Create a small background rect to improve contrast
+          const bgPadding = 6;
+          const bgWidth = Math.max(nameText.width(), seatsText.width()) + bgPadding * 2;
+          const bgHeight = nameText.height() + seatsText.height() + bgPadding * 2 + 4;
+          const bgRect = new Konva.Rect({
+            x: outsideX - bgPadding,
+            y: outsideY - bgPadding,
+            width: bgWidth,
+            height: bgHeight,
+            fill: 'rgba(255,255,255,0.92)',
+            stroke: 'rgba(0,0,0,0.08)',
+            cornerRadius: 6,
+            listening: false,
+            name: 'sector-label-bg'
+          });
+
+          // Leader line from centroid to label background
+          const leader = new Konva.Line({
+            points: [centroidX, centroidY, outsideX - 6, outsideY + bgHeight / 2],
+            stroke: 'rgba(0,0,0,0.35)',
+            strokeWidth: 1,
+            lineCap: 'round',
+            lineJoin: 'round',
+            listening: false,
+            dash: [4, 4],
+            name: 'sector-label-leader'
+          });
+
+          // Add background and leader behind the texts
+          group.add(bgRect);
+          group.add(leader);
+          // Mark group so z-order logic can keep these labels unobstructed
+          try { group.setAttr('hasExternalLabel', true); } catch { /* ignore */ }
+          // Reparent label nodes to layer (absolute positioning) so other sector shapes never cover them
+          try {
+            if (this.layer) {
+              // hoisted placeholder so event handlers below can call updatePositions()
+              let updatePositions: () => void = () => {};
+              const externalNodes = [bgRect, leader, nameText, seatsText];
+              const originalLocals: Array<{node: Konva.Node, x: number, y: number}> = [];
+              externalNodes.forEach(n => {
+                // Store local coordinates before conversion
+                originalLocals.push({ node: n, x: n.x(), y: n.y() });
+              });
+              // Update absolute positions of external label nodes.
+              // For regular nodes we simply transform their stored local x/y.
+              // For the leader line we must also transform each point pair so the
+              // dashed connector remains anchored correctly when the sector rotates.
+              updatePositions = () => {
+                const t = group.getAbsoluteTransform().copy();
+                const zoom = this.zoomLevel();
+                originalLocals.forEach(rec => {
+                  if ((rec.node as any).hasName && (rec.node as any).hasName('sector-label-leader')) {
+                    const line = rec.node as Konva.Line;
+                    // Preserve original points (in group-local coordinates) once
+                    let basePoints: number[] = (line as any)._originalPoints;
+                    if (!basePoints) {
+                      basePoints = line.points().slice();
+                      (line as any)._originalPoints = basePoints.slice();
+                    }
+                    const absPoints: number[] = [];
+                    for (let i = 0; i < basePoints.length; i += 2) {
+                      const pt = t.point({ x: basePoints[i], y: basePoints[i + 1] });
+                      // convert from scaled (stage) coords to unscaled layer coords
+                      absPoints.push(pt.x / zoom, pt.y / zoom);
+                    }
+                    // When using absolute points we keep line at (0,0)
+                    line.points(absPoints);
+                    line.position({ x: 0, y: 0 });
+                  } else {
+                    const p = t.point({ x: rec.x, y: rec.y });
+                    // account for stage zoom when assigning absolute positions on the layer
+                    rec.node.x(p.x / zoom);
+                    rec.node.y(p.y / zoom);
+                  }
+                });
+                // For rotated sectors we reposition external labels using the rotated
+                // bounding box so name/seats texts never overlap. This overrides the
+                // simple transform above only for text/background/leader.
+                try {
+                  const rotation = group.rotation() || 0;
+                  if (rotation !== 0) {
+                    // Compute rotated bounding box corners
+                    const corners = [
+                      { x: minX, y: minY },
+                      { x: maxX, y: minY },
+                      { x: maxX, y: maxY },
+                      { x: minX, y: maxY }
+                    ].map(c => t.point(c));
+                    const absMinX = Math.min(...corners.map(c => c.x));
+                    const absMaxX = Math.max(...corners.map(c => c.x));
+                    const absMinY = Math.min(...corners.map(c => c.y));
+                    const absMaxY = Math.max(...corners.map(c => c.y));
+                    const absCentroid = t.point({ x: centroidX, y: centroidY });
+                    // convert scaled absolute values back to unscaled layer coordinates
+                    const absMinX_u = absMinX / zoom;
+                    const absMaxX_u = absMaxX / zoom;
+                    const absMinY_u = absMinY / zoom;
+                    const absMaxY_u = absMaxY / zoom;
+                    const absCentroid_u = { x: absCentroid.x / zoom, y: absCentroid.y / zoom };
+                    // Dynamic horizontal offset based on label width to avoid crowding
+                    const baseLabelWidth = Math.max(nameText.width(), seatsText.width());
+                    const dynamicMargin = Math.max(22, Math.min(48, baseLabelWidth / 3));
+                    const MIN_GAP = 20; // absolute minimum clear space
+                    let labelX = absMaxX_u + dynamicMargin;
+                    // Align vertically centered to sector
+                    const nameHeight = nameText.height();
+                    const seatsHeight = seatsText.height();
+                    const gap = 6;
+                    const totalLabelHeight = nameHeight + gap + seatsHeight;
+                    const startY = (absMinY_u + absMaxY_u) / 2 - totalLabelHeight / 2;
+                    nameText.position({ x: labelX, y: startY });
+                    seatsText.position({ x: labelX, y: startY + nameHeight + gap });
+                    // Resize background to fit (bgRect may be undefined if block changed)
+                    const bg = group.getStage()?.findOne((n: any) => n === bgRect) ? bgRect : bgRect; // keep ref
+                    if (bgRect) {
+                      const bgPad = 6;
+                      const bgW = Math.max(nameText.width(), seatsText.width()) + bgPad * 2;
+                      const bgH = totalLabelHeight + bgPad * 2 + 4;
+                      let bgX = labelX - bgPad;
+                      const currentGap = bgX - absMaxX_u; // space from sector bbox to bubble (unscaled)
+                      if (currentGap < MIN_GAP) {
+                        const shift = MIN_GAP - currentGap;
+                        labelX += shift;
+                        nameText.x(labelX);
+                        seatsText.x(labelX);
+                        bgX += shift;
+                      }
+                      bgRect.position({ x: bgX, y: startY - bgPad });
+                      bgRect.size({ width: bgW, height: bgH });
+                    }
+                    // Update leader line to connect centroid to middle of background
+                    if (leader) {
+                      const targetY = startY + totalLabelHeight / 2;
+                      const leaderEndX = (bgRect ? bgRect.x() : labelX) - 6;
+                      leader.points([absCentroid_u.x, absCentroid_u.y, leaderEndX, targetY]);
+                    }
+                  }
+                } catch { /* ignore rotated label reposition errors */ }
+              };
+              // Initial absolute conversion then move to layer
+              updatePositions();
+              try { group.setAttr('_updateExternalPositions', updatePositions); } catch { /* ignore */ }
+              externalNodes.forEach(n => {
+                n.setAttr('externalLabel', true);
+                // Tag with sectorId so we can clean them up when selection state changes
+                try { n.setAttr('labelSectorId', sector.sectorId); } catch { /* ignore */ }
+                // Remove from group and add to layer if still child of group
+                if (n.getParent() === group) {
+                  n.moveTo(this.layer!);
+                }
+              });
+              // Keep positions synced on drag / rotation
+              group.on('dragmove.externalLabel', () => { updatePositions(); this.layer?.batchDraw(); });
+              group.on('dragend.externalLabel', () => { updatePositions(); this.layer?.batchDraw(); });
+              group.on('rotationChange.externalLabel', () => { updatePositions(); this.layer?.batchDraw(); });
+              // Hover visibility handlers target reparented nodes now
+              group.on('mouseenter.showLabels', () => { 
+                // Always show labels on hover for small sectors when not selected (all modes)
+                if (!sector.isSelected) {
+                  try { (group.getAttr('_updateExternalPositions') as (()=>void)|undefined)?.(); } catch { /* ignore */ }
+                  externalNodes.forEach(n => n.visible(true));
+                  this.layer?.batchDraw();
+                }
+              });
+              group.on('mouseleave.showLabels', () => {
+                // Re-hide when pointer leaves if not selected
+                if (!sector.isSelected) {
+                  externalNodes.forEach(n => n.visible(false));
+                  this.layer?.batchDraw();
+                }
+              });
+              // Initial visibility (hide if not selected regardless of mode to reduce noise)
+              if (!sector.isSelected) {
+                externalNodes.forEach(n => n.visible(false));
+              } else {
+                externalNodes.forEach(n => n.visible(true));
+              }
+            }
+          } catch { /* ignore reparent errors */ }
+          // Ensure background/leader are behind texts using supported Konva calls
+          try {
+            // put leader at very bottom, then bgRect above it, then ensure texts are on top
+            leader.moveToBottom();
+            bgRect.moveToBottom();
+            // move bgRect up one so it's above the leader
+            bgRect.moveUp();
+            // ensure texts are above the background and leader
+            nameText.moveToTop();
+            seatsText.moveToTop();
+          } catch (e) {
+            // ignore ordering failures
+          }
+
+          // Keep labels visible only when selected; otherwise remain hidden until hover
+          if (sector.isSelected) {
+            nameText.visible(true);
+            seatsText.visible(true);
+          }
+
+          // Original behavior: hide by default (except if selected) and show on hover in all modes.
+          group.on('mouseenter.origShowLabels', () => {
+            if (!sector.isSelected) {
+              try { (group.getAttr('_updateExternalPositions') as (()=>void)|undefined)?.(); } catch { /* ignore */ }
+              nameText.visible(true); seatsText.visible(true); bgRect.visible(true); leader.visible(true); this.layer?.batchDraw();
+            }
+          });
+          group.on('mouseleave.origShowLabels', () => {
+            if (!sector.isSelected) {
+              nameText.visible(false); seatsText.visible(false); bgRect.visible(false); leader.visible(false); this.layer?.batchDraw();
+            }
+          });
+
+          // When not hovering but selected, ensure label remains visible
+          if (!sector.isSelected) {
+            nameText.visible(false);
+            seatsText.visible(false);
+            bgRect.visible(false);
+            leader.visible(false);
+          }
+
+        } catch (e) {
+          // Fallback: keep original behavior of hiding labels
+          nameText.visible(false);
+          seatsText.visible(false);
+        }
+      }
+
+      // Ensure selected sectors always display labels
+      if (sector.isSelected) {
+        nameText.visible(true);
+        seatsText.visible(true);
+      }
+
       if (sector.sectorId != null) this.sectorLabels.set(sector.sectorId, { name: nameText, seats: seatsText });
     } catch (e) { /* ignore labeling cache errors */ }
 
@@ -1540,6 +1965,21 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
     
     return group;
+  }
+
+  // Remove any external label nodes (reparented to layer) associated with a sector
+  private removeExternalLabelNodesForSector(sectorId: number): void {
+    if (!this.layer) return;
+    try {
+      const nodes = this.layer.find((n: any) => {
+        try {
+          return n.getAttr && n.getAttr('externalLabel') && n.getAttr('labelSectorId') === sectorId;
+        } catch { return false; }
+      });
+      nodes.forEach(n => { try { (n as Konva.Node).destroy(); } catch { /* ignore */ } });
+      // After removal redraw layer (safe guard)
+      try { this.layer.batchDraw(); } catch { /* ignore */ }
+    } catch { /* ignore */ }
   }
 
   // Mark that a full render is needed
@@ -2216,7 +2656,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     });
 
     // single draw at end
-    this.layer.batchDraw();
+  this.fixLayerZOrder();
+  this.layer.batchDraw();
   }
 
   // Restrict canvas panning so the grid always covers the visible area
@@ -2374,6 +2815,10 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     
     // Add this line to trigger a redraw
     this.markNeedsFullRender();
+
+  // After the reactive effect triggers a full render, schedule label reposition.
+  // setTimeout(0) lets the render effect run first.
+  try { setTimeout(() => { this.repositionExternalLabels(); }, 0); } catch { /* ignore */ }
     
     console.log('Selected sectors count:', this.selectedSectors().length);
   }  

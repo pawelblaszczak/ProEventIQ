@@ -48,6 +48,7 @@ interface EditableSector extends Sector {
   duplicatedFromSectorId?: number | null;
 }
 
+
 // Silence console.log for this component to reduce noisy output in browser console.
 // We intentionally keep console.error and console.warn active so real issues still surface.
 ;(console as any).log = () => {};
@@ -161,6 +162,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   private konvaInitialized = false;
   private needsFullRender = false; // Flag to control when full re-render is needed
   private seatTooltip: Konva.Label | null = null; // Tooltip for seat information
+  // Simplified: we permanently disable expensive shadows; other visuals left intact.
   // Reservation seat coloring helpers
   // Unallocated seats should render white
   private readonly defaultSeatColor = '#f0f0f0';
@@ -336,6 +338,10 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     // Add keyboard event listeners
     window.addEventListener('keydown', this.handleKeyDown);
     window.addEventListener('keyup', this.handleKeyUp);
+
+    // Step 1: immediately disable the first feature (shadows) for baseline comparison
+  // Apply shadow disabling once (no dynamic flags retained)
+  console.log('[Perf] Shadows disabled permanently for performance');
   }  ngAfterViewInit() {
     // Konva initialization will be handled by the effect when venue loads
     // Use multiple timeouts to ensure proper layout
@@ -1321,18 +1327,19 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       if (hull.length > 2) {
         const points = hull.flatMap(p => [p.x, p.y]);
         const strokeColor = this.getSectorStrokeColor(sector);
-        const fillColor = this.getSectorColor(sector) + '33'; // semi-transparent fill
+  const fillBase = this.getSectorColor(sector);
+  const fillColor = fillBase + '33';
         
         outline = new Konva.Line({
           points,
           closed: true,
           stroke: strokeColor,
           strokeWidth: sector.isSelected ? 3 : 2,
-          fill: fillColor, // semi-transparent fill
-          shadowColor: sector.isSelected ? 'rgba(33, 150, 243, 0.5)' : 'rgba(0, 0, 0, 0.3)',
-          shadowBlur: sector.isSelected ? 20 : 10,
-          shadowOffsetX: 5,
-          shadowOffsetY: 5,
+          fill: fillColor,
+          shadowColor: undefined,
+          shadowBlur: 0,
+          shadowOffsetX: 0,
+          shadowOffsetY: 0,
           name: 'sector-outline',
           listening: true // allow pointer events
         });
@@ -1355,9 +1362,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     }
 
     // Add selection indicators if selected
-    if (sector.isSelected) {
-      this.addSelectionIndicators(group);
-    }
+  if (sector.isSelected) this.addSelectionIndicators(group);
 
     // Calculate bounding box width for label centering - ensure labels are visible even at smaller scale
   let labelWidth = 140; // Increased from 120 for better visibility
@@ -1400,7 +1405,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
     // Small-sector placeholder: ensure sectors with 1-2 seats are visible and clickable
     // (because convex-hull outline requires >=3 points and labels may be hidden for very small sectors)
-      if (seatPositions.length > 0 && seatPositions.length <= 2) {
+  if (seatPositions.length > 0 && seatPositions.length <= 2) {
       try {
         // compute bbox to size the placeholder reasonably
         const pxMin = Math.min(...seatPositions.map(p => p.x));
@@ -1489,11 +1494,11 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       align: 'center',
   fontSize: 16, // Increased from 14 for better visibility at smaller scale
   fill: 'rgba(0,0,0,0.85)', // darker text for higher contrast
-  shadowColor: 'rgba(0,0,0,0.25)',
-  shadowBlur: 6,
+  shadowColor: undefined,
+  shadowBlur: 0,
   shadowOffsetX: 0,
-  shadowOffsetY: 1,
-  shadowOpacity: 0.5,
+  shadowOffsetY: 0,
+  shadowOpacity: 0,
       fontStyle: 'bold',
       listening: true // Enable clicking on labels
     });
@@ -1540,11 +1545,11 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       align: 'center',
   fontSize: 14, // Increased from 12 for better visibility
   fill: 'rgba(0,0,0,0.7)', // slightly lighter than name but still legible
-  shadowColor: 'rgba(0,0,0,0.18)',
-  shadowBlur: 4,
+  shadowColor: undefined,
+  shadowBlur: 0,
   shadowOffsetX: 0,
-  shadowOffsetY: 1,
-  shadowOpacity: 0.45,
+  shadowOffsetY: 0,
+  shadowOpacity: 0,
   opacity: 0.95,
       listening: true // Enable clicking on labels
     });
@@ -1573,7 +1578,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       const SMALL_HEIGHT_PX = 60; // threshold height under which labels are hidden
       const isSmallSector = (seatPositions.length > 0) && (bboxWidth < SMALL_WIDTH_PX || bboxHeight < SMALL_HEIGHT_PX);
 
-      if (isSmallSector) {
+  if (isSmallSector) {
         // For very small sectors place the labels outside the sector to avoid
         // overlapping the shape. Add a small leader line and a subtle background
         // rectangle behind the texts so they remain readable.
@@ -1873,7 +1878,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
       const currentZoom = this.zoomLevel();
       const seatsVisible = currentZoom >= 1.79; // same threshold as seats
-      if (this.mode === 'reservation-preview' && !seatsVisible && seatPositions && seatPositions.length > 0) {
+  if (this.mode === 'reservation-preview' && !seatsVisible && seatPositions && seatPositions.length > 0) {
         // Compute convex hull for clipping region
         const hull = (seatPositions.length > 2) ? this.getConvexHull(seatPositions) : seatPositions;
 

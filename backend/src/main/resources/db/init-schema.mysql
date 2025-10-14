@@ -12,7 +12,7 @@ DROP TABLE IF EXISTS participant;
 
 -- Create venue table
 CREATE TABLE venue (
-    venue_id INT AUTO_INCREMENT PRIMARY KEY,
+    venue_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_name VARCHAR(100) NOT NULL,
     name VARCHAR(100) NOT NULL,
     country VARCHAR(100) NOT NULL,
@@ -27,8 +27,8 @@ CREATE TABLE venue (
 
 -- Create sector table
 CREATE TABLE sector (
-    sector_id INT AUTO_INCREMENT PRIMARY KEY,
-    venue_id INT NOT NULL,
+    sector_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    venue_id BIGINT NOT NULL,
     name VARCHAR(100) NOT NULL,
     order_number INT,
     position_x FLOAT,
@@ -43,8 +43,8 @@ CREATE TABLE sector (
 
 -- Create seat_row table
 CREATE TABLE seat_row (
-    seat_row_id INT AUTO_INCREMENT PRIMARY KEY,
-    sector_id INT NOT NULL,
+    seat_row_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    sector_id BIGINT NOT NULL,
     name VARCHAR(50) NOT NULL,
     order_number INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -55,8 +55,8 @@ CREATE TABLE seat_row (
 
 -- Create seat table
 CREATE TABLE seat (
-    seat_id INT AUTO_INCREMENT PRIMARY KEY,
-    seat_row_id INT NOT NULL,
+    seat_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    seat_row_id BIGINT NOT NULL,
     order_number INT NOT NULL,
     position_x FLOAT,
     position_y FLOAT,
@@ -77,7 +77,7 @@ CREATE INDEX idx_seat_status ON seat(status);
 
 -- Create event_show table
 CREATE TABLE event_show (
-    show_id INT AUTO_INCREMENT PRIMARY KEY,
+    show_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_name VARCHAR(100) NOT NULL,
     name VARCHAR(255) NOT NULL,
     thumbnail MEDIUMBLOB,
@@ -95,10 +95,10 @@ CREATE INDEX idx_show_age_range ON event_show(age_from, age_to);
 
 -- Create event table
 CREATE TABLE event (
-    event_id INT AUTO_INCREMENT PRIMARY KEY,
+    event_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_name VARCHAR(100) NOT NULL,
-    show_id INT NOT NULL,
-    venue_id INT NOT NULL,
+    show_id BIGINT NOT NULL,
+    venue_id BIGINT NOT NULL,
     date_time DATETIME NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -113,8 +113,8 @@ CREATE INDEX idx_event_date_time ON event(date_time);
 
 -- Create participant table
 CREATE TABLE participant (
-    participant_id INT AUTO_INCREMENT PRIMARY KEY,
-    event_id INT NOT NULL,
+    participant_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    event_id BIGINT NOT NULL,
     name VARCHAR(255) NOT NULL,
     address VARCHAR(255),
     seat_color VARCHAR(7),
@@ -139,7 +139,7 @@ BEGIN
   RETURN IFNULL(total, 0);
 END$$
 
-CREATE FUNCTION get_venue_seat_count(p_venue_id INT) RETURNS int
+CREATE FUNCTION get_venue_seat_count(p_venue_id BIGINT) RETURNS int
     READS SQL DATA
     DETERMINISTIC
 BEGIN
@@ -153,7 +153,7 @@ BEGIN
     RETURN seat_count;
 END$$
 
-CREATE FUNCTION get_sector_seat_count(p_sector_id INT) RETURNS INT
+CREATE FUNCTION get_sector_seat_count(p_sector_id BIGINT) RETURNS INT
     READS SQL DATA
     DETERMINISTIC
 BEGIN
@@ -169,10 +169,10 @@ END$$
 DELIMITER ;
 
 CREATE TABLE seat_reservation (
-    reservation_id INT AUTO_INCREMENT PRIMARY KEY,
-    participant_id INT NOT NULL,
-    seat_id INT NOT NULL,
-    event_id INT NOT NULL,
+    reservation_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    participant_id BIGINT NOT NULL,
+    seat_id BIGINT NOT NULL,
+    event_id BIGINT NOT NULL,
     reserved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (participant_id) REFERENCES participant(participant_id) ON DELETE CASCADE,
     FOREIGN KEY (seat_id) REFERENCES seat(seat_id) ON DELETE CASCADE,
@@ -196,12 +196,12 @@ CREATE TABLE user_details (
 
 DELIMITER $$
 
-CREATE FUNCTION has_allocation_errors(p_event_id INT) RETURNS VARCHAR(1)
+CREATE FUNCTION has_allocation_errors(p_event_id BIGINT) RETURNS VARCHAR(1)
     READS SQL DATA
     DETERMINISTIC
 BEGIN
     DECLARE v_total_tickets INT DEFAULT 0;
-    DECLARE v_venue_id INT;
+    DECLARE v_venue_id BIGINT;
     DECLARE v_venue_seats INT DEFAULT 0;
     DECLARE v_allocated INT DEFAULT 0;
     DECLARE v_has_error BOOLEAN DEFAULT FALSE;
@@ -260,7 +260,7 @@ DELIMITER ;
 --            - Uses temporary tables for mapping old->new seat_row IDs
 -- =============================================================
 DELIMITER $$
-CREATE PROCEDURE copy_sector_seats(IN p_source_sector_id INT, IN p_destination_sector_id INT)
+CREATE PROCEDURE copy_sector_seats(IN p_source_sector_id BIGINT, IN p_destination_sector_id BIGINT)
 MODIFIES SQL DATA
 BEGIN
     -- Prevent accidental self-copy

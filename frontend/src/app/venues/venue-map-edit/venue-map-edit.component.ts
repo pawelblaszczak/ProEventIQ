@@ -2043,6 +2043,34 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       // ignore
     }
 
+    // Also update any cached external label nodes that were reparented to the layer
+    try {
+      const cached = this.sectorLabels.get(sectorId);
+      if (cached) {
+        const displayNameExternal = (sector.orderNumber != null && sector.orderNumber > 0)
+          ? `${sector.orderNumber}. ${sector.name ?? 'Unnamed Sector'}`
+          : (sector.name ?? 'Unnamed Sector');
+        try { cached.name.text(displayNameExternal); } catch { /* ignore */ }
+
+        // Compute seat count for external label text similar to in-label logic
+        const seatNodes = this.sectorSeats.get(sectorId) ?? [];
+        const seatIds: number[] = seatNodes.map(s => s.getAttr('seatId')).filter((id: any) => typeof id === 'number');
+        const totalSeatsForLabel = seatIds.length > 0 ? seatIds.length : (sector.numberOfSeats ?? 0);
+        const seatsLabelExternal = this.isReservationLike()
+          ? `Seats: ${this.computeAllocatedSeatsForSeatIds(seatIds)} / ${totalSeatsForLabel}`
+          : `Seats: ${totalSeatsForLabel}`;
+        try { cached.seats.text(seatsLabelExternal); } catch { /* ignore */ }
+
+        // If the group stored an update function for external label absolute positions, call it
+        try {
+          const updateFn = (group && (group.getAttr && group.getAttr('_updateExternalPositions')));
+          if (typeof updateFn === 'function') {
+            try { (updateFn as Function)(); } catch { /* ignore per-sector */ }
+          }
+        } catch { /* ignore */ }
+      }
+    } catch (e) { /* ignore external label refresh errors */ }
+
     // Update outline appearance if exists
     try {
       const outline = group.findOne('.sector-outline') as Konva.Line;

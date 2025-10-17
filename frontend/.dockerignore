@@ -1,0 +1,22 @@
+# Node dependencies
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Angular build output
+dist
+.tmp
+
+# IDE / OS files
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml

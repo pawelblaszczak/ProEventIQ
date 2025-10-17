@@ -1,8 +1,8 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://your-production-domain.com/api',
+  apiUrl: 'https://api.proeventiq.pl', // Twój backend
   keycloak: {
-    url: 'https://your-production-keycloak',
+    url: 'https://auth.proeventiq.pl', // Twój Keycloak
     realm: 'proeventiq',
     clientId: 'proeventiq-frontend'
   }

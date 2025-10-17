@@ -1,0 +1,22 @@
+# Katalogi i pliki, których nie chcemy w obrazie Dockera
+
+# Frontend (niepotrzebny dla backendu)
+frontend/
+
+# Składniki builda Mavena
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+
+# Git
+.git/
+.gitignore
+
+# IDE i systemowe pliki
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Inne śmieci
+*.log

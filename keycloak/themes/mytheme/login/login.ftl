@@ -1,6 +1,8 @@
 <#-- Custom minimal Keycloak login template for mytheme -->
 <!DOCTYPE html>
-<html lang="${locale.currentLanguageTag!"en"}">
+<#-- locale object is not always provided (e.g. when i18n disabled); guard it -->
+<#assign lang = (locale.currentLanguageTag)!"en"?if_exists>
+<html lang="${lang}">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />

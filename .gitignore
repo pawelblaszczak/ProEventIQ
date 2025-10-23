@@ -78,3 +78,7 @@ backend/src/main/java/dev/knightcore/proeventiq/api/controller/
 .openapi-generator-ignore
 .openapitools.json
 openapitools.json
+
+# Docker tar archives
+proeventiq-backend.tar
+frontend/proeventiq-frontend.tar

@@ -21,6 +21,15 @@ import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
+import org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory;
+import javax.imageio.ImageIO;
+import javax.imageio.spi.IIORegistry;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import org.apache.batik.transcoder.TranscoderInput;
+import org.apache.batik.transcoder.TranscoderException;
+import org.apache.batik.transcoder.TranscoderOutput;
+import org.apache.batik.transcoder.image.PNGTranscoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -39,6 +48,17 @@ public class ReportService {
     
     private static final Logger log = LoggerFactory.getLogger(ReportService.class);
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    
+    // Static initializer to ensure ImageIO plugins (including WebP) are discovered
+    static {
+        try {
+            ImageIO.scanForPlugins();
+            log.info("ImageIO plugins scanned - available readers: {}", 
+                String.join(", ", ImageIO.getReaderFormatNames()));
+        } catch (Exception e) {
+            log.warn("Failed to scan ImageIO plugins", e);
+        }
+    }
     
     private final EventRepository eventRepository;
     private final ParticipantRepository participantRepository;
@@ -205,7 +225,20 @@ public class ReportService {
                 // Add organizer logo on the right side, aligned with the title
                 if (organizer != null && organizer.getThumbnail() != null && organizer.getThumbnailContentType() != null) {
                     try {
-                        PDImageXObject logoImage = PDImageXObject.createFromByteArray(document, organizer.getThumbnail(), "organizer_logo");
+                        // Try direct PDFBox embed first
+                        PDImageXObject logoImage;
+                        try {
+                            logoImage = PDImageXObject.createFromByteArray(document, organizer.getThumbnail(), "organizer_logo");
+                        } catch (Exception inner) {
+                            // Fallback: try decoding with ImageIO and wrap with LosslessFactory
+                            BufferedImage buffered = tryDecodeImage(organizer.getThumbnail());
+                            if (buffered != null) {
+                                logoImage = LosslessFactory.createFromImage(document, buffered);
+                            } else {
+                                throw new IOException("Could not decode organizer thumbnail (ImageIO + SVG fallback failed)");
+                            }
+                        }
+
                         float logoSize = 80; // Enlarged logo size
                         float logoX = pageWidth - margin - logoSize; // Right aligned
                         float logoY = titleYPosition - logoSize + 15; // Aligned with title
@@ -650,14 +683,32 @@ public class ReportService {
         
         // Draw thumbnail placeholder (rectangle with "THUMBNAIL" text)
         if (show.getThumbnail() != null && show.getThumbnail().length > 0) {
+            log.info("Show thumbnail found: {} bytes, content type: {}", show.getThumbnail().length, show.getThumbnailContentType());
             try {
-                PDImageXObject thumbnail = PDImageXObject.createFromByteArray(document, show.getThumbnail(), "thumbnail");
+                PDImageXObject thumbnail;
+                try {
+                    thumbnail = PDImageXObject.createFromByteArray(document, show.getThumbnail(), "thumbnail");
+                    log.info("Successfully created PDImageXObject from thumbnail bytes");
+                } catch (Exception inner) {
+                    log.warn("PDImageXObject.createFromByteArray failed: {}, attempting ImageIO fallback", inner.getMessage());
+                    // Fallback to ImageIO + LosslessFactory for formats not supported directly
+                            BufferedImage buffered = tryDecodeImage(show.getThumbnail());
+                            if (buffered != null) {
+                                log.info("Successfully decoded image via ImageIO/SVG fallback: {}x{}", buffered.getWidth(), buffered.getHeight());
+                                thumbnail = LosslessFactory.createFromImage(document, buffered);
+                            } else {
+                                throw new IOException("Could not decode show thumbnail (ImageIO + SVG fallback failed)");
+                            }
+                }
+
                 contentStream.drawImage(thumbnail, thumbnailX, yPosition - thumbnailSize, thumbnailSize, thumbnailSize);
+                log.info("Successfully drew thumbnail image in PDF");
             } catch (Exception e) {
-                log.warn("Could not load show thumbnail, using placeholder: {}", e.getMessage());
+                log.error("Could not load show thumbnail, using placeholder. Error: {}", e.getMessage(), e);
                 drawThumbnailPlaceholder(contentStream, thumbnailX, yPosition - thumbnailSize, thumbnailSize);
             }
         } else {
+            log.warn("Show thumbnail is null or empty, using placeholder");
             drawThumbnailPlaceholder(contentStream, thumbnailX, yPosition - thumbnailSize, thumbnailSize);
         }
         
@@ -708,6 +759,44 @@ public class ReportService {
         contentStream.newLineAtOffset(x + 15, y + size/2 - 4);
         contentStream.showText("THUMBNAIL");
         contentStream.endText();
+    }
+
+    /**
+     * Try to decode arbitrary image bytes to a BufferedImage. This attempts ImageIO first,
+     * and if that fails, attempts to rasterize SVG bytes using Batik's PNGTranscoder.
+     */
+    private BufferedImage tryDecodeImage(byte[] data) {
+        if (data == null || data.length == 0) return null;
+
+        // Try ImageIO first (handles PNG, JPEG, GIF, etc.)
+        try (ByteArrayInputStream bais = new ByteArrayInputStream(data)) {
+            BufferedImage img = ImageIO.read(bais);
+            if (img != null) return img;
+        } catch (IOException ignored) {}
+
+        // If ImageIO could not decode, try to treat as SVG and rasterize via Batik
+        try {
+            return rasterizeSvgToPngBufferedImage(data);
+        } catch (Exception e) {
+            log.debug("SVG rasterization failed: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private BufferedImage rasterizeSvgToPngBufferedImage(byte[] svgBytes) throws TranscoderException, IOException {
+        if (svgBytes == null || svgBytes.length == 0) return null;
+        PNGTranscoder transcoder = new PNGTranscoder();
+        try (ByteArrayInputStream bais = new ByteArrayInputStream(svgBytes);
+             java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream()) {
+            TranscoderInput input = new TranscoderInput(bais);
+            TranscoderOutput output = new TranscoderOutput(baos);
+            transcoder.transcode(input, output);
+            baos.flush();
+            byte[] pngBytes = baos.toByteArray();
+            try (ByteArrayInputStream pngIn = new ByteArrayInputStream(pngBytes)) {
+                return ImageIO.read(pngIn);
+            }
+        }
     }
     
     private String[] wrapText(String text, float maxWidth, PDFont font, int fontSize) {

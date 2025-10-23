@@ -14,6 +14,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatDialog } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Event as ApiEvent } from '../../api/model/event';
+import { Show } from '../../api/model/show';
 import { Venue } from '../../api/model/venue';
 import { ProEventIQService } from '../../api/api/pro-event-iq.service';
 import { ConfirmationDialogService, ColorService } from '../../shared';
@@ -58,6 +59,7 @@ export class EventDetailComponent implements OnInit {
   private readonly eventId = signal<number | null>(null);
   public event = signal<ApiEvent | null>(null);
   public venue = signal<Venue | null>(null);
+  public showThumbnail = signal<string | null>(null);
   public loading = signal(true);
   public error = signal<string | null>(null);
   public participants = signal<Participant[]>([]);
@@ -174,6 +176,24 @@ export class EventDetailComponent implements OnInit {
           this.loadVenue(event.venueId);
         } else {
           this.loading.set(false);
+        }
+        // If the event references a show, try to load its thumbnail for the header
+        if (event.showId) {
+          this.eventApi.getShowById(event.showId).subscribe({
+            next: (show: Show) => {
+              if (show && show.thumbnail && show.thumbnailContentType) {
+                this.showThumbnail.set(`data:${show.thumbnailContentType};base64,${show.thumbnail}`);
+              } else {
+                this.showThumbnail.set(null);
+              }
+            },
+            error: (err) => {
+              console.error('Error loading show for thumbnail:', err);
+              this.showThumbnail.set(null);
+            }
+          });
+        } else {
+          this.showThumbnail.set(null);
         }
       },
       error: (error: any) => {

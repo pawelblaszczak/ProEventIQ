@@ -126,13 +126,11 @@ public class ShowService {
 
     private ShowEntity fromInput(ShowInput input) {
         ShowEntity entity = new ShowEntity();
-        entity.setUserName(input.getUserName());
         updateShowEntityFromInput(entity, input);
         return entity;
     }
 
     private void updateShowEntityFromInput(ShowEntity entity, ShowInput input) {
-        entity.setUserName(input.getUserName());
         entity.setName(input.getName());
         entity.setDescription(input.getDescription());
         entity.setAgeFrom(input.getAgeFrom());

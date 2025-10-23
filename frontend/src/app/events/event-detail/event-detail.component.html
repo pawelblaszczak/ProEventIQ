@@ -29,7 +29,7 @@
 <!-- Event Details -->
 <div *ngIf="event()" class="event-details-section animate-fade-in">
   <mat-card appearance="outlined" class="event-details-card mat-elevation-z3">
-    <div class="event-hero" [ngClass]="{'has-image': false}">
+    <div class="event-hero" [ngClass]="{'has-image': showThumbnail()}">
       <div class="event-header-content">
         <h1 class="event-show-name">{{ event()?.showName }}</h1>
         <h2 class="event-venue">
@@ -58,7 +58,10 @@
         </div>
       </div>
       
-      <div class="event-image-placeholder">
+      <div *ngIf="showThumbnail()" class="event-image-container">
+        <img class="event-hero-image" [src]="showThumbnail()" [alt]="event()?.showName + ' thumbnail'">
+      </div>
+      <div *ngIf="!showThumbnail()" class="event-image-placeholder">
         <mat-icon class="placeholder-icon" style="font-size: 72px; color: #bdbdbd;">image_not_supported</mat-icon>
         <p>No image available</p>
       </div>

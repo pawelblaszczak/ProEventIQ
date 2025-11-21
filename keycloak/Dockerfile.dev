@@ -1,0 +1,16 @@
+# Dev Dockerfile: bakes themes and keystore into image for local dev (HTTPS on 8443)
+FROM quay.io/keycloak/keycloak:26.3.2
+
+# Copy themes and keystore into the image
+COPY themes /opt/keycloak/themes
+COPY keycloak.jks /opt/keycloak/keystores/keycloak.jks
+
+# Default admin credentials (override with env at runtime in production)
+ENV KEYCLOAK_ADMIN=admin
+ENV KEYCLOAK_ADMIN_PASSWORD=admin
+
+# Expose HTTPS port
+EXPOSE 8443
+
+# Start Keycloak with HTTPS using the provided keystore. Replace the password if your keystore uses another one.
+CMD ["start", "--https-port=8443", "--https-key-store-file=/opt/keycloak/keystores/keycloak.jks", "--https-key-store-password=changeit", "--spi-theme-cache-themes=false", "--spi-theme-cache-templates=false"]

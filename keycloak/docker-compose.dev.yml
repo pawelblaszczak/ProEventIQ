@@ -1,0 +1,22 @@
+version: '3.8'
+services:
+  keycloak:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    image: proeventiq/keycloak-dev:latest
+    ports:
+      - "8444:8443"
+    environment:
+      - KC_BOOTSTRAP_ADMIN_USERNAME=admin
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=admin
+      # The keystore password used in the Dockerfile.dev command. Change if your keystore uses another password.
+      - KEYSTORE_PASSWORD=orlorl
+      - KC_HOSTNAME=localhost
+      - KC_HOSTNAME_STRICT=false
+    volumes:
+      # Mount local themes for iterative development (overrides baked themes)
+      - ./themes:/opt/keycloak/themes:ro
+      # If you prefer not to bake the keystore into the image, mount it here instead and remove COPY in Dockerfile.dev
+      - ./keycloak.jks:/opt/keycloak/keystores/keycloak.jks:ro
+    command: ["start", "--https-port=8443", "--https-key-store-file=/opt/keycloak/keystores/keycloak.jks", "--https-key-store-password=orlorl"]

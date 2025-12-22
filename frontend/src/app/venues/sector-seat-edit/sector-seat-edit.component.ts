@@ -1048,18 +1048,10 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
             currentRowsLength: currentRows.length
           });
           
-          // Use the calculated spacing to place the new row at the same distance
-          // from the last row as the last row is from the before-last row
-          let actualSpacing = rowSpacing;
+          // Use a consistent spacing based on gridSize
+          const actualSpacing = rowSpacing >= 0 ? this.gridSize : -this.gridSize;
           
-          // Ensure minimum spacing
-          const minSpacing = this.gridSize * 2;
-          if (Math.abs(actualSpacing) < minSpacing) {
-            // If spacing is too small, use minimum spacing but preserve direction
-            actualSpacing = actualSpacing >= 0 ? minSpacing : -minSpacing;
-          }
-          
-          // Place new row continuing in the same direction and distance
+          // Place new row continuing in the same direction with gridSize spacing
           baseY = lastRowY + actualSpacing;
           
           console.log('Calculated baseY:', baseY, 'using spacing:', actualSpacing, 'direction:', actualSpacing >= 0 ? 'down' : 'up');
@@ -1072,11 +1064,11 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
         // Only one previous row exists - place new row below with small distance
         const prevRow = currentRows[0];
         if (prevRow.seats && prevRow.seats.length > 0) {
-          const smallDistance = this.gridSize * 2; // Small standard distance
+          const smallDistance = this.gridSize; // Small standard distance
           baseY = (prevRow.seats[0].position?.y ?? 0) + smallDistance;
           console.log('Single row baseY:', baseY, 'with small distance:', smallDistance);
         } else {
-          baseY = this.gridSize * 2;
+          baseY = this.gridSize;
           console.log('Single row baseY (no seats):', baseY);
         }
       } else {
@@ -1150,7 +1142,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
       let baseX = 60; // Default X position
       let baseY = 60; // Default Y position
       let seatSpacing = this.gridSize;
-      let rowSpacing = this.gridSize * 2;
+      let rowSpacing = this.gridSize;
 
       if (currentRows.length > 0) {
         const lastRow = currentRows[currentRows.length - 1];
@@ -1174,8 +1166,9 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
               const beforeLastRowY = beforeLastRow.seats[0].position?.y ?? 0;
               const calculatedSpacing = lastRowY - beforeLastRowY;
               
+              // Keep row spacing aligned to gridSize; do not exceed it automatically
               if (Math.abs(calculatedSpacing) >= this.gridSize) {
-                rowSpacing = calculatedSpacing;
+                rowSpacing = calculatedSpacing >= 0 ? this.gridSize : -this.gridSize;
               }
             }
           }

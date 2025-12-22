@@ -57,6 +57,19 @@ public class VenueController implements VenuesApi {
         Venue created = venueService.addVenue(venueInput);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
+
+    @Override
+    public ResponseEntity<Venue> importVenue(Venue venue) {
+        try {
+            if (venue.getVenueId() == null) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            }
+            Venue imported = venueService.importVenue(venue);
+            return ResponseEntity.status(HttpStatus.CREATED).body(imported);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
     
     @Override
     public ResponseEntity<Void> deleteVenue(Long venueId) {

@@ -4,6 +4,9 @@ import dev.knightcore.proeventiq.api.model.Venue;
 import dev.knightcore.proeventiq.api.model.VenueInput;
 import dev.knightcore.proeventiq.api.model.VenueOption;
 import dev.knightcore.proeventiq.entity.VenueEntity;
+import dev.knightcore.proeventiq.entity.SectorEntity;
+import dev.knightcore.proeventiq.entity.SeatRowEntity;
+import dev.knightcore.proeventiq.entity.SeatEntity;
 import dev.knightcore.proeventiq.repository.VenueRepository;
 import dev.knightcore.proeventiq.api.model.Sector;
 import dev.knightcore.proeventiq.api.model.SeatRow;
@@ -97,6 +100,43 @@ public class VenueService {
         VenueEntity saved = venueRepository.save(entity);
         return toDto(saved, true);
     }    
+
+    @Transactional
+    public Venue importVenue(Venue venue) {
+        String currentUsername = keycloakUserService.getCurrentUsername()
+            .orElseThrow(() -> new IllegalStateException("User not authenticated"));
+
+        if (venue.getVenueId() == null) {
+            throw new IllegalArgumentException("venueId is required for import");
+        }
+
+        VenueEntity entity = venueRepository.findWithSectorsByVenueId(venue.getVenueId())
+            .filter(e -> currentUsername.equals(e.getUserName()))
+            .orElseThrow(() -> new IllegalArgumentException("Venue not found or access denied"));
+
+        // Replace existing sectors with those from the imported venue,
+        // keeping main venue properties (name, country, etc.) unchanged.
+        //
+        // IMPORTANT: For collections with orphanRemoval=true we must not
+        // replace the collection instance itself, only mutate its contents.
+        List<SectorEntity> targetSectors = entity.getSectors();
+        if (targetSectors == null) {
+            targetSectors = new ArrayList<>();
+            entity.setSectors(targetSectors);
+        } else {
+            targetSectors.clear();
+        }
+
+        if (venue.getSectors() != null && !venue.getSectors().isEmpty()) {
+            for (Sector sectorDto : venue.getSectors()) {
+                SectorEntity sectorEntity = fromSectorDto(sectorDto, entity);
+                targetSectors.add(sectorEntity);
+            }
+        }
+
+        VenueEntity saved = venueRepository.save(entity);
+        return toDto(saved, true);
+    }
     
     @Transactional
     public Optional<Venue> updateVenue(Long venueId, VenueInput input) {
@@ -160,6 +200,72 @@ public class VenueService {
         updateVenueEntityFromInput(entity, input);
         return entity;
     }    
+
+    private SectorEntity fromSectorDto(Sector sectorDto, VenueEntity venueEntity) {
+        SectorEntity sectorEntity = new SectorEntity();
+        sectorEntity.setName(sectorDto.getName());
+        sectorEntity.setOrderNumber(sectorDto.getOrderNumber());
+        sectorEntity.setRotation(sectorDto.getRotation());
+        sectorEntity.setPriceCategory(sectorDto.getPriceCategory());
+        if (sectorDto.getStatus() != null) {
+            sectorEntity.setStatus(sectorDto.getStatus().getValue());
+        }
+
+        if (sectorDto.getPosition() != null) {
+            SectorInputPosition position = sectorDto.getPosition();
+            sectorEntity.setPositionX(position.getX() != null ? position.getX().floatValue() : null);
+            sectorEntity.setPositionY(position.getY() != null ? position.getY().floatValue() : null);
+        }
+
+        sectorEntity.setVenue(venueEntity);
+
+        if (sectorDto.getRows() != null && !sectorDto.getRows().isEmpty()) {
+            List<SeatRowEntity> rowEntities = new ArrayList<>();
+            for (SeatRow rowDto : sectorDto.getRows()) {
+                SeatRowEntity rowEntity = fromSeatRowDto(rowDto, sectorEntity);
+                rowEntities.add(rowEntity);
+            }
+            sectorEntity.setSeatRows(rowEntities);
+        }
+
+        return sectorEntity;
+    }
+
+    private SeatRowEntity fromSeatRowDto(SeatRow rowDto, SectorEntity sectorEntity) {
+        SeatRowEntity rowEntity = new SeatRowEntity();
+        rowEntity.setName(rowDto.getName());
+        rowEntity.setOrderNumber(rowDto.getOrderNumber());
+        rowEntity.setSector(sectorEntity);
+
+        if (rowDto.getSeats() != null && !rowDto.getSeats().isEmpty()) {
+            List<SeatEntity> seatEntities = new ArrayList<>();
+            for (Seat seatDto : rowDto.getSeats()) {
+                SeatEntity seatEntity = fromSeatDto(seatDto, rowEntity);
+                seatEntities.add(seatEntity);
+            }
+            rowEntity.setSeats(seatEntities);
+        }
+
+        return rowEntity;
+    }
+
+    private SeatEntity fromSeatDto(Seat seatDto, SeatRowEntity rowEntity) {
+        SeatEntity seatEntity = new SeatEntity();
+        seatEntity.setOrderNumber(seatDto.getOrderNumber());
+        seatEntity.setPriceCategory(seatDto.getPriceCategory());
+        if (seatDto.getStatus() != null) {
+            seatEntity.setStatus(seatDto.getStatus().getValue());
+        }
+
+        if (seatDto.getPosition() != null) {
+            SectorInputPosition position = seatDto.getPosition();
+            seatEntity.setPositionX(position.getX() != null ? position.getX().floatValue() : null);
+            seatEntity.setPositionY(position.getY() != null ? position.getY().floatValue() : null);
+        }
+
+        seatEntity.setSeatRow(rowEntity);
+        return seatEntity;
+    }
     
     private Venue toDto(VenueEntity entity, Boolean includeSectors) {
         Venue dto = new Venue();

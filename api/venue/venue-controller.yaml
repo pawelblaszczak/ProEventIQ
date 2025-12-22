@@ -76,6 +76,30 @@ venues:
           application/json:
             schema:
               $ref: './venue.yaml#/Venue'
+
+venueImport:
+  post:
+    tags: [ProEventIQ]
+    summary: Import sectors layout for a venue
+    description: >-
+      Import sectors (and their rows and seats) for an existing venue.
+      The venueId from the payload identifies the target venue and its
+      main properties (name, country, city, address, thumbnail, description)
+      are not modified.
+    operationId: importVenue
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: './venue.yaml#/Venue'
+    responses:
+      '201':
+        description: Venue imported
+        content:
+          application/json:
+            schema:
+              $ref: './venue.yaml#/Venue'
 venueById:
   get:
     tags: [ProEventIQ]

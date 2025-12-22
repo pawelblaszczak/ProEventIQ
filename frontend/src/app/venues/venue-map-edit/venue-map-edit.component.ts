@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, effect, inject, signal, computed, ViewChild, ElementRef, AfterViewInit, OnDestroy, OnInit, OnChanges, SimpleChanges, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -68,6 +69,7 @@ interface EditableSector extends Sector {
     MatMenuModule,
     MatToolbarModule,
     MatTooltipModule,
+    FormsModule,
     RouterModule,
     ErrorDisplayComponent
   ],
@@ -246,6 +248,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     seatId: number;
     oldParticipantId?: number;
   }> = [];
+  // Raw JSON text used for import layout textarea
+  importJsonText: string = '';
   
   // Computed signal that returns true if there are any changes (venue or reservation)
   readonly hasAnyChanges = computed(() => {
@@ -1321,20 +1325,21 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     }
 
     // Draw sector outline (convex hull of seat positions) - must be listening for clicks
-    let outline: Konva.Line | null = null;
-    if (seatPositions.length > 2) {
+    let outline: Konva.Line | Konva.Rect | null = null;
+    if (seatPositions.length > 0) {
       const hull = this.getConvexHull(seatPositions);
+      const strokeColor = this.getSectorStrokeColor(sector);
+      // When seats are hidden (zoomed out) and we're in a reservation-like view
+      // we want allocation overlays to be visible through the sector fill.
+      // Otherwise prefer a solid fill so unselected sectors are clearly visible.
+      const threshold = 1.79; // keep consistent with seat visibility logic
+      const seatsVisibleLocal = this.zoomLevel() >= threshold;
+      const shouldUseTransparentFill = !seatsVisibleLocal && this.isReservationLike();
+      const fillColor = shouldUseTransparentFill ? this.withAlpha(this.getSectorColor(sector), 0.25) : this.getSectorColor(sector);
+
       if (hull.length > 2) {
+        // Standard convex hull polygon
         const points = hull.flatMap(p => [p.x, p.y]);
-  const strokeColor = this.getSectorStrokeColor(sector);
-  // When seats are hidden (zoomed out) and we're in a reservation-like view
-  // we want allocation overlays to be visible through the sector fill.
-  // Otherwise prefer a solid fill so unselected sectors are clearly visible.
-  const threshold = 1.79; // keep consistent with seat visibility logic
-  const seatsVisibleLocal = this.zoomLevel() >= threshold;
-  const shouldUseTransparentFill = !seatsVisibleLocal && this.isReservationLike();
-        const fillColor = shouldUseTransparentFill ? this.withAlpha(this.getSectorColor(sector), 0.25) : this.getSectorColor(sector);
-        
         outline = new Konva.Line({
           points,
           closed: true,
@@ -1346,9 +1351,38 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
           shadowOffsetX: 0,
           shadowOffsetY: 0,
           name: 'sector-outline',
-          listening: true // allow pointer events
+          listening: true
         });
-        // Attach click handler to outline
+      } else {
+        // Degenerate case (e.g. all seats in a straight line) –
+        // draw a padded rectangle around seats so the sector is still visible.
+        const xs = seatPositions.map(p => p.x);
+        const ys = seatPositions.map(p => p.y);
+        const minX = Math.min(...xs);
+        const maxX = Math.max(...xs);
+        const minY = Math.min(...ys);
+        const maxY = Math.max(...ys);
+        const padding = 20;
+
+        outline = new Konva.Rect({
+          x: minX - padding,
+          y: minY - padding,
+          width: Math.max(10, (maxX - minX) + 2 * padding),
+          height: Math.max(10, (maxY - minY) + 2 * padding),
+          stroke: strokeColor,
+          strokeWidth: sector.isSelected ? 3 : 2,
+          fill: fillColor,
+          shadowColor: undefined,
+          shadowBlur: 0,
+          shadowOffsetX: 0,
+          shadowOffsetY: 0,
+          name: 'sector-outline',
+          listening: true
+        });
+      }
+
+      if (outline) {
+        // Attach common handlers for both Line and Rect
         outline.on('click', (e) => {
           e.cancelBubble = true;
           this.onSectorRectClick(sector, e);
@@ -4420,6 +4454,48 @@ console.log("addSelectionIndicators2");
       return;
     }
     this.cancelChanges();
+  }
+  
+  // ===== Venue JSON import =====
+  /**
+   * Parse JSON from the textarea and call backend /venues/import.
+   * On success, refreshes the current venue and clears the textarea.
+   */
+  public async onImportVenueJson(): Promise<void> {
+    if (!this.importJsonText || this.mode !== 'edit') {
+      return;
+    }
+
+    let parsed: any;
+    try {
+      parsed = JSON.parse(this.importJsonText);
+    } catch (e) {
+      this.snackBar.open('Invalid JSON – please check the content.', 'Close', { duration: 4000 });
+      return;
+    }
+
+    if (!parsed || typeof parsed !== 'object' || !parsed.venueId) {
+      this.snackBar.open('JSON must contain a valid venueId field.', 'Close', { duration: 4000 });
+      return;
+    }
+
+    try {
+      this.saving.set(true);
+      const imported = await firstValueFrom(this.venueApi.importVenue(parsed));
+      // Reload local state from imported venue
+      this.venue.set(imported);
+      this.originalSectorsSnapshot = imported.sectors ?? null;
+      // Rebuild editable sectors from the new snapshot and trigger a full render
+      this.buildEditableSectorsFromSectors(this.originalSectorsSnapshot);
+      this.hasChanges.set(false);
+      this.importJsonText = '';
+      this.snackBar.open('Venue layout imported successfully.', 'Close', { duration: 3000 });
+    } catch (err) {
+      console.error('Error importing venue layout', err);
+      this.snackBar.open('Failed to import venue layout.', 'Close', { duration: 4000 });
+    } finally {
+      this.saving.set(false);
+    }
   }
   // UI event wrappers used from template to guard interactions in preview mode
   onParticipantClick(p: Participant) {

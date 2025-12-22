@@ -105,17 +105,7 @@ public class SeatService {
     }
 
     private SeatRowEntity findExistingRowByNameAndSector(List<SeatRowEntity> existingRows, SeatRowInput rowInput, SectorEntity sector) {
-        // Prefer matching by ID if client provided it (prevents accidental inserts when editing)
-        if (rowInput.getSeatRowId() != null) {
-            Long id = rowInput.getSeatRowId();
-            for (SeatRowEntity row : existingRows) {
-                if (row.getSeatRowId() != null && row.getSeatRowId().equals(id)) {
-                    return row;
-                }
-            }
-        }
-
-        // Fallback: find by name within the same sector
+        // Find by name within the same sector
         return existingRows.stream()
                 .filter(row -> rowInput.getName().equals(row.getName()) && row.getSector().equals(sector))
                 .findFirst()

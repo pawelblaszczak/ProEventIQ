@@ -10,6 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 export interface AddMultipleRowsDialogResult {
   rowCount: number;
   seatCount: number;
+  rowSpacing: number;
 }
 
 @Component({
@@ -33,14 +34,16 @@ export class AddMultipleRowsDialogComponent {
 
   addRowsForm: FormGroup = this.fb.group({
     rowCount: [1, [Validators.required, Validators.min(1), Validators.max(50)]],
-    seatCount: [1, [Validators.required, Validators.min(1), Validators.max(50)]]
+    seatCount: [1, [Validators.required, Validators.min(1), Validators.max(50)]],
+    rowSpacing: [20, [Validators.required, Validators.min(0)]]
   });
 
   onConfirm(): void {
     if (this.addRowsForm.valid) {
       const result: AddMultipleRowsDialogResult = {
         rowCount: this.addRowsForm.value.rowCount,
-        seatCount: this.addRowsForm.value.seatCount
+        seatCount: this.addRowsForm.value.seatCount,
+        rowSpacing: this.addRowsForm.value.rowSpacing
       };
       this.dialogRef.close(result);
     }

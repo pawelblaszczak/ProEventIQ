@@ -22,6 +22,12 @@
         <mat-error *ngIf="addRowsForm.get('seatCount')?.hasError('min')">Minimum 1 seat</mat-error>
         <mat-error *ngIf="addRowsForm.get('seatCount')?.hasError('max')">Maximum 50 seats</mat-error>
       </mat-form-field>
+      <mat-form-field appearance="outline" class="form-field">
+        <mat-label>Row Spacing</mat-label>
+        <input matInput type="number" formControlName="rowSpacing" min="0" step="20" required>
+        <mat-error *ngIf="addRowsForm.get('rowSpacing')?.hasError('required')">Row spacing is required</mat-error>
+        <mat-error *ngIf="addRowsForm.get('rowSpacing')?.hasError('min')">Minimum 0</mat-error>
+      </mat-form-field>
     </form>
   </mat-dialog-content>
   

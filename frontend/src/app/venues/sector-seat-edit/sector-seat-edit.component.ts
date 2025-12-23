@@ -1146,7 +1146,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
       let baseX = 60; // Default X position
       let baseY = 60; // Default Y position
       let seatSpacing = this.gridSize;
-      let rowSpacing = this.gridSize;
+      let rowSpacing = result.rowSpacing;
 
       if (currentRows.length > 0) {
         const lastRow = currentRows[currentRows.length - 1];
@@ -1162,21 +1162,6 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
             if (calcSpacing > 0) seatSpacing = calcSpacing;
           }
 
-          // Calculate row spacing if there are at least 2 rows
-          if (currentRows.length >= 2) {
-            const beforeLastRow = currentRows[currentRows.length - 2];
-            if (beforeLastRow.seats && beforeLastRow.seats.length > 0) {
-              const lastRowY = lastRow.seats[0].position?.y ?? 0;
-              const beforeLastRowY = beforeLastRow.seats[0].position?.y ?? 0;
-              const calculatedSpacing = lastRowY - beforeLastRowY;
-              
-              // Keep row spacing aligned to gridSize; do not exceed it automatically
-              if (Math.abs(calculatedSpacing) >= this.gridSize) {
-                rowSpacing = calculatedSpacing >= 0 ? this.gridSize : -this.gridSize;
-              }
-            }
-          }
-          
           // Start new rows after the last existing row
           baseY = (lastRow.seats[0].position?.y ?? 0) + rowSpacing;
         }

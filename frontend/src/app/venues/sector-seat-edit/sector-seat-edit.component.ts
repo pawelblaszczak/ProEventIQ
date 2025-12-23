@@ -1084,13 +1084,19 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
         seatRowId: tempId,
         name: result.rowName,
         orderNumber: maxOrderNumber + 1,
-        seats: Array.from({ length: result.seatCount }, (_, i) => ({
-          seatId: -1,
-          orderNumber: i + 1,
-          position: { x: baseX + i * seatSpacing, y: baseY },
-          status: 'active',
-          selected: false
-        }))
+        seats: Array.from({ length: result.seatCount }, (_, i) => {
+          const seatOrderNumber = result.seatDirection === 'RTL' 
+            ? result.seatCount - i 
+            : i + 1;
+
+          return {
+            seatId: -1,
+            orderNumber: seatOrderNumber,
+            position: { x: baseX + i * seatSpacing, y: baseY },
+            status: 'active',
+            selected: false
+          };
+        })
       };
       
       console.log('Creating new row with seats at baseY:', baseY);
@@ -1172,22 +1178,32 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
       for (let i = 0; i < result.rowCount; i++) {
         const tempId = -1;
         const orderNumber = maxOrderNumber + i + 1;
-        const romanNumeral = this.numberToRoman(orderNumber);
+        const rowName = result.rowNaming === 'Arabic' 
+          ? orderNumber.toString() 
+          : this.numberToRoman(orderNumber);
         
         const newRow: EditableRow = {
           seatRowId: tempId,
-          name: romanNumeral,
+          name: rowName,
           orderNumber: orderNumber,
-          seats: Array.from({ length: result.seatCount }, (_, seatIndex) => ({
-            seatId: -1,
-            orderNumber: seatIndex + 1,
-            position: { 
-              x: baseX + seatIndex * seatSpacing, 
-              y: baseY + i * rowSpacing 
-            },
-            status: 'active',
-            selected: false
-          }))
+          seats: Array.from({ length: result.seatCount }, (_, seatIndex) => {
+            const seatOrderNumber = result.seatDirection === 'RTL' 
+              ? result.seatCount - seatIndex 
+              : seatIndex + 1;
+
+            return {
+              seatId: -1,
+              orderNumber: seatOrderNumber,
+              position: { 
+                x: baseX + seatIndex * seatSpacing, 
+                y: result.rowDirection === 'BTT' 
+                  ? baseY + (result.rowCount - 1 - i) * rowSpacing 
+                  : baseY + i * rowSpacing
+              },
+              status: 'active',
+              selected: false
+            };
+          })
         };
         
         newRows.push(newRow);

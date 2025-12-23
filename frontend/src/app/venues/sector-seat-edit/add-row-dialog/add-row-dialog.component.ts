@@ -6,10 +6,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 
 export interface AddRowDialogResult {
   rowName: string;
   seatCount: number;
+  seatDirection: 'LTR' | 'RTL';
 }
 
 @Component({
@@ -22,7 +24,8 @@ export interface AddRowDialogResult {
     MatButtonModule,
     MatIconModule,
     MatFormFieldModule,
-    MatInputModule
+    MatInputModule,
+    MatSelectModule
   ],
   templateUrl: './add-row-dialog.component.html',
   styleUrls: ['./add-row-dialog.component.scss']
@@ -39,7 +42,8 @@ export class AddRowDialogComponent {
     const defaultRowName = this.data?.nextOrder ? this.toRoman(this.data.nextOrder) : '';
     this.addRowForm = this.fb.group({
       rowName: [defaultRowName, [Validators.required, Validators.maxLength(32)]],
-      seatCount: [1, [Validators.required, Validators.min(1), Validators.max(50)]]
+      seatCount: [1, [Validators.required, Validators.min(1), Validators.max(50)]],
+      seatDirection: ['LTR', [Validators.required]]
     });
   }
 
@@ -65,7 +69,8 @@ export class AddRowDialogComponent {
     if (this.addRowForm.valid) {
       const result: AddRowDialogResult = {
         rowName: this.addRowForm.value.rowName,
-        seatCount: this.addRowForm.value.seatCount
+        seatCount: this.addRowForm.value.seatCount,
+        seatDirection: this.addRowForm.value.seatDirection
       };
       this.dialogRef.close(result);
     }

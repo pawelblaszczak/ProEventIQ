@@ -21,6 +21,14 @@
         <mat-error *ngIf="addRowForm.get('seatCount')?.hasError('min')">Minimum 1 seat</mat-error>
         <mat-error *ngIf="addRowForm.get('seatCount')?.hasError('max')">Maximum 50 seats</mat-error>
       </mat-form-field>
+      <mat-form-field appearance="outline" class="form-field">
+        <mat-label>Seat Direction</mat-label>
+        <mat-select formControlName="seatDirection" required>
+          <mat-option value="LTR">Left to Right</mat-option>
+          <mat-option value="RTL">Right to Left</mat-option>
+        </mat-select>
+        <mat-error *ngIf="addRowForm.get('seatDirection')?.hasError('required')">Seat direction is required</mat-error>
+      </mat-form-field>
     </form>
   </mat-dialog-content>
   

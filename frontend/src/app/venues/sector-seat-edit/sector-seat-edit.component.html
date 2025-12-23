@@ -301,6 +301,40 @@
         </div>
       </mat-card-content>
     </mat-card>
+    
+    <!-- Import layout card (bottom) -->
+    <mat-card class="import-layout-card">
+      <mat-card-header>
+        <mat-card-title>
+          <h3 class="tool-group-title" style="display:flex;align-items:center;gap:.25rem;">
+            <mat-icon>file_upload</mat-icon>
+            IMPORT SEATS LAYOUT
+          </h3>
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="import-controls">
+          <textarea
+            class="import-textarea"
+            rows="4"
+            placeholder="Paste sector rows JSON here (rows and seats...)"
+            [(ngModel)]="importJsonText">
+          </textarea>
+          <div class="import-actions">
+            <button
+              mat-stroked-button
+              color="primary"
+              class="import-primary-button"
+              (click)="onImportSectorLayoutJson()"
+              [disabled]="!importJsonText || saving()"
+              matTooltip="Import rows and seats layout for this sector from JSON">
+              <mat-icon>download</mat-icon>
+              Import
+            </button>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
   </div>
   </div>
 }

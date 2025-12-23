@@ -15,7 +15,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog } from '@angular/material/dialog';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, FormsModule } from '@angular/forms';
 import { ProEventIQService } from '../../api/api/pro-event-iq.service';
 import { AddSeatDialogComponent, AddSeatDialogData, AddSeatDialogResult } from './add-seat-dialog/add-seat-dialog.component';
 import { AddRowDialogComponent, AddRowDialogResult } from './add-row-dialog/add-row-dialog.component';
@@ -62,6 +62,7 @@ interface EditableSector extends Sector {
     MatInputModule,
     MatSelectModule,
     MatCheckboxModule,
+    FormsModule,
     ReactiveFormsModule,
     RouterModule
   ],
@@ -129,6 +130,9 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
 
   // Snap to grid state
   snapToGrid = signal(true);
+
+  // Import JSON textarea content
+  importJsonText = '';
 
   constructor() {
     // Handle keyboard events for multi-select
@@ -1461,6 +1465,79 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
 
   toggleSnapToGrid() {
     this.snapToGrid.set(!this.snapToGrid());
+  }
+
+  // Import sector rows/seats layout from JSON
+  onImportSectorLayoutJson() {
+    if (!this.importJsonText) {
+      this.snackBar.open('Please paste sector layout JSON first', 'Close', { duration: 3000 });
+      return;
+    }
+
+    let parsed: any;
+    try {
+      parsed = JSON.parse(this.importJsonText);
+    } catch (err) {
+      console.error('Invalid JSON for sector layout import:', err);
+      this.snackBar.open('Invalid JSON format. Please check your input.', 'Close', { duration: 4000 });
+      return;
+    }
+
+    // Accept a few flexible shapes: { rows: [...] }, { sector: { rows: [...] } }, or plain rows array
+    let rows: any[] | undefined;
+    if (Array.isArray(parsed)) {
+      rows = parsed;
+    } else if (Array.isArray(parsed.rows)) {
+      rows = parsed.rows;
+    } else if (parsed.sector && Array.isArray(parsed.sector.rows)) {
+      rows = parsed.sector.rows;
+    }
+
+    if (!rows || rows.length === 0) {
+      this.snackBar.open('JSON must contain rows with seats to import.', 'Close', { duration: 4000 });
+      return;
+    }
+
+    const sector = this.sector();
+    if (!sector) {
+      this.snackBar.open('No sector loaded to apply imported layout.', 'Close', { duration: 4000 });
+      return;
+    }
+
+    const newRows: EditableRow[] = rows.map((rowData, rowIndex) => {
+      const seatsArray = Array.isArray(rowData.seats) ? rowData.seats : [];
+
+      const seats: EditableSeat[] = seatsArray.map((seatData: any, seatIndex: number) => {
+        const x = seatData.position?.x ?? seatIndex * this.gridSize;
+        const y = seatData.position?.y ?? (rowIndex + 1) * this.gridSize;
+        const position = { x, y };
+
+        return {
+          seatId: -1,
+          orderNumber: seatData.orderNumber ?? seatIndex + 1,
+          position,
+          priceCategory: seatData.priceCategory,
+          status: seatData.status ?? 'active',
+          selected: false,
+          originalPosition: { ...position }
+        } as EditableSeat;
+      });
+
+      return {
+        seatRowId: -1,
+        name: rowData.name ?? this.numberToRoman(rowIndex + 1),
+        orderNumber: rowData.orderNumber ?? rowIndex + 1,
+        seats
+      } as EditableRow;
+    });
+
+    sector.rows = newRows;
+    this.sector.set({ ...sector, rows: [...newRows] });
+    this.renderSector();
+    this.hasChanges.set(true);
+    this.importJsonText = '';
+
+    this.snackBar.open('Sector seat layout imported. Remember to save changes.', 'Close', { duration: 4000 });
   }
 
   // Save changes

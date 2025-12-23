@@ -395,6 +395,72 @@ $success-color: #4caf50;
       }
     }
   }
+  
+  .import-layout-card {
+    margin-top: 1rem;
+
+    mat-card-header {
+      padding: 0.75rem 1.5rem 0.25rem 1.5rem;
+    }
+
+    mat-card-title {
+      margin: 0;
+      padding: 0;
+
+      .tool-group-title {
+        margin: 0;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: rgba(0, 0, 0, 0.6);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+
+        mat-icon {
+          font-size: 14px;
+          width: 14px;
+          height: 14px;
+        }
+      }
+    }
+
+    .import-controls {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      margin-top: 0.25rem;
+
+      .import-textarea {
+        flex: 1 1 auto;
+        min-height: 4.5rem;
+        max-width: 100%;
+        resize: vertical;
+      }
+
+      .import-actions {
+        display: flex;
+        align-items: center;
+
+        button {
+          white-space: nowrap;
+        }
+
+        .import-primary-button {
+          background-color: $primary-color;
+          color: #fff;
+          border-color: $primary-color;
+          transition: all 0.3s ease;
+
+          &:hover {
+            background-color: darken($primary-color, 10%);
+            border-color: darken($primary-color, 10%);
+          }
+        }
+      }
+    }
+  }
 }
 
 // Animations

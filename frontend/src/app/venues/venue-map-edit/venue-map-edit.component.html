@@ -183,15 +183,7 @@
                     matTooltip="Zoom In">
               <mat-icon>zoom_in</mat-icon>
             </button>
-            <!-- Quick preset to jump to 180% so seats become visible without extra clicks -->
-            <button mat-mini-fab
-                    color="primary"
-                    (click)="setZoomTo180()"
-                    [disabled]="getCurrentZoom() >= 1.79"
-                    matTooltip="Show seats (180%)"
-                    aria-label="Set zoom to 180%">
-              <mat-icon>event_seat</mat-icon>
-            </button>
+
             <button mat-stroked-button 
                     (click)="resetZoom()"
                     matTooltip="Reset Zoom">
@@ -206,14 +198,18 @@
             <mat-icon>visibility</mat-icon>
             View
           </h3>
-          <div class="view-toggles">
-            <button mat-stroked-button 
-                    [class.active]="showGrid()"
-                    [color]="showGrid() ? 'primary' : 'basic'"
+          <div class="tool-buttons">
+            <button mat-icon-button 
+                    [color]="showSeats() ? 'primary' : ''"
+                    (click)="toggleSeats()"
+                    [matTooltip]="'Toggle Seats (' + (showSeats() ? 'ON' : 'OFF') + ')'">
+              <mat-icon>event_seat</mat-icon>
+            </button>
+            <button mat-icon-button 
+                    [color]="showGrid() ? 'primary' : ''"
                     (click)="toggleGridDebug()"
-                    matTooltip="Toggle Grid">
+                    [matTooltip]="'Toggle Grid (' + (showGrid() ? 'ON' : 'OFF') + ')'">
               <mat-icon>grid_on</mat-icon>
-              Grid {{ showGrid() ? 'ON' : 'OFF' }}
             </button>
           </div>
         </div>

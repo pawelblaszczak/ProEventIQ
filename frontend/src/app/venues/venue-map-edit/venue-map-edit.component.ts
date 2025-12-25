@@ -217,6 +217,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   private readonly baseCanvasWidth = 3000;
   private readonly baseCanvasHeight = 1500;
   private readonly zoomLevel = signal(1);
+  public readonly showSeats = signal(false);
   private readonly maxZoom = 5;
   private readonly minZoom = 0.5;
   private readonly zoomIncrement = 0.2;
@@ -1036,12 +1037,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     this.fixLayerZOrder();
   }
 
-  // Add new method to update seat visibility based on zoom level
-  private updateSeatsVisibility(zoomLevel: number): void {
-    // Show seats only when zoom level is >= 1.8 (180%)
-    // Using a slightly lower threshold (1.79) to account for potential floating point precision issues
-    const threshold = 1.79; // Using 1.79 instead of 1.8 to handle any floating-point precision issues
-    const seatsVisible = zoomLevel >= threshold;
+  // Add new method to update seat visibility based on showSeats signal
+  private updateSeatsVisibility(): void {
+    const seatsVisible = this.showSeats();
     
     // Iterate through all cached seats and update visibility
     this.sectorSeats.forEach((seats) => {
@@ -1189,7 +1187,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     // Update seat tooltip handlers for all seats
     this.updateSeatTooltipHandlers();
   // Re-apply seat visibility rule in case of group recreation
-  this.updateSeatsVisibility(this.zoomLevel());
+  this.updateSeatsVisibility();
 
   // Force a pass to reposition any external labels (small-sector hints) so
   // they appear correctly immediately after (re)creation at current zoom.
@@ -1332,8 +1330,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       // When seats are hidden (zoomed out) and we're in a reservation-like view
       // we want allocation overlays to be visible through the sector fill.
       // Otherwise prefer a solid fill so unselected sectors are clearly visible.
-      const threshold = 1.79; // keep consistent with seat visibility logic
-      const seatsVisibleLocal = this.zoomLevel() >= threshold;
+      const seatsVisibleLocal = this.showSeats();
       const shouldUseTransparentFill = !seatsVisibleLocal && this.isReservationLike();
       const fillColor = shouldUseTransparentFill ? this.withAlpha(this.getSectorColor(sector), 0.25) : this.getSectorColor(sector);
 
@@ -1494,7 +1491,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
           // Slightly lighter fill than larger sectors to reduce visual weight.
           // Use a semi-transparent fill only when seats are hidden in reservation-like views
           // so allocation overlays remain visible. Otherwise use solid background color.
-          fill: (!this.isReservationLike() || this.zoomLevel() >= 1.79) ? this.getSectorColor(sector) : this.withAlpha(this.getSectorColor(sector), 0.25),
+          fill: (!this.isReservationLike() || this.showSeats()) ? this.getSectorColor(sector) : this.withAlpha(this.getSectorColor(sector), 0.25),
           stroke: this.getSectorStrokeColor(sector),
           strokeWidth: sector.isSelected ? 3 : 2,
           cornerRadius: Math.min(8, Math.round(Math.min(width, height) / 6)),
@@ -1917,8 +1914,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       const prev = group.findOne('.sector-allocation-group') as Konva.Group;
       if (prev) prev.destroy();
 
-      const currentZoom = this.zoomLevel();
-      const seatsVisible = currentZoom >= 1.79; // same threshold as seats
+      const seatsVisible = this.showSeats();
   if (this.mode === 'reservation-preview' && !seatsVisible && seatPositions && seatPositions.length > 0) {
         // Compute convex hull for clipping region
         const hull = (seatPositions.length > 2) ? this.getConvexHull(seatPositions) : seatPositions;
@@ -2113,8 +2109,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         outline.strokeWidth(sector.isSelected ? 3 : 2);
         // Match draw logic: use a transparent fill only when seats are hidden so
         // allocation overlays remain visible; otherwise use solid sector color.
-        const threshold = 1.79;
-        const seatsVisibleLocal = this.zoomLevel() >= threshold;
+        const seatsVisibleLocal = this.showSeats();
         const shouldUseTransparentFill = !seatsVisibleLocal && this.isReservationLike();
         if (shouldUseTransparentFill) {
           outline.fill(this.withAlpha(this.getSectorColor(sector), 0.25));
@@ -2143,10 +2138,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     // Check if we already have seats for this sector
     let existingSeats = this.sectorSeats.get(sectorId);
     
-    // Determine if seats should be visible based on current zoom level
-    const threshold = 1.79; // Using 1.79 instead of 1.8 to handle any floating-point precision issues
-    const currentZoom = this.zoomLevel();
-    const seatsVisible = currentZoom >= threshold;
+    // Determine if seats should be visible
+    const seatsVisible = this.showSeats();
     
     if (!existingSeats) {
       // Create seats for the first time - like KonvaTest
@@ -2226,8 +2219,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
           seat.stroke('#1976d2');
           seat.strokeWidth(2);
           
-          // Show tooltip with seat information when zoom level is sufficient (≥ 180%)
-          if (this.zoomLevel() >= 1.79) {
+          // Show tooltip with seat information when seats are visible
+          if (this.showSeats()) {
             this.ensureSeatTooltip();
             if (!this.seatTooltip) return;
             
@@ -2397,8 +2390,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
             seat.stroke('#1976d2');
             seat.strokeWidth(2);
             
-            // Show tooltip with seat information when zoom level is sufficient (≥ 180%)
-            if (this.zoomLevel() >= 1.79) {
+            // Show tooltip with seat information when seats are visible
+            if (this.showSeats()) {
               this.ensureSeatTooltip();
               if (!this.seatTooltip) return;
               
@@ -2630,8 +2623,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   private createAllocationOverlays(): void {
     if (!this.layer) return;
 
-    const threshold = 1.79;
-    const seatsVisible = this.zoomLevel() >= threshold;
+    const seatsVisible = this.showSeats();
     if (seatsVisible) return; // nothing to do when seats are visible
 
     const sectors = this.editableSectors() || [];
@@ -4367,13 +4359,9 @@ console.log("addSelectionIndicators2");
     this.applyZoom();
   }
 
-  // Quick helper: set zoom to 180% so seats become visible
-  public setZoomTo180(): void {
-    const target = 1.8;
-    // Clamp to min/max just in case
-    const clamped = Math.max(this.minZoom, Math.min(this.maxZoom, target));
-    this.zoomLevel.set(clamped);
-    this.applyZoom();
+  public toggleSeats(): void {
+    this.showSeats.update(v => !v);
+    this.updateSeatsVisibility();
   }
 
   private applyZoom(): void {
@@ -4415,8 +4403,8 @@ console.log("addSelectionIndicators2");
       this.renderGrid();
     }
     
-    // Update seat visibility based on zoom level
-    this.updateSeatsVisibility(currentZoom);
+    // Update seat visibility
+    this.updateSeatsVisibility();
     
     // Update seat tooltip handlers
     this.updateSeatTooltipHandlers();

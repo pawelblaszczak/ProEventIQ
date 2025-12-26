@@ -21,6 +21,9 @@ public class VenueEntity {
     
     private String thumbnailContentType;
     private String description;
+    
+    private Double width;
+    private Double height;
 
     @OneToMany(mappedBy = "venue", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<SectorEntity> sectors;
@@ -43,6 +46,10 @@ public class VenueEntity {
     public void setThumbnailContentType(String thumbnailContentType) { this.thumbnailContentType = thumbnailContentType; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    public Double getWidth() { return width; }
+    public void setWidth(Double width) { this.width = width; }
+    public Double getHeight() { return height; }
+    public void setHeight(Double height) { this.height = height; }
     public List<SectorEntity> getSectors() { return sectors; }
     public void setSectors(List<SectorEntity> sectors) { this.sectors = sectors; }
 }

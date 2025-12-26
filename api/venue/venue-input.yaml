@@ -17,3 +17,10 @@ VenueInput:
       description: MIME type of the thumbnail image (e.g., image/jpeg, image/png)
     description:
       type: string
+    size:
+      type: object
+      properties:
+        width:
+          type: number
+        height:
+          type: number

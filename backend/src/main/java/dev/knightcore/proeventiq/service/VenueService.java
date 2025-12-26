@@ -2,6 +2,7 @@ package dev.knightcore.proeventiq.service;
 
 import dev.knightcore.proeventiq.api.model.Venue;
 import dev.knightcore.proeventiq.api.model.VenueInput;
+import dev.knightcore.proeventiq.api.model.VenueInputSize;
 import dev.knightcore.proeventiq.api.model.VenueOption;
 import dev.knightcore.proeventiq.entity.VenueEntity;
 import dev.knightcore.proeventiq.entity.SectorEntity;
@@ -168,6 +169,12 @@ public class VenueService {
         entity.setCity(input.getCity());
         entity.setAddress(input.getAddress());
         entity.setDescription(input.getDescription());
+        
+        if (input.getSize() != null) {
+            entity.setWidth(input.getSize().getWidth() != null ? input.getSize().getWidth().doubleValue() : null);
+            entity.setHeight(input.getSize().getHeight() != null ? input.getSize().getHeight().doubleValue() : null);
+        }
+        
         handleThumbnailUpdate(entity, input);
     }
 
@@ -293,6 +300,13 @@ public class VenueService {
         dto.setAddress(entity.getAddress());
         dto.setThumbnailContentType(entity.getThumbnailContentType());
         dto.setDescription(entity.getDescription());
+        
+        if (entity.getWidth() != null || entity.getHeight() != null) {
+            VenueInputSize size = new VenueInputSize();
+            size.setWidth(entity.getWidth() != null ? java.math.BigDecimal.valueOf(entity.getWidth()) : null);
+            size.setHeight(entity.getHeight() != null ? java.math.BigDecimal.valueOf(entity.getHeight()) : null);
+            dto.setSize(size);
+        }
     }
 
     private void mapVenueThumbnail(VenueEntity entity, Venue dto) {

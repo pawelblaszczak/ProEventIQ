@@ -27,6 +27,13 @@ Venue:
       type: string
     numberOfSeats:
       type: integer
+    size:
+      type: object
+      properties:
+        width:
+          type: number
+        height:
+          type: number
     sectors:
       type: array
       items:

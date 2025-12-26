@@ -16,6 +16,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import Konva from 'konva';
 import { Venue } from '../../api/model/venue';
+import { VenueInput } from '../../api/model/venue-input';
 import { Sector } from '../../api/model/sector';
 import { Participant } from '../../api/model/participant';
 import { Event } from '../../api/model/event';
@@ -289,7 +290,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       } else {
         window.removeEventListener('beforeunload', this.handleBeforeUnload);
       }
-    });    // Set up effects to watch for changes (must be in constructor for injection context)
+    });
+
+    // Set up effects to watch for changes (must be in constructor for injection context)
     effect(() => {
       if (this.editableSectors().length > 0 && this.layer) {
         try {
@@ -919,6 +922,14 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       }
     });
   }  private initializeEditableSectors(venue: Venue) {
+    // Initialize canvas size from venue if available
+    if (venue.size) {
+      if (venue.size.width) this.baseCanvasWidth.set(venue.size.width);
+      if (venue.size.height) this.baseCanvasHeight.set(venue.size.height);
+      // Trigger resize to apply new dimensions
+      this.canvasResizeSubject.next();
+    }
+
     if (venue.sectors) {
       const editableSectors: EditableSector[] = venue.sectors.map(sector => {
       // Use existing position or calculate a default based on index
@@ -3694,6 +3705,32 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     try {
       this.saving.set(true);
       console.log('Saving venue changes...');
+
+      // 1. Save Venue Details (Size) if changed
+      const currentVenue = this.venue();
+      const currentWidth = this.baseCanvasWidth();
+      const currentHeight = this.baseCanvasHeight();
+      
+      const originalWidth = currentVenue?.size?.width ?? 3000;
+      const originalHeight = currentVenue?.size?.height ?? 1500;
+
+      if (currentVenue && (currentWidth !== originalWidth || currentHeight !== originalHeight)) {
+        const updatePayload: VenueInput = {
+          name: currentVenue.name,
+          country: currentVenue.country,
+          city: currentVenue.city,
+          address: currentVenue.address,
+          description: currentVenue.description,
+          size: {
+            width: currentWidth,
+            height: currentHeight
+          }
+        };
+
+        await firstValueFrom(this.venueApi.updateVenue(venueId, updatePayload));
+        console.log('Venue size updated');
+      }
+
       // Only save sectors that are new or have actual changes compared to the original snapshot
       const originalMap = new Map<number, Sector>();
       if (this.originalSectorsSnapshot && Array.isArray(this.originalSectorsSnapshot)) {
@@ -3813,6 +3850,14 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       this.hasChanges.set(false);
       this.selectedSector.set(null);
       
+      // Revert canvas size
+      const v = this.venue();
+      if (v) {
+        this.baseCanvasWidth.set(v.size?.width ?? 3000);
+        this.baseCanvasHeight.set(v.size?.height ?? 1500);
+        this.canvasResizeSubject.next();
+      }
+
       // Reload the venue to reset all changes
       const venueId = this.venueId();
       // Prefer full rebuild from the immutable snapshot captured at load time so both array order and orderNumber are restored
@@ -4377,9 +4422,23 @@ console.log("addSelectionIndicators2");
   }
 
   public updateCanvasDimensions(width: number | null, height: number | null): void {
-    if (width) this.baseCanvasWidth.set(width);
-    if (height) this.baseCanvasHeight.set(height);
-    this.canvasResizeSubject.next();
+    const w = width ? Number(width) : null;
+    const h = height ? Number(height) : null;
+    
+    let changed = false;
+    if (w && w !== this.baseCanvasWidth()) {
+      this.baseCanvasWidth.set(w);
+      changed = true;
+    }
+    if (h && h !== this.baseCanvasHeight()) {
+      this.baseCanvasHeight.set(h);
+      changed = true;
+    }
+    
+    if (changed) {
+      this.hasChanges.set(true);
+      this.canvasResizeSubject.next();
+    }
   }
 
   public toggleSeats(): void {

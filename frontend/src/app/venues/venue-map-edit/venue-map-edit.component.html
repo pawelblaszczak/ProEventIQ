@@ -192,6 +192,25 @@
             <div class="vertical-divider"></div>
           </div>
         </div>
+        <!-- Canvas Dimensions -->
+        <div class="tool-group">
+          <h3 class="tool-group-title">
+            <mat-icon>aspect_ratio</mat-icon>
+            Canvas
+          </h3>
+          <div class="tool-buttons" style="align-items: center;">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="dimension-input">
+                <mat-label>Width</mat-label>
+                <input matInput type="number" [ngModel]="baseCanvasWidth()" (ngModelChange)="updateCanvasDimensions($event, baseCanvasHeight())" [disabled]="mode !== 'edit'">
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="dimension-input">
+                <mat-label>Height</mat-label>
+                <input matInput type="number" [ngModel]="baseCanvasHeight()" (ngModelChange)="updateCanvasDimensions(baseCanvasWidth(), $event)" [disabled]="mode !== 'edit'">
+            </mat-form-field>
+            <div class="vertical-divider"></div>
+          </div>
+        </div>
+
         <!-- View Options (always visible) -->
         <div class="tool-group">
           <h3 class="tool-group-title">

@@ -12,6 +12,8 @@ import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatInputModule } from '@angular/material/input';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import Konva from 'konva';
 import { Venue } from '../../api/model/venue';
 import { Sector } from '../../api/model/sector';
@@ -21,7 +23,8 @@ import { Reservation } from '../../api/model/reservation';
 import { ReservationInput } from '../../api/model/reservation-input';
 import { ProEventIQService } from '../../api/api/pro-event-iq.service';
 import { ConfirmationDialogService, ErrorDisplayComponent } from '../../shared';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Subject } from 'rxjs';
+import { debounceTime } from 'rxjs/operators';
 import { ChangeSectorNameDialogComponent } from './change-sector-name-dialog/change-sector-name-dialog.component';
 
 /**
@@ -69,6 +72,8 @@ interface EditableSector extends Sector {
     MatMenuModule,
     MatToolbarModule,
     MatTooltipModule,
+    MatInputModule,
+    MatFormFieldModule,
     FormsModule,
     RouterModule,
     ErrorDisplayComponent
@@ -214,8 +219,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   // Canvas and zoom settings
   canvasWidth = 3000;
   canvasHeight = 1500;
-  private readonly baseCanvasWidth = 3000;
-  private readonly baseCanvasHeight = 1500;
+  public readonly baseCanvasWidth = signal(3000);
+  public readonly baseCanvasHeight = signal(1500);
+  private readonly canvasResizeSubject = new Subject<void>();
   private readonly zoomLevel = signal(1);
   public readonly showSeats = signal(false);
   private readonly maxZoom = 5;
@@ -417,6 +423,16 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   }
 
   ngOnInit() {
+    // Setup debounced canvas resize
+    this.canvasResizeSubject.pipe(
+      debounceTime(1000)
+    ).subscribe(() => {
+      this.applyZoom();
+      if (this.showGrid()) {
+        this.renderGrid();
+      }
+    });
+
     // Initialize venue data based on mode
     if (this.mode === 'preview' && this.venueData) {
       // Preview mode: use passed venue data
@@ -1003,8 +1019,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     // Use the current zoom level to calculate grid coverage
     const currentZoom = this.zoomLevel();
     const effectiveGridSize = this.gridSize / currentZoom;
-    const gridWidth = this.baseCanvasWidth;
-    const gridHeight = this.baseCanvasHeight;
+    const gridWidth = this.baseCanvasWidth();
+    const gridHeight = this.baseCanvasHeight();
 
     // Create vertical lines - use base canvas dimensions but adjust grid spacing for zoom
     for (let i = 0; i <= Math.ceil(gridWidth / effectiveGridSize); i++) {
@@ -3934,6 +3950,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   }
 
   ngOnDestroy() {
+    this.canvasResizeSubject.complete();
     window.removeEventListener('beforeunload', this.handleBeforeUnload);
     window.removeEventListener('keydown', this.handleKeyDown);
     window.removeEventListener('keyup', this.handleKeyUp);
@@ -4359,6 +4376,12 @@ console.log("addSelectionIndicators2");
     this.applyZoom();
   }
 
+  public updateCanvasDimensions(width: number | null, height: number | null): void {
+    if (width) this.baseCanvasWidth.set(width);
+    if (height) this.baseCanvasHeight.set(height);
+    this.canvasResizeSubject.next();
+  }
+
   public toggleSeats(): void {
     this.showSeats.update(v => !v);
     this.updateSeatsVisibility();
@@ -4373,8 +4396,8 @@ console.log("addSelectionIndicators2");
     this.stage.scale({ x: currentZoom, y: currentZoom });
     
     // Calculate new canvas dimensions
-    const newWidth = this.baseCanvasWidth * currentZoom;
-    const newHeight = this.baseCanvasHeight * currentZoom;
+    const newWidth = this.baseCanvasWidth() * currentZoom;
+    const newHeight = this.baseCanvasHeight() * currentZoom;
     
     // Update canvas dimensions
     this.canvasWidth = newWidth;

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject, signal, computed, ViewChild, ElementRef, AfterViewInit, OnDestroy, OnInit, OnChanges, SimpleChanges, Input, Output, EventEmitter } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, signal, computed, ViewChild, ElementRef, AfterViewInit, OnDestroy, OnInit, OnChanges, SimpleChanges, Input, Output, EventEmitter, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -277,6 +277,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   editingOrderSectorId = signal<number | null>(null);
   editingSectorOrder = signal<number>(1);
   hasChanges = signal(false);  // Grid settings
+  private settingsLoaded = false; // Track if view settings have been loaded from storage
   hasReservationChanges = signal(false);  // Track reservation changes in reservation mode
   pendingReservationChanges: Array<{
     id?: number;
@@ -378,6 +379,28 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       }
     });
     
+    // Load view settings when venue is available
+    effect(() => {
+      const v = this.venue();
+      if (v && v.venueId && !this.settingsLoaded) {
+        untracked(() => this.loadViewSettings(v.venueId!));
+      }
+    }, { allowSignalWrites: true });
+
+    // Save view settings when they change
+    effect(() => {
+      const v = this.venue();
+      // Read signals to track dependencies
+      const z = this.zoomLevel();
+      const l = this.sectorLabelMode();
+      const s = this.showSeats();
+      const g = this.showGrid();
+      
+      if (v && v.venueId && this.settingsLoaded) {
+        untracked(() => this.saveViewSettings(v.venueId!));
+      }
+    });
+
     // Add keyboard event listeners
     window.addEventListener('keydown', this.handleKeyDown);
     window.addEventListener('keyup', this.handleKeyUp);
@@ -451,6 +474,57 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
           // ignore
         }
       }
+    }
+  }
+
+  private loadViewSettings(venueId: number) {
+    try {
+      const key = `proeventiq_venue_map_settings_${venueId}_${this.mode}`;
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const settings = JSON.parse(saved);
+        console.log('Loading view settings for venue', venueId, this.mode, settings);
+        
+        if (typeof settings.zoomLevel === 'number') {
+          this.zoomLevel.set(settings.zoomLevel);
+        }
+        if (settings.sectorLabelMode) {
+          this.sectorLabelMode.set(settings.sectorLabelMode);
+        }
+        if (typeof settings.showSeats === 'boolean') {
+          this.showSeats.set(settings.showSeats);
+        }
+        if (typeof settings.showGrid === 'boolean') {
+          this.showGrid.set(settings.showGrid);
+        }
+        
+        // Apply loaded settings
+        // Note: applyZoom might be skipped if stage not ready, but initializeKonva will call it later
+        this.applyZoom(); 
+        this.forceReRender();
+        // showGrid is handled by effect
+      }
+    } catch (e) {
+      console.error('Failed to load view settings', e);
+    } finally {
+      this.settingsLoaded = true;
+    }
+  }
+
+  private saveViewSettings(venueId: number) {
+    if (!this.settingsLoaded) return;
+    
+    try {
+      const key = `proeventiq_venue_map_settings_${venueId}_${this.mode}`;
+      const settings = {
+        zoomLevel: this.zoomLevel(),
+        sectorLabelMode: this.sectorLabelMode(),
+        showSeats: this.showSeats(),
+        showGrid: this.showGrid()
+      };
+      localStorage.setItem(key, JSON.stringify(settings));
+    } catch (e) {
+      console.error('Failed to save view settings', e);
     }
   }
 
@@ -901,6 +975,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     if (this.showGrid()) {
       this.renderGrid();
     }
+
+    // Apply any loaded zoom settings
+    this.applyZoom();
   }
   private resizeCanvas() {
 

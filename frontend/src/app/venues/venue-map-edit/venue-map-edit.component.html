@@ -198,7 +198,7 @@
             <mat-icon>aspect_ratio</mat-icon>
             Canvas
           </h3>
-          <div class="tool-buttons" style="align-items: center;">
+          <div class="tool-buttons">
             <mat-form-field appearance="outline" subscriptSizing="dynamic" class="dimension-input">
                 <mat-label>Width</mat-label>
                 <input matInput type="number" [ngModel]="baseCanvasWidth()" (ngModelChange)="updateCanvasDimensions($event, baseCanvasHeight())" [disabled]="mode !== 'edit'">
@@ -228,12 +228,14 @@
               </mat-select>
             </mat-form-field>
             <button mat-icon-button 
+                    class="view-toggle-btn"
                     [color]="showSeats() ? 'primary' : ''"
                     (click)="toggleSeats()"
                     [matTooltip]="'Toggle Seats (' + (showSeats() ? 'ON' : 'OFF') + ')'">
               <mat-icon>event_seat</mat-icon>
             </button>
             <button mat-icon-button 
+                    class="view-toggle-btn"
                     [color]="showGrid() ? 'primary' : ''"
                     (click)="toggleGridDebug()"
                     [matTooltip]="'Toggle Grid (' + (showGrid() ? 'ON' : 'OFF') + ')'">

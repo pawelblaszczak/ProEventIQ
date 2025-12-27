@@ -635,6 +635,24 @@ $border-radius: 12px;
       .tool-buttons {
         display: flex;
         gap: 0.25rem;
+        align-items: center;
+        min-height: 40px;
+
+        /* View toggles: match Zoom mini-fab vertical centering */
+        .view-toggle-btn {
+          width: 40px;
+          height: 40px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0 !important;
+
+          mat-icon {
+            line-height: 1;
+            display: inline-block;
+            transform: translateY(-1px);
+          }
+        }
 
         .dimension-input {
           width: 70px;
@@ -679,6 +697,9 @@ $border-radius: 12px;
         .view-select {
           width: 110px;
           font-size: 11px;
+          /* Material select baseline sits visually lower than number inputs; nudge up for alignment */
+          position: relative;
+          top: 0;
           
           // Compact style overrides for Material Form Field
           ::ng-deep .mat-mdc-text-field-wrapper {
@@ -718,10 +739,11 @@ $border-radius: 12px;
           
           // Select specific adjustments
           ::ng-deep .mat-mdc-select-trigger {
-            height: 100% !important;
+            height: 20px !important;
             min-height: unset !important;
             display: flex !important;
             align-items: center !important;
+            transform: translateY(1px) !important;
           }
 
           ::ng-deep .mat-mdc-select-value {
@@ -735,7 +757,7 @@ $border-radius: 12px;
           }
 
           ::ng-deep .mat-mdc-select-arrow-wrapper {
-            height: 100% !important;
+            height: 20px !important;
             transform: none !important;
             display: flex;
             align-items: center;

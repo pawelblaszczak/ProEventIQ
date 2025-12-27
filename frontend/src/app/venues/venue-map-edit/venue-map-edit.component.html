@@ -218,6 +218,15 @@
             View
           </h3>
           <div class="tool-buttons">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="view-select">
+              <mat-label>Labels</mat-label>
+              <mat-select [value]="sectorLabelMode()" (selectionChange)="setSectorLabelMode($event.value)">
+                <mat-option value="auto">Auto</mat-option>
+                <mat-option value="name">Name</mat-option>
+                <mat-option value="name_seats">Name & Seats</mat-option>
+                <mat-option value="none">None</mat-option>
+              </mat-select>
+            </mat-form-field>
             <button mat-icon-button 
                     [color]="showSeats() ? 'primary' : ''"
                     (click)="toggleSeats()"

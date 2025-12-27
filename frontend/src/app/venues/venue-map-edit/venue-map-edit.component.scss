@@ -675,6 +675,80 @@ $border-radius: 12px;
             margin-top: -2px;
           }
         }
+
+        .view-select {
+          width: 110px;
+          font-size: 11px;
+          
+          // Compact style overrides for Material Form Field
+          ::ng-deep .mat-mdc-text-field-wrapper {
+            height: 36px !important;
+            min-height: 36px !important;
+            max-height: 36px !important;
+            padding: 0 8px !important;
+          }
+          
+          ::ng-deep .mat-mdc-form-field-flex {
+            height: 36px !important;
+            min-height: 36px !important;
+            align-items: center !important;
+          }
+          
+          ::ng-deep .mat-mdc-form-field-infix {
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            min-height: 36px !important;
+            height: 36px !important;
+            border-top: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+          }
+
+          // Adjust floating label to sit correctly on the border
+          ::ng-deep .mdc-floating-label {
+            top: 18px !important;
+            background-color: white;
+            padding: 0 4px;
+          }
+          
+          ::ng-deep .mdc-floating-label--float-above {
+            top: 6px !important;
+            transform: translateY(-50%) scale(0.75) !important;
+          }
+          
+          // Select specific adjustments
+          ::ng-deep .mat-mdc-select-trigger {
+            height: 100% !important;
+            min-height: unset !important;
+            display: flex !important;
+            align-items: center !important;
+          }
+
+          ::ng-deep .mat-mdc-select-value {
+            font-size: 11px !important;
+            line-height: normal !important;
+            max-width: 100%;
+          }
+          
+          ::ng-deep .mat-mdc-select-value-text {
+            font-size: 11px !important;
+          }
+
+          ::ng-deep .mat-mdc-select-arrow-wrapper {
+            height: 100% !important;
+            transform: none !important;
+            display: flex;
+            align-items: center;
+          }
+
+          ::ng-deep .mat-mdc-select-arrow {
+            margin-top: 0 !important;
+            svg {
+               width: 10px;
+               height: 10px;
+            }
+          }
+        }
         
         button {
           transition: $transition-standard;

@@ -14,6 +14,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
 import Konva from 'konva';
 import { Venue } from '../../api/model/venue';
 import { VenueInput } from '../../api/model/venue-input';
@@ -75,6 +76,7 @@ interface EditableSector extends Sector {
     MatTooltipModule,
     MatInputModule,
     MatFormFieldModule,
+    MatSelectModule,
     FormsModule,
     RouterModule,
     ErrorDisplayComponent
@@ -225,6 +227,33 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   private readonly canvasResizeSubject = new Subject<void>();
   private readonly zoomLevel = signal(1);
   public readonly showSeats = signal(false);
+  public readonly sectorLabelMode = signal<'auto' | 'name' | 'name_seats' | 'none'>('auto');
+
+  setSectorLabelMode(mode: 'auto' | 'name' | 'name_seats' | 'none') {
+    this.sectorLabelMode.set(mode);
+    this.forceReRender();
+  }
+
+  private forceReRender() {
+    if (!this.layer) return;
+    
+    // Destroy all sector groups
+    this.sectorGroups.forEach(g => {
+        // Clean up external nodes if any
+        const sectorId = g.getAttr('sector')?.sectorId;
+        if (sectorId) {
+          try { this.removeExternalLabelNodesForSector(sectorId); } catch { /* ignore */ }
+        }
+        g.destroy();
+    });
+    this.sectorGroups.clear();
+    this.sectorSeats.clear();
+    this.sectorOutlines.clear();
+    this.sectorLabels.clear();
+    
+    this.renderSectors();
+    this.layer.batchDraw();
+  }
   private readonly maxZoom = 5;
   private readonly minZoom = 0.5;
   private readonly zoomIncrement = 0.2;
@@ -1643,7 +1672,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       const SMALL_HEIGHT_PX = 60; // threshold height under which labels are hidden
       const isSmallSector = (seatPositions.length > 0) && (bboxWidth < SMALL_WIDTH_PX || bboxHeight < SMALL_HEIGHT_PX);
 
-  if (isSmallSector) {
+  if (isSmallSector && this.sectorLabelMode() === 'auto') {
         // For very small sectors place the labels outside the sector to avoid
         // overlapping the shape. Add a small leader line and a subtle background
         // rectangle behind the texts so they remain readable.
@@ -1822,6 +1851,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
               group.on('rotationChange.externalLabel', () => { updatePositions(); this.layer?.batchDraw(); });
               // Hover visibility handlers target reparented nodes now
               group.on('mouseenter.showLabels', () => { 
+                if (this.sectorLabelMode() !== 'auto') return;
                 // Always show labels on hover for small sectors when not selected (all modes)
                 if (!sector.isSelected) {
                   try { (group.getAttr('_updateExternalPositions') as (()=>void)|undefined)?.(); } catch { /* ignore */ }
@@ -1830,16 +1860,29 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
                 }
               });
               group.on('mouseleave.showLabels', () => {
+                if (this.sectorLabelMode() !== 'auto') return;
                 // Re-hide when pointer leaves if not selected
                 if (!sector.isSelected) {
                   externalNodes.forEach(n => n.visible(false));
                   this.layer?.batchDraw();
                 }
               });
-              // Initial visibility (hide if not selected regardless of mode to reduce noise)
-              if (!sector.isSelected) {
+              // Initial visibility
+              const mode = this.sectorLabelMode();
+              if (mode === 'auto') {
+                if (!sector.isSelected) {
+                  externalNodes.forEach(n => n.visible(false));
+                } else {
+                  externalNodes.forEach(n => n.visible(true));
+                }
+              } else if (mode === 'none') {
                 externalNodes.forEach(n => n.visible(false));
-              } else {
+              } else if (mode === 'name') {
+                nameText.visible(true);
+                seatsText.visible(false);
+                bgRect.visible(true);
+                leader.visible(true);
+              } else if (mode === 'name_seats') {
                 externalNodes.forEach(n => n.visible(true));
               }
             }
@@ -1866,19 +1909,21 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
           // Original behavior: hide by default (except if selected) and show on hover in all modes.
           group.on('mouseenter.origShowLabels', () => {
+            if (this.sectorLabelMode() !== 'auto') return;
             if (!sector.isSelected) {
               try { (group.getAttr('_updateExternalPositions') as (()=>void)|undefined)?.(); } catch { /* ignore */ }
               nameText.visible(true); seatsText.visible(true); bgRect.visible(true); leader.visible(true); this.layer?.batchDraw();
             }
           });
           group.on('mouseleave.origShowLabels', () => {
+            if (this.sectorLabelMode() !== 'auto') return;
             if (!sector.isSelected) {
               nameText.visible(false); seatsText.visible(false); bgRect.visible(false); leader.visible(false); this.layer?.batchDraw();
             }
           });
 
           // When not hovering but selected, ensure label remains visible
-          if (!sector.isSelected) {
+          if (this.sectorLabelMode() === 'auto' && !sector.isSelected) {
             nameText.visible(false);
             seatsText.visible(false);
             bgRect.visible(false);
@@ -1899,6 +1944,21 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       }
 
       if (sector.sectorId != null) this.sectorLabels.set(sector.sectorId, { name: nameText, seats: seatsText });
+
+      // Apply visibility for non-external labels (normal sectors)
+      if (!nameText.getAttr('externalLabel')) {
+          const mode = this.sectorLabelMode();
+          if (mode === 'none') {
+              nameText.visible(false);
+              seatsText.visible(false);
+          } else if (mode === 'name') {
+              nameText.visible(true);
+              seatsText.visible(false);
+          } else if (mode === 'name_seats') {
+              nameText.visible(true);
+              seatsText.visible(true);
+          }
+      }
     } catch (e) { /* ignore labeling cache errors */ }
 
     // IMPORTANT: Add seats AFTER labels to ensure seats appear on top when visible

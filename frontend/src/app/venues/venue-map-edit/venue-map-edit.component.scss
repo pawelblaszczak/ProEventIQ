@@ -655,7 +655,7 @@ $border-radius: 12px;
         }
 
         .dimension-input {
-          width: 70px;
+          width: 80px;
           font-size: 11px;
           
           // Compact style overrides for Material Form Field
@@ -830,6 +830,33 @@ $border-radius: 12px;
     mat-divider {
       height: 40px;
       margin: 0 0.5rem;
+    }
+  }
+}
+
+/* Match the dropdown option typography to the selected value for the Labels select.
+   IMPORTANT: the panel is rendered in a CDK overlay (outside component DOM), so this
+   must be a top-level ::ng-deep selector (not nested under local containers). 
+   We remove :host because the overlay is attached to the body, not the component host. */
+::ng-deep .labels-select-panel {
+  font-size: 11px !important;
+  font-family: inherit !important;
+
+  /* MDC list item label typography is driven by CSS vars */
+  --mdc-list-list-item-label-text-size: 11px;
+  --mat-option-label-text-size: 11px;
+
+  .mat-mdc-option {
+    font-size: 11px !important;
+    font-family: inherit !important;
+    min-height: 32px !important; /* Reduce row height to match smaller text */
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    
+    .mdc-list-item__primary-text {
+      font-size: 11px !important;
+      font-family: inherit !important;
+      line-height: normal !important;
     }
   }
 }

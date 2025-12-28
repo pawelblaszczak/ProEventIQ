@@ -220,7 +220,7 @@
           <div class="tool-buttons">
             <mat-form-field appearance="outline" subscriptSizing="dynamic" class="view-select">
               <mat-label>Labels</mat-label>
-              <mat-select [value]="sectorLabelMode()" (selectionChange)="setSectorLabelMode($event.value)">
+              <mat-select [value]="sectorLabelMode()" (selectionChange)="setSectorLabelMode($event.value)" panelClass="labels-select-panel">
                 <mat-option value="auto">Auto</mat-option>
                 <mat-option value="name">Name</mat-option>
                 <mat-option value="name_seats">Name & Seats</mat-option>

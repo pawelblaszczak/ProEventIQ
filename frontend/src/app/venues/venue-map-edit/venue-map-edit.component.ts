@@ -1151,6 +1151,13 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         };
       });
       this.editableSectors.set(editableSectors);
+      
+      // Fix: Clear selection to avoid stale references to old sector objects (e.g. with ID -1)
+      // This ensures that after a save (which triggers a re-fetch), we don't hold onto 
+      // sectors with temporary IDs that would cause errors if acted upon.
+      this.selectedSectors.set([]);
+      this.selectedSector.set(null);
+      
       this.markNeedsFullRender(); // Mark that full render is needed
     }
   }

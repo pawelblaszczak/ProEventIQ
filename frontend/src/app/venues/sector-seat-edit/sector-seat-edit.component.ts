@@ -134,6 +134,12 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
   // Import JSON textarea content
   importJsonText = '';
 
+  private nextTempId = -1;
+
+  private generateTempId(): number {
+    return this.nextTempId--;
+  }
+
   constructor() {
     // Handle keyboard events for multi-select
     effect(() => {
@@ -326,13 +332,13 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
             rows: (sector.rows || []).map((row, rowIndex) => ({
               ...row,
               // Ensure row has an ID
-              seatRowId: row.seatRowId || -1,
+              seatRowId: row.seatRowId || this.generateTempId(),
               // Ensure row has an orderNumber - use existing or assign based on index
               orderNumber: row.orderNumber ?? (rowIndex + 1),
               seats: (row.seats || []).map((seat, seatIndex) => ({
                 ...seat,
                 // Ensure seat has an ID
-                seatId: seat.seatId || -1,
+                seatId: seat.seatId || this.generateTempId(),
                 selected: false,
                 originalPosition: seat.position ? { x: seat.position.x ?? 0, y: seat.position.y ?? 0 } : { x: 0, y: 0 }
               }))
@@ -1001,7 +1007,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     const result = await dialogRef.afterClosed().toPromise() as AddRowDialogResult | null;
     if (result && result.rowName && result.seatCount > 0) {
       // Generate a temporary ID for the new row
-      const tempId = -1;
+      const tempId = this.generateTempId();
       // Calculate the next order number based on existing rows
       const currentRows = this.sector()?.rows ?? [];
       const maxOrderNumber = currentRows.length > 0 
@@ -1090,7 +1096,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
             : i + 1;
 
           return {
-            seatId: -1,
+            seatId: this.generateTempId(),
             orderNumber: seatOrderNumber,
             position: { x: baseX + i * seatSpacing, y: baseY },
             status: 'active',
@@ -1176,7 +1182,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
       // Create multiple rows
       const newRows: EditableRow[] = [];
       for (let i = 0; i < result.rowCount; i++) {
-        const tempId = -1;
+        const tempId = this.generateTempId();
         const orderNumber = maxOrderNumber + i + 1;
         const rowName = result.rowNaming === 'Arabic' 
           ? orderNumber.toString() 
@@ -1192,7 +1198,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
               : seatIndex + 1;
 
             return {
-              seatId: -1,
+              seatId: this.generateTempId(),
               orderNumber: seatOrderNumber,
               position: { 
                 x: baseX + seatIndex * seatSpacing, 
@@ -1225,7 +1231,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
 
   addSeatToRow(row: EditableRow) {
     // Generate a temporary ID for the new seat
-    const tempId = -1;
+    const tempId = this.generateTempId();
     
     const newSeat: EditableSeat = {
       seatId: tempId,
@@ -1280,7 +1286,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     }
 
     for (let i = 0; i < seatCount; i++) {
-      const tempId = -1;
+      const tempId = this.generateTempId();
       
       const newSeat: EditableSeat = {
         seatId: tempId,
@@ -1514,7 +1520,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
         const position = { x, y };
 
         return {
-          seatId: -1,
+          seatId: this.generateTempId(),
           orderNumber: seatData.orderNumber ?? seatIndex + 1,
           position,
           priceCategory: seatData.priceCategory,
@@ -1525,7 +1531,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
       });
 
       return {
-        seatRowId: -1,
+        seatRowId: this.generateTempId(),
         name: rowData.name ?? this.numberToRoman(rowIndex + 1),
         orderNumber: rowData.orderNumber ?? rowIndex + 1,
         seats

@@ -142,6 +142,13 @@ export class VenueEditComponent {
       description: formValue.description || '',
     };
 
+    if (this.isAddMode()) {
+      body.size = {
+        width: 1200,
+        height: 800
+      };
+    }
+
     // Only include image data if we have it
     if (this.thumbnailBase64 && this.thumbnailContentType) {
       body.thumbnailContentType = this.thumbnailContentType;

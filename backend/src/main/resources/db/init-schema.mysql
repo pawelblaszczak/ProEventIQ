@@ -180,6 +180,16 @@ CREATE TABLE seat_reservation (
     UNIQUE KEY unique_seat_event (seat_id, event_id) -- Prevent double booking of a seat for an event
 );
 
+CREATE TABLE seat_block (
+    seat_block_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    event_id BIGINT NOT NULL,
+    seat_id BIGINT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (event_id) REFERENCES event(event_id) ON DELETE CASCADE,
+    FOREIGN KEY (seat_id) REFERENCES seat(seat_id) ON DELETE CASCADE,
+    UNIQUE KEY unique_seat_block_event (seat_id, event_id)
+);
+
 CREATE TABLE user_details (
     id VARCHAR(50) PRIMARY KEY,
     email VARCHAR(50),

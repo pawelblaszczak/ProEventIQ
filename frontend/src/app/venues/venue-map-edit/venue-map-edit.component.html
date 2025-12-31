@@ -336,6 +336,26 @@
                   {{ getReservedSeatsForParticipant(p) }}/{{ p.numberOfTickets }}
                 </div>                
               </div>
+              
+              <mat-divider class="participant-separator" style="margin: 0.5rem 0;"></mat-divider>
+
+              <div 
+                class="participant-row blocked-row" 
+                matTooltip="Blocked Seats"
+                role="listitem"
+                tabindex="0"
+                (click)="onBlockedClick()"
+                (keydown.enter)="onBlockedClick()"
+                (keydown.space)="onBlockedClick()"
+                [class.selected]="isBlockedSelected()"
+                [attr.aria-selected]="isBlockedSelected()"
+              >
+                 <div class="color blocked-color" style="background: #333;"></div>
+                 <div class="name one-line">Blocked</div>
+                 <div class="seats-info" style="font-size: 0.95em; color: #666; margin-left: 0.5rem;">
+                  {{ getBlockedSeatsCount() }}
+                </div>
+              </div>
             </div>
           }
           </mat-card-content>

@@ -1,0 +1,14 @@
+SeatBlockInput:
+  type: object
+  properties:
+    id:
+      type: integer
+      format: int64
+    eventId:
+      type: integer
+      format: int64
+    seatId:
+      type: integer
+      format: int64
+
+

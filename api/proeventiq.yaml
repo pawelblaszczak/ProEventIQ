@@ -2,6 +2,7 @@ openapi: 3.0.1
 info:
   title: ProEventIQ Rest API
   description: API for ProEventIQ
+  # Updated for SeatBlock
   version: "0.49"
 servers:
   - url: http://{hostname}:{port}/api
@@ -56,3 +57,5 @@ paths:
     $ref: './user/user-controller.yaml#/userById'
   /reservation/{eventId}:
     $ref: './reservation/reservation-controller.yaml#/reservationByEventId'
+  /seat-block/{eventId}:
+    $ref: './seat-block/seat-block-controller.yaml#/seatBlockByEventId'

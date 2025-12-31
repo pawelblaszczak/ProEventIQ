@@ -1,0 +1,59 @@
+seatBlockByEventId:
+  get:
+    tags: [ProEventIQ]
+    summary: List all seat blocks for a specific event
+    description: Retrieve all seat blocks registered for the specified event
+    operationId: getSeatBlock
+    parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: ID of the event
+    responses:
+      '200':
+        description: List of seat blocks for the event
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: './seat-block.yaml#/SeatBlock'
+      '404':
+        description: Event not found
+  put:
+    tags: [ProEventIQ]
+    summary: Update seat blocks for a specific event
+    description: Update existing seat blocks
+    operationId: updateSeatBlock
+    parameters:
+      - in: path
+        name: eventId
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Event ID
+    requestBody:
+      required: true
+      content:
+        application/json:
+            schema:
+              type: array
+              items:
+                $ref: './seat-block-input.yaml#/SeatBlockInput'
+    responses:
+      '200':
+        description: Seat blocks updated successfully
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: './seat-block.yaml#/SeatBlock'
+      '400':
+        description: Invalid input
+      '404':
+        description: Event not found

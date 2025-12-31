@@ -12,6 +12,8 @@ import { Event } from '../../api/model/event';
 import { Reservation } from '../../api/model/reservation';
 import { ReservationInput } from '../../api/model/reservation-input';
 import { Participant } from '../../api/model/participant';
+import { SeatBlockInput } from '../../api/model/seat-block-input';
+import { forkJoin, Observable } from 'rxjs';
 
 @Component({
   selector: 'app-venue-reservation',
@@ -131,14 +133,25 @@ export class VenueReservationComponent implements OnInit {
     this.reservationLoading.set(true);
     this.reservationError.set(null);
     
-    this.api.getReservation(eventId).subscribe({
-      next: reservations => {
-        this.reservations.set(reservations || []);
+    forkJoin({
+      reservations: this.api.getReservation(eventId),
+      seatBlocks: this.api.getSeatBlock(eventId)
+    }).subscribe({
+      next: ({ reservations, seatBlocks }) => {
+        const blockedReservations: Reservation[] = (seatBlocks || []).map(sb => ({
+          id: sb.id,
+          eventId: sb.eventId,
+          seatId: sb.seatId,
+          participantId: -1 // BLOCKED_PARTICIPANT_ID
+        }));
+
+        const allReservations = [...(reservations || []), ...blockedReservations];
+        this.reservations.set(allReservations);
         this.reservationLoading.set(false);
-        console.log('Loaded reservations:', reservations?.length || 0, reservations);
+        console.log('Loaded reservations:', reservations?.length || 0, 'and blocks:', seatBlocks?.length || 0);
       },
       error: err => {
-        console.error('Failed to load reservations', err);
+        console.error('Failed to load reservations or blocks', err);
         this.reservationError.set('Failed to load reservations');
         this.reservationLoading.set(false);
       }
@@ -203,30 +216,67 @@ export class VenueReservationComponent implements OnInit {
 
     console.log('Saving batch of reservation updates:', updates);
 
-    this.api.updateReservation(eventId, updates).subscribe({
-      next: reservation => {
-        console.log('Batch reservation updates saved successfully', reservation);
+    const seatBlockInputs: SeatBlockInput[] = [];
+    const reservationInputs: ReservationInput[] = [];
+
+    updates.forEach(u => {
+      const isNewBlocked = u.participantId === -1;
+      const isOldBlocked = u.oldParticipantId === -1;
+
+      // Handle Block Change
+      if (isNewBlocked !== isOldBlocked) { // XOR
+        seatBlockInputs.push({ seatId: u.seatId, eventId });
+      }
+
+      // Handle Reservation Change
+      if (isNewBlocked) {
+        // If it was reserved, unassign it
+        if (u.oldParticipantId && u.oldParticipantId !== -1) {
+           reservationInputs.push({ ...u, participantId: undefined });
+        }
+      } else {
+        // Not blocking.
+        if (isOldBlocked) {
+           // Was blocked. Only add if we are assigning a new participant.
+           if (u.participantId !== undefined && u.participantId !== null) {
+             reservationInputs.push(u);
+           }
+        } else {
+           // Standard update
+           reservationInputs.push(u);
+        }
+      }
+    });
+
+    const tasks: Observable<any>[] = [];
+    if (reservationInputs.length > 0) {
+      tasks.push(this.api.updateReservation(eventId, reservationInputs));
+    }
+    if (seatBlockInputs.length > 0) {
+      tasks.push(this.api.updateSeatBlock(eventId, seatBlockInputs));
+    }
+
+    if (tasks.length === 0) {
+       this.pendingReservationUpdates.set([]);
+       this.reservationLoading.set(false);
+       return;
+    }
+
+    forkJoin(tasks).subscribe({
+      next: (results) => {
+        console.log('Batch updates saved successfully', results);
         // Clear pending updates
         this.pendingReservationUpdates.set([]);
-        // The API returns the updated reservations already from the PUT call.
-        // Use the returned data instead of making a redundant GET request.
-        try {
-          if (Array.isArray(reservation)) {
-            this.reservations.set(reservation || []);
-          } else if (reservation && (reservation as any).reservations && Array.isArray((reservation as any).reservations)) {
-            this.reservations.set((reservation as any).reservations);
-          } else {
-            // Fallback: wrap single item or clear
-            this.reservations.set(reservation ? [reservation as any] : []);
-          }
-        } finally {
-          this.reservationLoading.set(false);
-          this.snackBar.open('Reservation changes saved successfully!', 'Close', {
-            duration: 3000,
-            horizontalPosition: 'center',
-            verticalPosition: 'top'
-          });
-        }
+        
+        // Reload to ensure consistency
+        this.loadReservations(eventId);
+
+        this.reservationLoading.set(false);
+        this.snackBar.open('Reservation changes saved successfully!', 'Close', {
+          duration: 3000,
+          horizontalPosition: 'center',
+          verticalPosition: 'top'
+        });
       },
       error: err => {
         console.error('Failed to save batch reservation updates', err);

@@ -86,6 +86,52 @@ interface EditableSector extends Sector {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, OnChanges {
+  private updateSeatAppearance(seat: Konva.Circle, participantId: number | null, group?: Konva.Group) {
+    const color = this.getParticipantColor(participantId);
+    seat.fill(color);
+    
+    const parent = group || (seat.getParent() as Konva.Group);
+    if (!parent) return;
+
+    const seatName = seat.name(); 
+    const crossName1 = `${seatName}-cross-1`;
+    const crossName2 = `${seatName}-cross-2`;
+    
+    // Remove existing cross lines
+    const existingCross1 = parent.findOne(`.${crossName1}`);
+    if (existingCross1) existingCross1.destroy();
+    const existingCross2 = parent.findOne(`.${crossName2}`);
+    if (existingCross2) existingCross2.destroy();
+
+    if (participantId === this.BLOCKED_PARTICIPANT_ID) {
+        const x = seat.x();
+        const y = seat.y();
+        const r = seat.radius();
+        
+        const line1 = new Konva.Line({
+            points: [x - r, y - r, x + r, y + r],
+            stroke: '#ffffff', // White cross
+            strokeWidth: 1,
+            name: crossName1,
+            listening: false
+        });
+        
+        const line2 = new Konva.Line({
+            points: [x + r, y - r, x - r, y + r],
+            stroke: '#ffffff',
+            strokeWidth: 1,
+            name: crossName2,
+            listening: false
+        });
+        
+        parent.add(line1);
+        parent.add(line2);
+        // Ensure lines are on top of seat
+        line1.moveToTop();
+        line2.moveToTop();
+    }
+  }
+
   /**
    * Returns the number of seats reserved for a participant (from reservationData)
    */
@@ -117,6 +163,35 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     });
     return count;
   }
+
+  getBlockedSeatsCount(): number {
+    // Read pendingCountSignal so Angular tracks pending changes and updates template
+    void this.pendingCountSignal();
+    
+    // Build a map of seatId -> authoritative participantId from reservationData
+    const seatAssignment = new Map<number, number | null>();
+    if (this.reservationData) {
+      this.reservationData.forEach(r => {
+        if (r.seatId != null) seatAssignment.set(r.seatId, r.participantId ?? null);
+      });
+    }
+
+    // Apply pending changes (overrides) so we compute the effective assignment
+    this.pendingReservationMap.forEach(p => {
+      if (p.seatId != null) {
+        // If pending participantId is undefined -> unassigned
+        seatAssignment.set(p.seatId, (p.participantId == null) ? null : p.participantId);
+      }
+    });
+
+    // Count seats currently blocked
+    let count = 0;
+    seatAssignment.forEach(assignedPid => {
+      if (assignedPid === this.BLOCKED_PARTICIPANT_ID) count++;
+    });
+    return count;
+  }
+
   @ViewChild('canvasContainer', { static: false }) canvasContainer!: ElementRef<HTMLDivElement>;
   @Input() mode: 'preview' | 'edit' | 'reservation' | 'reservation-preview' = 'edit'; // Added 'reservation' and 'reservation-preview' modes
   @Input() venueData: Venue | null = null; // Allow venue data to be passed in
@@ -146,6 +221,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   pendingCountSignal = signal(0);
   // Reservation mode participant selection
   selectedParticipantId = signal<number | null>(null);
+  readonly BLOCKED_PARTICIPANT_ID = -1;
   
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -195,6 +271,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   
   private getParticipantColor(participantId: number | null): string {
     console.log('getParticipantColor called with participantId:', participantId);
+    if (participantId === this.BLOCKED_PARTICIPANT_ID) {
+      return '#333333'; // Dark color for blocked
+    }
     if (participantId == null) {
       console.log('Returning default color for null participantId');
       return this.defaultSeatColor;
@@ -1175,13 +1254,44 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     const seatsVisible = this.showSeats();
     
     // Iterate through all cached seats and update visibility
-    this.sectorSeats.forEach((seats) => {
+    this.sectorSeats.forEach((seats, sectorId) => {
+        const group = this.sectorGroups.get(sectorId);
         seats.forEach(seat => {
             seat.visible(seatsVisible);
             // IMPORTANT: When seats become visible, ensure they're on top of labels
             // This ensures seats can receive mouse events for tooltips
             if (seatsVisible) {
               seat.moveToTop();
+              
+              // Ensure cross lines are also visible and on top if they exist
+              if (group) {
+                const seatName = seat.name();
+                const crossName1 = `${seatName}-cross-1`;
+                const crossName2 = `${seatName}-cross-2`;
+                const line1 = group.findOne(`.${crossName1}`);
+                const line2 = group.findOne(`.${crossName2}`);
+                
+                if (line1) {
+                    line1.visible(true);
+                    line1.moveToTop();
+                }
+                if (line2) {
+                    line2.visible(true);
+                    line2.moveToTop();
+                }
+              }
+            } else {
+              // Hide cross lines if seats are hidden
+              if (group) {
+                const seatName = seat.name();
+                const crossName1 = `${seatName}-cross-1`;
+                const crossName2 = `${seatName}-cross-2`;
+                const line1 = group.findOne(`.${crossName1}`);
+                const line2 = group.findOne(`.${crossName2}`);
+                
+                if (line1) line1.visible(false);
+                if (line2) line2.visible(false);
+              }
             }
         });
     });
@@ -2359,11 +2469,6 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
             seat.setAttr('participantId', assignedPid);
             // Always store originalParticipantId from authoritative source, not pending
             seat.setAttr('originalParticipantId', originalPid);
-            try {
-              seat.fill(this.getParticipantColor(assignedPid));
-            } catch (e) {
-              seat.fill(this.defaultSeatColor);
-            }
             // Ensure we track initial assignments consistently (only authoritative/original)
             if (pos.seatId && originalPid) this.initialSeatAssignments.set(pos.seatId, originalPid);
           } else {
@@ -2430,7 +2535,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
           if (this.mode === 'reservation' || this.mode === 'reservation-preview') {
             const pid = seat.getAttr('participantId') as number | null | undefined;
             if (pid) {
-              seat.fill(this.getParticipantColor(pid));
+              this.updateSeatAppearance(seat, pid);
             } else if (prevFill) {
               seat.fill(prevFill);
             } else {
@@ -2455,6 +2560,14 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
         existingSeats!.push(seat);
         group.add(seat);
+
+        // Apply initial appearance after adding to group
+        if (this.mode === 'reservation' || this.mode === 'reservation-preview') {
+            const pid = seat.getAttr('participantId') as number | null | undefined;
+            if (pid) {
+                this.updateSeatAppearance(seat, pid, group);
+            }
+        }
       });
       
       // Cache the seats
@@ -2490,10 +2603,10 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
             }
 
             if (pid != null) {
-              seat.fill(this.getParticipantColor(pid));
+              this.updateSeatAppearance(seat, pid, group);
               seat.setAttr('participantId', pid);
             } else {
-              seat.fill(this.defaultSeatColor);
+              this.updateSeatAppearance(seat, null, group);
               // ensure attribute is normalized
               seat.setAttr('participantId', null);
             }
@@ -2651,7 +2764,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
             if (this.mode === 'reservation' || this.mode === 'reservation-preview') {
               const pid = seat.getAttr('participantId') as number | null | undefined;
               if (pid) {
-                seat.fill(this.getParticipantColor(pid));
+                this.updateSeatAppearance(seat, pid);
               } else if (prevFill) {
                 seat.fill(prevFill);
               } else {
@@ -2689,6 +2802,16 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       const eventId = this.eventData?.eventId;
       if (!eventId) return; // No event context
 
+      // Check if seat is blocked
+      if (currentPid === this.BLOCKED_PARTICIPANT_ID) {
+        // If trying to unblock (selectedPid is null or same blocked ID), allow it
+        // If trying to assign a real participant, block it
+        if (selectedPid !== null && selectedPid !== this.BLOCKED_PARTICIPANT_ID) {
+          this.snackBar.open('Seat is blocked. Unblock it first.', 'Close', { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
+          return;
+        }
+      }
+
       if (selectedPid == null) {
         if (currentPid) {
           // compute reservation id for removal
@@ -2699,7 +2822,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
           // Update visual state first, then add pending change so tracking reads new state
           seat.setAttr('participantId', null);
-          seat.fill(this.defaultSeatColor);
+          this.updateSeatAppearance(seat, null);
           this.layer!.batchDraw();
 
           this.addPendingReservationChange({ id: reservationId, eventId, seatId, oldParticipantId: originalPid ?? currentPid });
@@ -2712,7 +2835,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
         // Unassign visually first
         seat.setAttr('participantId', null);
-        seat.fill(this.defaultSeatColor);
+        this.updateSeatAppearance(seat, null);
         this.layer!.batchDraw();
 
         this.addPendingReservationChange({ id: reservationIdToggle, eventId, seatId, oldParticipantId: originalPid ?? selectedPid });
@@ -2725,7 +2848,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         const participant = this.participants().find(p => p.participantId === selectedPid);
         const tickets = Number(participant?.numberOfTickets) || 0;
         const reserved = participant ? this.getReservedSeatsForParticipant(participant) : 0;
-        if (tickets > 0 && reserved >= tickets) {
+        if (selectedPid !== this.BLOCKED_PARTICIPANT_ID && tickets > 0 && reserved >= tickets) {
           // Participant has no remaining tickets — do not allow allocation
           this.snackBar.open('Participant has reached their ticket limit.', 'Close', { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
           return;
@@ -2733,7 +2856,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
         // Assign visually first
         seat.setAttr('participantId', selectedPid);
-        seat.fill(this.getParticipantColor(selectedPid));
+        this.updateSeatAppearance(seat, selectedPid);
         this.layer!.batchDraw();
 
         this.addPendingReservationChange({ id: existingReservationId, eventId, participantId: selectedPid, seatId, oldParticipantId: originalPid ?? (currentPid || undefined) });
@@ -4715,6 +4838,16 @@ console.log("addSelectionIndicators2");
     // Prevent default space scroll if available
     try { (event as any)?.preventDefault?.(); } catch (e) { /* ignore */ }
     this.selectParticipant(p);
+  }
+
+  onBlockedClick() {
+    if (this.mode !== 'reservation') return;
+    const current = this.selectedParticipantId();
+    this.selectedParticipantId.set(current === this.BLOCKED_PARTICIPANT_ID ? null : this.BLOCKED_PARTICIPANT_ID);
+  }
+
+  isBlockedSelected(): boolean {
+    return this.selectedParticipantId() === this.BLOCKED_PARTICIPANT_ID;
   }
 
 }

@@ -110,7 +110,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         
         const line1 = new Konva.Line({
             points: [x - r, y - r, x + r, y + r],
-            stroke: '#ffffff', // White cross
+            stroke: '#000000', // Black cross
             strokeWidth: 1,
             name: crossName1,
             listening: false
@@ -118,7 +118,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         
         const line2 = new Konva.Line({
             points: [x + r, y - r, x - r, y + r],
-            stroke: '#ffffff',
+            stroke: '#000000',
             strokeWidth: 1,
             name: crossName2,
             listening: false
@@ -272,7 +272,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   private getParticipantColor(participantId: number | null): string {
     console.log('getParticipantColor called with participantId:', participantId);
     if (participantId === this.BLOCKED_PARTICIPANT_ID) {
-      return '#333333'; // Dark color for blocked
+      return '#ffffff'; // White color for blocked
     }
     if (participantId == null) {
       console.log('Returning default color for null participantId');
@@ -927,7 +927,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     allSeats.forEach(seat => {
       seat.setAttr('participantId', null);
       seat.setAttr('originalParticipantId', null);
-      seat.fill(this.defaultSeatColor);
+      this.updateSeatAppearance(seat, null);
     });
     
     // Apply reservations
@@ -937,12 +937,11 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         const seat = allSeats.find(s => s.getAttr('seatId') === reservation.seatId);
         console.log('Found seat for reservation:', !!seat, 'seatId:', reservation.seatId);
         if (seat) {
-          const participantColor = this.getParticipantColor(reservation.participantId);
-          console.log('Applying color to seat:', participantColor, 'for participant:', reservation.participantId);
+          console.log('Applying color to seat for participant:', reservation.participantId);
           // Set both the current participant assignment and the original backend owner
           seat.setAttr('participantId', reservation.participantId);
           seat.setAttr('originalParticipantId', reservation.participantId);
-          seat.fill(participantColor);
+          this.updateSeatAppearance(seat, reservation.participantId);
           // Record initial assignment for change tracking
           this.initialSeatAssignments.set(reservation.seatId, reservation.participantId);
         }
@@ -1260,6 +1259,25 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   private updateSeatsVisibility(): void {
     const seatsVisible = this.showSeats();
     
+    // Update sector outline/placeholder fills based on visibility
+    this.sectorGroups.forEach((group) => {
+        const sectorData = group.getAttr('sector');
+        if (sectorData) {
+             const outline = group.findOne('.sector-outline') as Konva.Shape;
+             if (outline) {
+                 const shouldUseTransparentFill = !seatsVisible && this.isReservationLike();
+                 const fillColor = shouldUseTransparentFill ? this.withAlpha(this.getSectorColor(sectorData), 0.25) : this.getSectorColor(sectorData);
+                 outline.fill(fillColor);
+             }
+             
+             const placeholder = group.findOne('.sector-placeholder') as Konva.Shape;
+             if (placeholder) {
+                 const phFill = (!this.isReservationLike() || seatsVisible) ? this.getSectorColor(sectorData) : this.withAlpha(this.getSectorColor(sectorData), 0.25);
+                 placeholder.fill(phFill);
+             }
+        }
+    });
+
     // Iterate through all cached seats and update visibility
     this.sectorSeats.forEach((seats, sectorId) => {
         const group = this.sectorGroups.get(sectorId);
@@ -1301,6 +1319,34 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
               }
             }
         });
+    });
+
+    // Ensure internal labels are on top of seats so they remain visible
+    // When seats are visible, disable label listening so clicks pass through to seats
+    this.sectorLabels.forEach((labels, sectorId) => {
+        const group = this.sectorGroups.get(sectorId);
+        if (group) {
+             const isInternalName = labels.name.getParent() === group;
+             const isInternalSeats = labels.seats.getParent() === group;
+             
+             if (isInternalName) {
+                 if (seatsVisible) {
+                     labels.name.moveToTop();
+                     labels.name.listening(false);
+                 } else {
+                     labels.name.listening(true);
+                 }
+             }
+             
+             if (isInternalSeats) {
+                 if (seatsVisible) {
+                     labels.seats.moveToTop();
+                     labels.seats.listening(false);
+                 } else {
+                     labels.seats.listening(true);
+                 }
+             }
+        }
     });
     
     // Redraw the layer to apply visibility changes
@@ -3663,10 +3709,11 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
         // Update visual state locally first (unassign seat), then add pending change so tracking reads new state
         seat.setAttr('participantId', null);
-        seat.fill(this.defaultSeatColor);
-        this.layer!.batchDraw();
+        this.updateSeatAppearance(seat, null);
+        // this.layer!.batchDraw(); // Batch draw is called at the end if anyChanged
 
-        this.addPendingReservationChange({ id: reservationId, eventId, seatId, oldParticipantId: originalPid ?? currentPid });
+        this.addPendingReservationChange({ id: reservationId, eventId, seatId, oldParticipantId: originalPid ?? currentPid }, { skipRefresh: true });
+        anyChanged = true;
       } catch (e) {
         console.error('Failed to clear allocation for a seat', e);
       }
@@ -3722,20 +3769,24 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
     // Determine participants to allocate: single selected participant or all participants
     let participantsToAllocate: Participant[] = [];
-    if (selectedParticipantId != null) {
-      const p = this.participants().find(x => x.participantId === selectedParticipantId);
-      if (!p) {
-        this.snackBar.open('Selected participant not found.', 'Close', { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
+    const isBlockedAllocation = (selectedParticipantId === this.BLOCKED_PARTICIPANT_ID);
+
+    if (!isBlockedAllocation) {
+      if (selectedParticipantId != null) {
+        const p = this.participants().find(x => x.participantId === selectedParticipantId);
+        if (!p) {
+          this.snackBar.open('Selected participant not found.', 'Close', { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
+          return;
+        }
+        participantsToAllocate = [p];
+      } else {
+        participantsToAllocate = this.participants() || [];
+      }
+
+      if (!participantsToAllocate || participantsToAllocate.length === 0) {
+        this.snackBar.open('No participants to allocate.', 'Close', { duration: 2000, horizontalPosition: 'center', verticalPosition: 'top' });
         return;
       }
-      participantsToAllocate = [p];
-    } else {
-      participantsToAllocate = this.participants() || [];
-    }
-
-    if (!participantsToAllocate || participantsToAllocate.length === 0) {
-      this.snackBar.open('No participants to allocate.', 'Close', { duration: 2000, horizontalPosition: 'center', verticalPosition: 'top' });
-      return;
     }
 
     // Helper to determine if a seat is marked as allocated/forFar (support a few attribute names)
@@ -3763,27 +3814,18 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       return an.localeCompare(bn);
     });
 
-    // Iterate participants and allocate within the chosen sectors only
-    for (const p of participantsToAllocate) {
-      const pid = p.participantId;
-      const tickets = Number(p.numberOfTickets) || 0;
-      const alreadyReserved = this.getReservedSeatsForParticipant(p);
-      let needed = Math.max(0, tickets - alreadyReserved);
-      if (needed <= 0) continue;
-
+    if (isBlockedAllocation) {
+      // Block all unallocated seats in the target sectors
       for (const sector of sectorsOrdered) {
-        if (needed <= 0) break;
         const seats = this.sectorSeats.get(sector.sectorId!);
         if (!seats || seats.length === 0) continue;
 
         for (const seat of seats) {
-          if (needed <= 0) break;
           try {
-           
             const seatId = seat.getAttr('seatId') as number | undefined;
             if (!seatId) continue;
 
-            // Skip seats already assigned (effective assignment considers pending map)
+            // Skip seats already assigned
             const effectivePending = this.pendingReservationMap.get(seatId);
             const effectivePid = (effectivePending && Object.prototype.hasOwnProperty.call(effectivePending, 'participantId')) ? (effectivePending as any).participantId : seat.getAttr('participantId');
             if (effectivePid != null) continue;
@@ -3791,9 +3833,10 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
             // Skip seats marked for far allocation
             if (isSeatForFar(seat)) continue;
 
-            // Assign visually first
+            // Assign to blocked
+            const pid = this.BLOCKED_PARTICIPANT_ID;
             seat.setAttr('participantId', pid);
-            seat.fill(this.getParticipantColor(pid));
+            this.updateSeatAppearance(seat, pid);
 
             // Determine reservation id and original participant for change record
             const originalPid = seat.getAttr('originalParticipantId') as number | null | undefined;
@@ -3801,14 +3844,63 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
             if (originalPid) reservationId = this.findReservationIdForParticipantSeat(originalPid, seatId);
             if (!reservationId) reservationId = this.findReservationIdForSeat(seatId);
 
-            // Add pending change (parent will persist on save) - skip per-seat refresh
             this.addPendingReservationChange({ id: reservationId, eventId, participantId: pid, seatId, oldParticipantId: originalPid ?? undefined }, { skipRefresh: true });
 
-            needed--;
             totalAllocated++;
           } catch (e) {
             console.error('Allocation error for a seat', e);
             continue;
+          }
+        }
+      }
+    } else {
+      // Iterate participants and allocate within the chosen sectors only
+      for (const p of participantsToAllocate) {
+        const pid = p.participantId;
+        const tickets = Number(p.numberOfTickets) || 0;
+        const alreadyReserved = this.getReservedSeatsForParticipant(p);
+        let needed = Math.max(0, tickets - alreadyReserved);
+        if (needed <= 0) continue;
+
+        for (const sector of sectorsOrdered) {
+          if (needed <= 0) break;
+          const seats = this.sectorSeats.get(sector.sectorId!);
+          if (!seats || seats.length === 0) continue;
+
+          for (const seat of seats) {
+            if (needed <= 0) break;
+            try {
+            
+              const seatId = seat.getAttr('seatId') as number | undefined;
+              if (!seatId) continue;
+
+              // Skip seats already assigned (effective assignment considers pending map)
+              const effectivePending = this.pendingReservationMap.get(seatId);
+              const effectivePid = (effectivePending && Object.prototype.hasOwnProperty.call(effectivePending, 'participantId')) ? (effectivePending as any).participantId : seat.getAttr('participantId');
+              if (effectivePid != null) continue;
+
+              // Skip seats marked for far allocation
+              if (isSeatForFar(seat)) continue;
+
+              // Assign visually first
+              seat.setAttr('participantId', pid);
+              this.updateSeatAppearance(seat, pid);
+
+              // Determine reservation id and original participant for change record
+              const originalPid = seat.getAttr('originalParticipantId') as number | null | undefined;
+              let reservationId: number | undefined;
+              if (originalPid) reservationId = this.findReservationIdForParticipantSeat(originalPid, seatId);
+              if (!reservationId) reservationId = this.findReservationIdForSeat(seatId);
+
+              // Add pending change (parent will persist on save) - skip per-seat refresh
+              this.addPendingReservationChange({ id: reservationId, eventId, participantId: pid, seatId, oldParticipantId: originalPid ?? undefined }, { skipRefresh: true });
+
+              needed--;
+              totalAllocated++;
+            } catch (e) {
+              console.error('Allocation error for a seat', e);
+              continue;
+            }
           }
         }
       }
@@ -3929,7 +4021,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
         // Update visual state (unassign seat), then add pending change so tracker reads new state
         seat.setAttr('participantId', null);
-        seat.fill(this.defaultSeatColor);
+        this.updateSeatAppearance(seat, null);
 
         // Use skipRefresh to coalesce UI updates during bulk operations
         this.addPendingReservationChange({ id: reservationId, eventId, seatId, oldParticipantId: originalPid ?? currentPid }, { skipRefresh: true });

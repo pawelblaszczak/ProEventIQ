@@ -74,8 +74,8 @@
           <!-- Allocation Actions (only in reservation mode) - moved to leftmost position -->
           <div class="tool-group" *ngIf="mode === 'reservation'">
             <h3 class="tool-group-title">
-              <mat-icon>assignment</mat-icon>
-              Allocation
+              <mat-icon>done_all</mat-icon>
+              Allocate all
             </h3>
             <div class="tool-buttons">
               <button mat-icon-button
@@ -84,15 +84,30 @@
                 <mat-icon>done_all</mat-icon>
               </button>
               <button mat-icon-button
-                      (click)="allocateSelected()"
-                      matTooltip="Allocate selected">
-                <mat-icon>done_outline</mat-icon>
-              </button>
-              <button mat-icon-button
                       (click)="clearAllAllocations()"
                       matTooltip="Clear all"
                       color="warn">
                 <mat-icon>clear_all</mat-icon>
+              </button>
+              <div class="vertical-divider"></div>
+            </div>
+          </div>
+
+          <div class="tool-group" *ngIf="mode === 'reservation'">
+            <h3 class="tool-group-title">
+              <mat-icon>done_outline</mat-icon>
+              Allocate selected
+            </h3>
+            <div class="tool-buttons">
+              <button mat-icon-button
+                      (click)="allocateSelected(false)"
+                      matTooltip="Allocate selected (forward)">
+                <mat-icon>arrow_upward</mat-icon>
+              </button>
+              <button mat-icon-button
+                      (click)="allocateSelected(true)"
+                      matTooltip="Allocate selected (reverse rows)">
+                <mat-icon>arrow_downward</mat-icon>
               </button>
               <button mat-icon-button
                       (click)="clearSelectedAllocations()"

@@ -1619,7 +1619,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     // Use smaller scale for venue overview - seats should appear smaller
     const seatRadius = 3; // Reduced from 8 to 3 for overview
     const seatSpacing = 2; // Reduced from 6 to 2 for overview
-    let seatPositions: {x: number, y: number, seatId?: number}[] = [];
+    let seatPositions: {x: number, y: number, seatId?: number, seatRowId?: number}[] = [];
     let maxRowLength = 0;
     let totalRows = 0;
     if (sector.rows && Array.isArray(sector.rows)) {
@@ -1636,7 +1636,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
               seatPositions.push({ 
                 x: seat.position.x * scaleFactor, 
                 y: seat.position.y * scaleFactor,
-                seatId: seat.seatId
+                seatId: seat.seatId,
+                seatRowId: row.seatRowId
               });
             } else if (row.seats) {
               // Fallback: calculate position as before but scaled down
@@ -1644,7 +1645,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
               const rowOffset = (maxRowLength - row.seats.length) * (seatRadius + seatSpacing/2) * scaleFactor;
               const x = (seatIdx * (seatRadius * 2 + seatSpacing) + rowOffset) * scaleFactor;
               const y = rowY;
-              seatPositions.push({x, y, seatId: seat.seatId});
+              seatPositions.push({x, y, seatId: seat.seatId, seatRowId: row.seatRowId});
             }
           });
         }
@@ -1657,7 +1658,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
           // Flip Y so that the largest Y (top row) is at 0 and rows increase downward
           const minY = Math.min(...seatPositions.map(p => p.y));
           const maxY = Math.max(...seatPositions.map(p => p.y));
-          seatPositions = seatPositions.map(p => ({ x: p.x, y: maxY - p.y, seatId: p.seatId }));
+          seatPositions = seatPositions.map(p => ({ x: p.x, y: maxY - p.y, seatId: p.seatId, seatRowId: p.seatRowId }));
         }
         // else: do not flip, keep as is
       }
@@ -2565,7 +2566,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   }
 
   // Optimized seat rendering - inspired by KonvaTest approach
-  private renderSeatsOptimized(group: Konva.Group, sector: EditableSector, seatPositions: {x: number, y: number, seatId?: number}[]) {
+  private renderSeatsOptimized(group: Konva.Group, sector: EditableSector, seatPositions: {x: number, y: number, seatId?: number, seatRowId?: number}[]) {
     const sectorId = sector.sectorId!;
     const seatRadius = 3;
     
@@ -2595,6 +2596,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         // Set the seatId attribute for reservation tracking
         if (pos.seatId) {
           seat.setAttr('seatId', pos.seatId);
+        }
+        if (pos.seatRowId) {
+          seat.setAttr('seatRowId', pos.seatRowId);
         }
 
         // Initialize originalParticipantId to null for newly created seats
@@ -2951,10 +2955,118 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     });
   }
 
+  private handleRowSelection(seatRowId: number, sector: EditableSector) {
+    // Find all seats in this row
+    const seatsInRow = this.sectorSeats.get(sector.sectorId!)?.filter(s => s.getAttr('seatRowId') === seatRowId) || [];
+    
+    const selectedPid = this.selectedParticipantId();
+    const eventId = this.eventData?.eventId;
+    if (!eventId) return;
+
+    let remainingTickets = Infinity;
+    let hasTicketLimit = false;
+
+    // Check ticket limits if assigning
+    if (selectedPid !== null && selectedPid !== this.BLOCKED_PARTICIPANT_ID) {
+        const participant = this.participants().find(p => p.participantId === selectedPid);
+        const tickets = Number(participant?.numberOfTickets) || 0;
+        const reserved = participant ? this.getReservedSeatsForParticipant(participant) : 0;
+        
+        if (tickets > 0) {
+            hasTicketLimit = true;
+            remainingTickets = tickets - reserved;
+            if (remainingTickets <= 0) {
+                 this.snackBar.open(`Participant has reached their ticket limit (${tickets}).`, 'Close', { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
+                 return;
+            }
+        }
+    }
+
+    // Check if we should assign or unassign
+    let shouldAssign = false;
+    if (selectedPid !== null) {
+        // If any seat in the row is NOT assigned to selectedPid, we assign.
+        // Unless it's blocked and we are not blocking.
+        const anyNotAssigned = seatsInRow.some(s => {
+            const pid = s.getAttr('participantId');
+            return pid !== selectedPid;
+        });
+        shouldAssign = anyNotAssigned;
+    }
+    
+    let seatsChanged = 0;
+
+    // Apply changes
+    seatsInRow.forEach(s => {
+        const currentPid = s.getAttr('participantId');
+        const originalPid = s.getAttr('originalParticipantId');
+        const sId = s.getAttr('seatId');
+        
+        // Skip blocked seats if we are not the blocker
+        if (currentPid === this.BLOCKED_PARTICIPANT_ID && selectedPid !== this.BLOCKED_PARTICIPANT_ID) {
+            return;
+        }
+        
+        if (shouldAssign) {
+            // Assign to selectedPid
+            if (currentPid !== selectedPid) {
+                // Check limit before assigning
+                if (hasTicketLimit && remainingTickets <= 0) {
+                    return; // Skip this seat, limit reached
+                }
+
+                // Logic to assign
+                let existingReservationId: number | undefined;
+                const pidToCheck = originalPid ?? currentPid;
+                if (pidToCheck) existingReservationId = this.findReservationIdForParticipantSeat(pidToCheck, sId);
+                if (!existingReservationId) existingReservationId = this.findReservationIdForSeat(sId);
+                
+                s.setAttr('participantId', selectedPid);
+                this.updateSeatAppearance(s, selectedPid);
+                this.addPendingReservationChange({ id: existingReservationId, eventId, participantId: selectedPid, seatId: sId, oldParticipantId: originalPid ?? (currentPid || undefined) });
+                
+                if (hasTicketLimit) {
+                    remainingTickets--;
+                }
+                seatsChanged++;
+            }
+        } else {
+            // Unassign (set to null)
+            if (currentPid !== null) {
+                // Logic to unassign
+                let reservationId: number | undefined;
+                if (originalPid) reservationId = this.findReservationIdForParticipantSeat(originalPid, sId);
+                if (!reservationId && currentPid) reservationId = this.findReservationIdForParticipantSeat(currentPid, sId);
+                if (!reservationId) reservationId = this.findReservationIdForSeat(sId);
+                
+                s.setAttr('participantId', null);
+                this.updateSeatAppearance(s, null);
+                this.addPendingReservationChange({ id: reservationId, eventId, seatId: sId, oldParticipantId: originalPid ?? currentPid });
+                seatsChanged++;
+            }
+        }
+    });
+    
+    if (shouldAssign && hasTicketLimit && remainingTickets <= 0 && seatsChanged > 0) {
+         this.snackBar.open(`Reserved ${seatsChanged} seats. Ticket limit reached.`, 'Close', { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
+    }
+    
+    this.layer!.batchDraw();
+  }
+
   // Attach a click handler to a seat for reservation interactions
   private attachSeatClickHandler(seat: Konva.Circle, sector: EditableSector) {
     const clickHandler = (e: any) => {
       e.cancelBubble = true;
+      const isShiftPressed = e.evt.shiftKey;
+      const seatRowId = seat.getAttr('seatRowId');
+      
+      if (isShiftPressed && seatRowId) {
+          // Handle row selection
+          this.handleRowSelection(seatRowId, sector);
+          return;
+      }
+
       const selectedPid = this.selectedParticipantId();
       const currentPid = seat.getAttr('participantId') as number | null | undefined;
       const originalPid = seat.getAttr('originalParticipantId') as number | null | undefined;
@@ -3848,9 +3960,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     }
   }
 
-  public allocateSelected(): void {
+  public allocateSelected(reverseRows: boolean = false): void {
     if (this.mode !== 'reservation') return;
-    console.log('allocateSelected called');
+    console.log('allocateSelected called', { reverseRows });
 
     const eventId = this.eventData?.eventId ?? this.eventId();
     if (!eventId) {
@@ -3930,8 +4042,24 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     if (isBlockedAllocation) {
       // Block all unallocated seats in the target sectors
       for (const sector of sectorsOrdered) {
-        const seats = this.sectorSeats.get(sector.sectorId!);
-        if (!seats || seats.length === 0) continue;
+        let seats = this.sectorSeats.get(sector.sectorId!) || [];
+        if (seats.length === 0) continue;
+
+        if (reverseRows) {
+          // Group by row and reverse row order
+          const seatsByRow = new Map<number, Konva.Circle[]>();
+          const rowIds: number[] = [];
+          seats.forEach(s => {
+            const rowId = s.getAttr('seatRowId') as number;
+            if (!seatsByRow.has(rowId)) {
+              seatsByRow.set(rowId, []);
+              rowIds.push(rowId);
+            }
+            seatsByRow.get(rowId)!.push(s);
+          });
+          // Flatten back with reversed rowIds
+          seats = rowIds.reverse().flatMap(rowId => seatsByRow.get(rowId)!);
+        }
 
         for (const seat of seats) {
           try {
@@ -3977,8 +4105,24 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
         for (const sector of sectorsOrdered) {
           if (needed <= 0) break;
-          const seats = this.sectorSeats.get(sector.sectorId!);
-          if (!seats || seats.length === 0) continue;
+          let seats = this.sectorSeats.get(sector.sectorId!) || [];
+          if (seats.length === 0) continue;
+
+          if (reverseRows) {
+            // Group by row and reverse row order
+            const seatsByRow = new Map<number, Konva.Circle[]>();
+            const rowIds: number[] = [];
+            seats.forEach(s => {
+              const rowId = s.getAttr('seatRowId') as number;
+              if (!seatsByRow.has(rowId)) {
+                seatsByRow.set(rowId, []);
+                rowIds.push(rowId);
+              }
+              seatsByRow.get(rowId)!.push(s);
+            });
+            // Flatten back with reversed rowIds
+            seats = rowIds.reverse().flatMap(rowId => seatsByRow.get(rowId)!);
+          }
 
           for (const seat of seats) {
             if (needed <= 0) break;
@@ -4060,18 +4204,28 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     let title = 'Clear Allocations';
     let message = '';
     if (selected && selected.length > 0 && selectedParticipantId != null) {
-      const participant = this.participants().find(p => p.participantId === selectedParticipantId);
-      const pname = participant?.name ?? `participant ${selectedParticipantId}`;
-      title = 'Clear Selected Allocations';
-      message = `Are you sure you want to clear allocations for ${pname} inside the selected sector(s)? This will unassign matching seats (you can save or cancel afterwards).`;
+      if (selectedParticipantId === this.BLOCKED_PARTICIPANT_ID) {
+        title = 'Clear Blocked Seats';
+        message = 'Are you sure you want to clear blocked seats inside the selected sector(s)? This will unblock matching seats (you can save or cancel afterwards).';
+      } else {
+        const participant = this.participants().find(p => p.participantId === selectedParticipantId);
+        const pname = participant?.name ?? `participant ${selectedParticipantId}`;
+        title = 'Clear Selected Allocations';
+        message = `Are you sure you want to clear allocations for ${pname} inside the selected sector(s)? This will unassign matching seats (you can save or cancel afterwards).`;
+      }
     } else if (selected && selected.length > 0) {
       title = 'Clear Selected Allocations';
       message = 'Are you sure you want to clear allocations only for the selected sector(s)? This will unassign seats inside the selected sectors (you can save or cancel afterwards).';
     } else if (selectedParticipantId != null) {
-      const participant = this.participants().find(p => p.participantId === selectedParticipantId);
-      const pname = participant?.name ?? `participant ${selectedParticipantId}`;
-      title = 'Clear Participant Allocations';
-      message = `Are you sure you want to clear allocations for ${pname} across the venue? This will unassign all seats currently reserved for this participant (you can save or cancel afterwards).`;
+      if (selectedParticipantId === this.BLOCKED_PARTICIPANT_ID) {
+        title = 'Clear Blocked Seats';
+        message = 'Are you sure you want to clear blocked seats across the venue? This will unblock all seats currently blocked (you can save or cancel afterwards).';
+      } else {
+        const participant = this.participants().find(p => p.participantId === selectedParticipantId);
+        const pname = participant?.name ?? `participant ${selectedParticipantId}`;
+        title = 'Clear Participant Allocations';
+        message = `Are you sure you want to clear allocations for ${pname} across the venue? This will unassign all seats currently reserved for this participant (you can save or cancel afterwards).`;
+      }
     }
 
     // Confirm destructive action with the user

@@ -1,9 +1,8 @@
 openapi: 3.0.1
 info:
   title: ProEventIQ Rest API
-  description: API for ProEventIQ
-  # Updated for SeatBlock
-  version: "0.49"
+  description: API for ProEventIQ  
+  version: "0.50"
 servers:
   - url: http://{hostname}:{port}/api
     variables:

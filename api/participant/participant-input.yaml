@@ -13,10 +13,17 @@ components:
           type: string
           pattern: '^#[0-9A-Fa-f]{6}$'
           description: HEX color code for seats on venue map (e.g., #FF5733)
-        numberOfTickets:
+        childrenTicketCount:
           type: integer
-          minimum: 1
-          description: Number of tickets the participant wants to reserve
+          minimum: 0
+          default: 0
+          description: Number of tickets for children
+        guardianTicketCount:
+          type: integer
+          minimum: 0
+          default: 0
+          description: Number of tickets for guardians
       required:
         - name
-        - numberOfTickets
+        - childrenTicketCount
+        - guardianTicketCount

@@ -70,7 +70,7 @@ export class EventDetailComponent implements OnInit {
   /** Returns the sum of numberOfTickets for all participants */
   public getTotalTickets(): number {
     const list = this.participants();
-    return Array.isArray(list) ? list.reduce((sum, p) => sum + (p.numberOfTickets || 0), 0) : 0;
+    return Array.isArray(list) ? list.reduce((sum, p) => sum + (p.allTicketCount || 0), 0) : 0;
   }
 
   /** Returns how many seats are currently allocated for a participant (based on reservations) */
@@ -84,7 +84,7 @@ export class EventDetailComponent implements OnInit {
   /** Returns true when participant has all requested tickets allocated */
   public isFullyAllocated(participant: Participant | null | undefined): boolean {
     if (!participant) return true;
-    const requested = participant.numberOfTickets ?? 0;
+    const requested = participant.allTicketCount ?? 0;
     const allocated = this.getAllocatedSeats(participant.participantId ?? null);
     // Fully allocated only when allocated equals requested
     if (requested === 0) return allocated === 0;
@@ -94,7 +94,7 @@ export class EventDetailComponent implements OnInit {
   /** Returns a user-facing hint about allocation status for tooltip */
   public getAllocationHint(participant: Participant | null | undefined): string {
     if (!participant) return 'No participant information';
-    const requested = participant.numberOfTickets ?? 0;
+    const requested = participant.allTicketCount ?? 0;
     const allocated = this.getAllocatedSeats(participant.participantId ?? null);
     if (requested === 0) {
       if (allocated === 0) return 'Participant has no tickets requested';
@@ -416,7 +416,9 @@ export class EventDetailComponent implements OnInit {
       name: '',
       address: '',
       seatColor: this.generateRandomColor(),
-      numberOfTickets: 1
+      childrenTicketCount: 0,
+      guardianTicketCount: 1,
+      allTicketCount: 1
     };
     this.participants.set([...currentParticipants, newParticipant]);
     this.editingParticipant.set('new');
@@ -436,7 +438,8 @@ export class EventDetailComponent implements OnInit {
         name: participant.name,
         address: participant.address || undefined,
         seatColor: participant.seatColor || undefined,
-        numberOfTickets: participant.numberOfTickets
+        childrenTicketCount: participant.childrenTicketCount,
+        guardianTicketCount: participant.guardianTicketCount
       };
       this.eventApi.eventsEventIdParticipantsPost(eventId, participantInput).subscribe({
         next: () => {
@@ -451,7 +454,8 @@ export class EventDetailComponent implements OnInit {
         name: participant.name,
         address: participant.address || undefined,
         seatColor: participant.seatColor || undefined,
-        numberOfTickets: participant.numberOfTickets
+        childrenTicketCount: participant.childrenTicketCount,
+        guardianTicketCount: participant.guardianTicketCount
       };
       this.eventApi.eventsEventIdParticipantsParticipantIdPut(eventId, participant.participantId, participantInput).subscribe({
         next: () => {

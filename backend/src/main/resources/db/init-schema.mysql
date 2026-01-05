@@ -118,10 +118,13 @@ CREATE TABLE participant (
     name VARCHAR(255) NOT NULL,
     address VARCHAR(255),
     seat_color VARCHAR(7),
-    number_of_tickets INT NOT NULL CHECK (number_of_tickets >= 1),
+    children_ticket_count INT NOT NULL DEFAULT 0,
+    guardian_ticket_count INT NOT NULL DEFAULT 0,
+    all_ticket_count INT GENERATED ALWAYS AS (children_ticket_count + guardian_ticket_count) STORED,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (event_id) REFERENCES event(event_id) ON DELETE CASCADE
+    FOREIGN KEY (event_id) REFERENCES event(event_id) ON DELETE CASCADE,
+    CHECK (all_ticket_count >= 1)
 );
 
 -- Create indexes for participant table
@@ -133,7 +136,7 @@ CREATE FUNCTION get_event_ticket_count(eventId VARCHAR(255)) RETURNS int
     DETERMINISTIC
 BEGIN
   DECLARE total INT;
-  SELECT SUM(number_of_tickets) INTO total
+  SELECT SUM(all_ticket_count) INTO total
   FROM participant
   WHERE event_id = eventId;
   RETURN IFNULL(total, 0);
@@ -230,7 +233,7 @@ BEGIN
     DECLARE v_has_error BOOLEAN DEFAULT FALSE;
 
     -- total tickets requested by all participants for the event
-    SELECT IFNULL(SUM(number_of_tickets), 0) INTO v_total_tickets
+    SELECT IFNULL(SUM(all_ticket_count), 0) INTO v_total_tickets
     FROM participant
     WHERE event_id = p_event_id;
 

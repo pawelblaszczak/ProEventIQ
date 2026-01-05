@@ -337,7 +337,7 @@
               <div 
                 class="participant-row" 
                 *ngFor="let p of participants()" 
-                matTooltip="{{ p.name }} ({{ p.numberOfTickets }} tickets)"
+                matTooltip="{{ p.name }} ({{ p.allTicketCount }} tickets)"
                 role="listitem"
                 tabindex="0"
                 (click)="onParticipantClick(p)"
@@ -349,7 +349,7 @@
                 <div class="color" [style.background]="p.seatColor || '#bbb'"></div>
                 <div class="name one-line">{{ p.name }}</div>
                 <div class="seats-info" style="font-size: 0.95em; color: #666; margin-left: 0.5rem;">
-                  {{ getReservedSeatsForParticipant(p) }}/{{ p.numberOfTickets }}
+                  {{ getReservedSeatsForParticipant(p) }}/{{ p.allTicketCount }}
                 </div>                
               </div>
               

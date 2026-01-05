@@ -2969,7 +2969,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     // Check ticket limits if assigning
     if (selectedPid !== null && selectedPid !== this.BLOCKED_PARTICIPANT_ID) {
         const participant = this.participants().find(p => p.participantId === selectedPid);
-        const tickets = Number(participant?.numberOfTickets) || 0;
+        const tickets = Number(participant?.allTicketCount) || 0;
         const reserved = participant ? this.getReservedSeatsForParticipant(participant) : 0;
         
         if (tickets > 0) {
@@ -3118,7 +3118,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         if (!existingReservationId) existingReservationId = this.findReservationIdForSeat(seatId);
         // Before assigning, enforce participant ticket limit
         const participant = this.participants().find(p => p.participantId === selectedPid);
-        const tickets = Number(participant?.numberOfTickets) || 0;
+        const tickets = Number(participant?.allTicketCount) || 0;
         const reserved = participant ? this.getReservedSeatsForParticipant(participant) : 0;
         if (selectedPid !== this.BLOCKED_PARTICIPANT_ID && tickets > 0 && reserved >= tickets) {
           // Participant has no remaining tickets — do not allow allocation
@@ -3840,7 +3840,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     for (const p of participants) {
       const pid = p.participantId;
       if (pid == null) continue;
-      const tickets = Number(p.numberOfTickets) || 0;
+      const tickets = Number(p.allTicketCount) || 0;
       const already = reservedCount.get(pid) || 0;
       let needed = Math.max(0, tickets - already);
       if (needed <= 0) continue;
@@ -4098,7 +4098,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       // Iterate participants and allocate within the chosen sectors only
       for (const p of participantsToAllocate) {
         const pid = p.participantId;
-        const tickets = Number(p.numberOfTickets) || 0;
+        const tickets = Number(p.allTicketCount) || 0;
         const alreadyReserved = this.getReservedSeatsForParticipant(p);
         let needed = Math.max(0, tickets - alreadyReserved);
         if (needed <= 0) continue;

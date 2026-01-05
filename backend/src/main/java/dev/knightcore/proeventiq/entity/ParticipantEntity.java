@@ -24,8 +24,14 @@ public class ParticipantEntity {
     @Column(name = "seat_color", length = 7)
     private String seatColor;
 
-    @Column(name = "number_of_tickets", nullable = false)
-    private Integer numberOfTickets;
+    @Column(name = "children_ticket_count", nullable = false)
+    private Integer childrenTicketCount = 0;
+
+    @Column(name = "guardian_ticket_count", nullable = false)
+    private Integer guardianTicketCount = 0;
+
+    @Column(name = "all_ticket_count", insertable = false, updatable = false)
+    private Integer allTicketCount;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -44,8 +50,12 @@ public class ParticipantEntity {
     public void setAddress(String address) { this.address = address; }
     public String getSeatColor() { return seatColor; }
     public void setSeatColor(String seatColor) { this.seatColor = seatColor; }
-    public Integer getNumberOfTickets() { return numberOfTickets; }
-    public void setNumberOfTickets(Integer numberOfTickets) { this.numberOfTickets = numberOfTickets; }
+    public Integer getChildrenTicketCount() { return childrenTicketCount; }
+    public void setChildrenTicketCount(Integer childrenTicketCount) { this.childrenTicketCount = childrenTicketCount; }
+    public Integer getGuardianTicketCount() { return guardianTicketCount; }
+    public void setGuardianTicketCount(Integer guardianTicketCount) { this.guardianTicketCount = guardianTicketCount; }
+    public Integer getAllTicketCount() { return allTicketCount; }
+    // No setter for allTicketCount as it is generated
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

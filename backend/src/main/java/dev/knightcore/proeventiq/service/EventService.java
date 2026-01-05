@@ -164,8 +164,11 @@ public class EventService {
     @Transactional
     public Optional<Participant> addParticipant(Long eventId, ParticipantInput input) {
         log.info("Adding participant to event {}: {}", eventId, input.getName());
-        if (input.getNumberOfTickets() == null || input.getNumberOfTickets() < 1) {
-            log.warn("Invalid number of tickets: {}", input.getNumberOfTickets());
+        int children = input.getChildrenTicketCount() != null ? input.getChildrenTicketCount() : 0;
+        int guardian = input.getGuardianTicketCount() != null ? input.getGuardianTicketCount() : 0;
+
+        if (children + guardian < 1) {
+            log.warn("Invalid number of tickets: children={}, guardian={}", children, guardian);
             return Optional.empty();
         }
 
@@ -174,7 +177,8 @@ public class EventService {
         entity.setName(input.getName());
         entity.setAddress(input.getAddress());
         entity.setSeatColor(input.getSeatColor());
-        entity.setNumberOfTickets(input.getNumberOfTickets());
+        entity.setChildrenTicketCount(children);
+        entity.setGuardianTicketCount(guardian);
         entity.setCreatedAt(LocalDateTime.now());
         entity.setUpdatedAt(LocalDateTime.now());
         ParticipantEntity saved = participantRepository.save(entity);
@@ -195,9 +199,14 @@ public class EventService {
             if (input.getName() != null) entity.setName(input.getName());
             if (input.getAddress() != null) entity.setAddress(input.getAddress());
             if (input.getSeatColor() != null) entity.setSeatColor(input.getSeatColor());
-            if (input.getNumberOfTickets() != null && input.getNumberOfTickets() >= 1) {
-                entity.setNumberOfTickets(input.getNumberOfTickets());
+            
+            if (input.getChildrenTicketCount() != null) entity.setChildrenTicketCount(input.getChildrenTicketCount());
+            if (input.getGuardianTicketCount() != null) entity.setGuardianTicketCount(input.getGuardianTicketCount());
+            
+            if (entity.getChildrenTicketCount() + entity.getGuardianTicketCount() < 1) {
+                 throw new IllegalArgumentException("Total tickets must be at least 1");
             }
+
             entity.setUpdatedAt(LocalDateTime.now());
             ParticipantEntity saved = participantRepository.save(entity);
             return toParticipantDto(saved);
@@ -295,12 +304,13 @@ public class EventService {
     }
 
     private Participant toParticipantDto(ParticipantEntity entity) {
-        Participant dto = new Participant(
-            entity.getParticipantId(),
-            entity.getEventId(),
-            entity.getName(),
-            entity.getNumberOfTickets()
-        );
+        Participant dto = new Participant();
+        dto.setParticipantId(entity.getParticipantId());
+        dto.setEventId(entity.getEventId());
+        dto.setName(entity.getName());
+        dto.setChildrenTicketCount(entity.getChildrenTicketCount());
+        dto.setGuardianTicketCount(entity.getGuardianTicketCount());
+        dto.setAllTicketCount(entity.getAllTicketCount() != null ? entity.getAllTicketCount() : entity.getChildrenTicketCount() + entity.getGuardianTicketCount());
         dto.setAddress(entity.getAddress());
         dto.setSeatColor(entity.getSeatColor());
         return dto;

@@ -203,9 +203,14 @@
               </ng-template>
             </td>
             <td mat-footer-cell *matFooterCellDef style="width: 18%; min-width: 100px; font-weight: bold; background: #f5f5f5; border-top: 2px solid #ddd; padding: 12px; text-align: right;">
-              <div style="background: #f3f3f3; border-radius: 999px; padding: 0; display: inline-flex; align-items: center; gap: 4px; min-height: 28px;">
+              <div style="background: #f3f3f3; border-radius: 999px; padding: 4px 12px; display: inline-flex; align-items: center; gap: 8px; min-height: 32px;">
                 <mat-icon *ngIf="isTotalOverbooked()" color="warn" style="font-size:18px; margin-right:4px;" [matTooltip]="getTotalAllocationHint()">warning</mat-icon>
-                <span [style.color]="getSeatStatusColor()">{{ getSeatStatusText() }}</span>
+                <div style="display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                  <span [style.color]="getSeatStatusColor()" style="line-height: 1.2;">{{ getSeatStatusText() }}</span>
+                  @if ((event()?.blockedSeats || 0) > 0) {
+                    <span [style.color]="getSeatStatusColor()" style="font-size: 0.75rem; line-height: 1.1;">{{ event()?.blockedSeats }} blocked</span>
+                  }
+                </div>
               </div>
             </td>
           </ng-container>

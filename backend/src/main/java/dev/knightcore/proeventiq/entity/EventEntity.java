@@ -34,10 +34,24 @@ public class EventEntity {
     @Formula("has_allocation_errors(event_id)")
     private String hasAllocationErrorsRaw;
 
+    @Formula("get_event_ticket_count(event_id)")
+    private Integer numberOfTickets;
+
+    @Formula("get_event_blocked_seat_count(event_id)")
+    private Integer blockedSeats;
+
     @Transient
     public Boolean getHasAllocationErrors() {
         if (hasAllocationErrorsRaw == null) return null;
         return "Y".equalsIgnoreCase(hasAllocationErrorsRaw);
+    }
+
+    public Integer getNumberOfTickets() {
+        return numberOfTickets != null ? numberOfTickets : 0;
+    }
+
+    public Integer getBlockedSeats() {
+        return blockedSeats != null ? blockedSeats : 0;
     }
 
     // Constructors

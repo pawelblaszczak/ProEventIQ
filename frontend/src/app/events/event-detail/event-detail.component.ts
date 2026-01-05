@@ -23,6 +23,7 @@ import { Participant } from '../../api/model/participant';
 import { Reservation } from '../../api/model/reservation';
 import { VenueMapEditComponent } from '../../venues/venue-map-edit/venue-map-edit.component';
 import { EventService } from '../event.service';
+import { forkJoin } from 'rxjs';
 
 @Component({
   selector: 'app-event-detail',
@@ -107,39 +108,45 @@ export class EventDetailComponent implements OnInit {
 
   /** Returns the seat status text in format: "reserved/total (percentage%)" */
   public getSeatStatusText(): string {
+    const event = this.event();
     const venue = this.venue();
-    if (!venue) return '0/0 (0%)';
+    const totalSeats = event?.venueNumberOfSeats ?? venue?.numberOfSeats ?? 0;
     
-    const totalSeats = venue.numberOfSeats ?? 0;
+    if (totalSeats === 0) return '0/0 (0%)';
+    
     const reserved = this.getTotalTickets();
     return this.eventService.getSeatStatusText(reserved, totalSeats);
   }
 
   /** Returns a color string for the seat status based on reserved percentage */
   public getSeatStatusColor(): string {
+    const event = this.event();
     const venue = this.venue();
-    if (!venue) return 'hsl(0, 90%, 40%)';
+    const totalSeats = event?.venueNumberOfSeats ?? venue?.numberOfSeats ?? 0;
+    
+    if (totalSeats === 0) return 'hsl(0, 90%, 40%)';
     
     const reserved = this.getTotalTickets();
-    const total = venue.numberOfSeats ?? 0;
-    return this.eventService.getSeatStatusColor(reserved, total);
+    return this.eventService.getSeatStatusColor(reserved, totalSeats);
   }
 
   /** Returns true when total requested tickets exceed venue capacity */
   public isTotalOverbooked(): boolean {
+    const event = this.event();
     const venue = this.venue();
-    if (!venue) return false;
-    const totalSeats = venue.numberOfSeats ?? 0;
+    const totalSeats = event?.venueNumberOfSeats ?? venue?.numberOfSeats ?? 0;
+    
     if (totalSeats === 0) return false;
     return this.getTotalTickets() > totalSeats;
   }
 
   /** Tooltip/hint for total tickets vs venue capacity */
   public getTotalAllocationHint(): string {
+    const event = this.event();
     const venue = this.venue();
     const totalTickets = this.getTotalTickets();
-    const totalSeats = venue?.numberOfSeats ?? 0;
-    if (!venue) return `Total tickets: ${totalTickets}`;
+    const totalSeats = event?.venueNumberOfSeats ?? venue?.numberOfSeats ?? 0;
+    
     if (totalSeats === 0) return `Total tickets: ${totalTickets} (venue capacity unknown)`;
     const pct = Math.round((totalTickets / totalSeats) * 100);
     if (totalTickets > totalSeats) {
@@ -228,10 +235,23 @@ export class EventDetailComponent implements OnInit {
   }
 
   private loadReservations(eventId: number) {
-    this.eventApi.getReservation(eventId).subscribe({
-      next: (reservations) => this.reservations.set(reservations ?? []),
+    forkJoin({
+      reservations: this.eventApi.getReservation(eventId),
+      seatBlocks: this.eventApi.getSeatBlock(eventId)
+    }).subscribe({
+      next: ({ reservations, seatBlocks }) => {
+        const blockedReservations: Reservation[] = (seatBlocks || []).map(sb => ({
+          id: sb.id,
+          eventId: sb.eventId,
+          seatId: sb.seatId,
+          participantId: -1 // BLOCKED_PARTICIPANT_ID
+        }));
+
+        const allReservations = [...(reservations || []), ...blockedReservations];
+        this.reservations.set(allReservations);
+      },
       error: (err) => {
-        console.error('Error loading reservations:', err);
+        console.error('Error loading reservations or blocks:', err);
         this.reservations.set([]);
       }
     });

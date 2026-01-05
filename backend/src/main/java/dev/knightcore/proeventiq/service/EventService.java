@@ -232,18 +232,17 @@ public class EventService {
             // Set venueNumberOfSeats using DB function
             if (entity.getVenue().getVenueId() != null) {
                 Integer seatCount = venueRepository.getVenueSeatCount(entity.getVenue().getVenueId());
-                dto.setVenueNumberOfSeats(seatCount != null ? seatCount : 0);
+                int totalSeats = seatCount != null ? seatCount : 0;
+                int blocked = entity.getBlockedSeats() != null ? entity.getBlockedSeats() : 0;
+                dto.setVenueNumberOfSeats(totalSeats - blocked);
             } else {
                 dto.setVenueNumberOfSeats(0);
             }
         }
         // Set numberOfTickets using DB function
-        if (entity.getEventId() != null) {
-            Integer ticketCount = eventRepository.getEventTicketCount(entity.getEventId().toString());
-            dto.setNumberOfTickets(ticketCount != null ? ticketCount : 0);
-        } else {
-            dto.setNumberOfTickets(0);
-        }
+        dto.setNumberOfTickets(entity.getNumberOfTickets());
+        dto.setBlockedSeats(entity.getBlockedSeats());
+
     // Set hasAllocationErrors using DB-side computed column (Formula)
     Boolean hasErrBool = entity.getHasAllocationErrors();
     dto.setHasAllocationErrors(hasErrBool != null ? hasErrBool : false);

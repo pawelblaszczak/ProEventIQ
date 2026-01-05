@@ -18,8 +18,10 @@ Event:
     venueName:
       type: string
     venueNumberOfSeats:
-      type: integer      
+      type: integer          
     numberOfTickets:
+      type: integer
+    blockedSeats:
       type: integer
     city:
       type: string

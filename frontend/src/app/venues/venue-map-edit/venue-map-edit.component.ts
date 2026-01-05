@@ -103,7 +103,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     const existingCross2 = parent.findOne(`.${crossName2}`);
     if (existingCross2) existingCross2.destroy();
 
-    if (participantId === this.BLOCKED_PARTICIPANT_ID) {
+    // IMPORTANT: seat cross markers should only appear when seats are visible.
+    // Otherwise toggling seats OFF should hide *all* seat-level visuals, including blocked markers.
+    if (participantId === this.BLOCKED_PARTICIPANT_ID && this.showSeats()) {
         const x = seat.x();
         const y = seat.y();
         const r = seat.radius();
@@ -243,7 +245,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   private readonly sectorGroups = new Map<number, Konva.Group>();
   private readonly sectorSeats = new Map<number, Konva.Circle[]>(); // Cache seat objects
   private readonly sectorOutlines = new Map<number, Konva.Line>(); // Cache outline objects
-  private readonly sectorLabels = new Map<number, { name: Konva.Text; seats: Konva.Text }>(); // Cache label objects
+  private readonly sectorLabels = new Map<number, { name: Konva.Text; seats: Konva.Text; blocked?: Konva.Text; bgRect?: Konva.Rect }>(); // Cache label objects
   private initialDragPositions = new Map<number, { x: number; y: number }>();
   private konvaInitialized = false;
   private needsFullRender = false; // Flag to control when full re-render is needed
@@ -797,34 +799,39 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     return existingReservation?.id;
   }
 
-  // Compute how many of the provided seatIds are currently allocated.
-  // Considers pending changes (this.pendingReservationMap) first, then
-  // the original backend assignments (this.initialSeatAssignments) and
-  // finally falls back to reservationData if needed.
-  private computeAllocatedSeatsForSeatIds(seatIds: number[]): number {
+  // Helper method to compute allocated and blocked stats for a list of seat IDs
+  private computeSeatStats(seatIds: number[]): { allocated: number, blocked: number } {
     let allocated = 0;
+    let blocked = 0;
     for (const sid of seatIds) {
       if (sid == null) continue;
-      // Pending change override (explicit null means unassigned)
+      
+      let pid: number | null | undefined;
+
+      // Pending change override
       const pending = this.pendingReservationMap.get(sid);
       if (pending) {
-        if (pending.participantId != null) allocated++;
-        continue;
+        pid = pending.participantId;
+      } else if (this.initialSeatAssignments.has(sid)) {
+        // Original assignment
+        pid = this.initialSeatAssignments.get(sid);
+      } else {
+        // Fallback
+        const res = this.reservationData.find(r => r.seatId === sid);
+        pid = res?.participantId;
       }
 
-      // Original assignment recorded when applyReservationsToSeats ran
-      if (this.initialSeatAssignments.has(sid)) {
-        const orig = this.initialSeatAssignments.get(sid);
-        if (orig != null) allocated++;
-        continue;
+      if (pid != null) {
+        allocated++;
+        if (pid === this.BLOCKED_PARTICIPANT_ID) {
+          blocked++;
+        }
       }
-
-      // Fallback: search reservationData for this seat
-      const res = this.reservationData.find(r => r.seatId === sid);
-      if (res && res.participantId != null) allocated++;
     }
-    return allocated;
+    return { allocated, blocked };
   }
+
+
 
   // Refresh the seats labels for all sectors so allocation counts reflect
   // pending and initial assignments. This is called when pendingReservationMap
@@ -838,10 +845,30 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
           const seats = this.sectorSeats.get(sectorId) ?? [];
           const seatIds: number[] = seats.map(s => s.getAttr('seatId')).filter((id: any) => typeof id === 'number');
           const total = seatIds.length > 0 ? seatIds.length : (this.editableSectors().find(s => s.sectorId === sectorId)?.numberOfSeats ?? 0);
-          const text = this.isReservationLike()
-            ? `Seats: ${this.computeAllocatedSeatsForSeatIds(seatIds)} / ${total}`
-            : `Seats: ${total}`;
+          let text = `Seats: ${total}`;
+          let blockedText = '';
+          if (this.isReservationLike()) {
+            const stats = this.computeSeatStats(seatIds);
+            text = `Seats: ${stats.allocated - stats.blocked} / ${total - stats.blocked}`;
+            if (stats.blocked > 0) {
+              blockedText = `${stats.blocked} blocked`;
+            }
+          }
           lbl.seats.text(text);
+          if (lbl.blocked) {
+            lbl.blocked.text(blockedText);
+            const isVisible = blockedText !== '' && this.sectorLabelMode() === 'name_seats';
+            lbl.blocked.visible(isVisible);
+            
+            if (lbl.bgRect) {
+               const bgPadding = 6;
+               let bgHeight = lbl.name.height() + lbl.seats.height() + bgPadding * 2 + 4;
+               if (isVisible) {
+                  bgHeight += lbl.blocked.height() + 2;
+               }
+               lbl.bgRect.height(bgHeight);
+            }
+          }
         } catch (e) {
           // ignore per-sector label errors
         }
@@ -947,7 +974,12 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         }
       }
     });
-    
+
+    // Re-apply seat visibility rules after updating appearances.
+    // This prevents blocked-seat markers from flashing/remaining visible when the user has toggled seats OFF
+    // (e.g. after re-render triggered by label-mode changes).
+    this.updateSeatsVisibility();
+
     this.layer.batchDraw();
     console.log('applyReservationsToSeats completed');
   // Ensure labels reflect new authoritative initial assignments
@@ -1304,6 +1336,12 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
                     line2.visible(true);
                     line2.moveToTop();
                 }
+
+                // If seat is blocked but lines are missing (e.g. because seats were hidden when blocked), create them
+                const pid = seat.getAttr('participantId');
+                if (pid === this.BLOCKED_PARTICIPANT_ID && (!line1 || !line2)) {
+                    this.updateSeatAppearance(seat, pid, group);
+                }
               }
             } else {
               // Hide cross lines if seats are hidden
@@ -1489,6 +1527,13 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   // they appear correctly immediately after (re)creation at current zoom.
   try { this.repositionExternalLabels(); } catch { /* ignore */ }
     
+    // FIX: Re-apply reservations if in reservation-preview mode
+    // This ensures that if sectors are re-rendered (e.g. on init or settings change),
+    // the reservations (including blocked seats) are visible.
+    if (this.mode === 'reservation-preview' && this.reservationData.length > 0) {
+       this.applyReservationsToSeats();
+    }
+
     // Single draw call at the end - like KonvaTest
     this.layer.batchDraw();
   }
@@ -1867,9 +1912,15 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     const totalSeatsForLabel = sectorSeatIds.length > 0 ? sectorSeatIds.length : (sector.numberOfSeats ?? 0);
 
     // For reservation-like modes show allocated/total, otherwise show total only
-    const seatsLabelText = (this.isReservationLike())
-      ? `Seats: ${this.computeAllocatedSeatsForSeatIds(sectorSeatIds)} / ${totalSeatsForLabel}`
-      : `Seats: ${totalSeatsForLabel}`;
+    let seatsLabelText = `Seats: ${totalSeatsForLabel}`;
+    let blockedLabelText = '';
+    if (this.isReservationLike()) {
+      const stats = this.computeSeatStats(sectorSeatIds);
+      seatsLabelText = `Seats: ${stats.allocated - stats.blocked} / ${totalSeatsForLabel - stats.blocked}`;
+      if (stats.blocked > 0) {
+        blockedLabelText = `${stats.blocked} blocked`;
+      }
+    }
 
     const seatsText = new Konva.Text({
       text: seatsLabelText,
@@ -1903,6 +1954,20 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     });
 
     group.add(seatsText);
+
+    const blockedText = new Konva.Text({
+      text: blockedLabelText,
+      x: centroidX - (labelWidth / 2),
+      y: centroidY + 20, // Below seats label
+      width: labelWidth,
+      align: 'center',
+      fontSize: 11,
+      fill: 'rgba(0,0,0,0.7)',
+      listening: false,
+      visible: blockedLabelText !== ''
+    });
+    group.add(blockedText);
+    let bgRect: Konva.Rect | undefined;
     // If the sector is very small, hide labels by default to avoid overlap/noise.
     // Reveal labels on hover or when the sector is selected so they remain accessible.
     try {
@@ -1933,11 +1998,18 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
           seatsText.y(outsideY + (nameText.height() + 6));
           seatsText.width(Math.max(labelWidth, 80));
 
+          blockedText.x(outsideX);
+          blockedText.y(outsideY + (nameText.height() + 6) + (seatsText.height() + 2));
+          blockedText.width(Math.max(labelWidth, 80));
+
           // Create a small background rect to improve contrast
           const bgPadding = 6;
-          const bgWidth = Math.max(nameText.width(), seatsText.width()) + bgPadding * 2;
-          const bgHeight = nameText.height() + seatsText.height() + bgPadding * 2 + 4;
-          const bgRect = new Konva.Rect({
+          const bgWidth = Math.max(nameText.width(), seatsText.width(), blockedText.width()) + bgPadding * 2;
+          let bgHeight = nameText.height() + seatsText.height() + bgPadding * 2 + 4;
+          if (blockedLabelText !== '') {
+             bgHeight += blockedText.height() + 2;
+          }
+          bgRect = new Konva.Rect({
             x: outsideX - bgPadding,
             y: outsideY - bgPadding,
             width: bgWidth,
@@ -1971,7 +2043,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
             if (this.layer) {
               // hoisted placeholder so event handlers below can call updatePositions()
               let updatePositions: () => void = () => {};
-              const externalNodes = [bgRect, leader, nameText, seatsText];
+              const externalNodes = [bgRect, leader, nameText, seatsText, blockedText];
               const originalLocals: Array<{node: Konva.Node, x: number, y: number}> = [];
               externalNodes.forEach(n => {
                 // Store local coordinates before conversion
@@ -2152,13 +2224,13 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
             if (this.sectorLabelMode() !== 'auto') return;
             if (!sector.isSelected) {
               try { (group.getAttr('_updateExternalPositions') as (()=>void)|undefined)?.(); } catch { /* ignore */ }
-              nameText.visible(true); seatsText.visible(true); bgRect.visible(true); leader.visible(true); this.layer?.batchDraw();
+              nameText.visible(true); seatsText.visible(true); if (bgRect) bgRect.visible(true); leader.visible(true); this.layer?.batchDraw();
             }
           });
           group.on('mouseleave.origShowLabels', () => {
             if (this.sectorLabelMode() !== 'auto') return;
             if (!sector.isSelected) {
-              nameText.visible(false); seatsText.visible(false); bgRect.visible(false); leader.visible(false); this.layer?.batchDraw();
+              nameText.visible(false); seatsText.visible(false); if (bgRect) bgRect.visible(false); leader.visible(false); this.layer?.batchDraw();
             }
           });
 
@@ -2166,7 +2238,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
           if (this.sectorLabelMode() === 'auto' && !sector.isSelected) {
             nameText.visible(false);
             seatsText.visible(false);
-            bgRect.visible(false);
+            if (bgRect) bgRect.visible(false);
             leader.visible(false);
           }
 
@@ -2183,7 +2255,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         seatsText.visible(true);
       }
 
-      if (sector.sectorId != null) this.sectorLabels.set(sector.sectorId, { name: nameText, seats: seatsText });
+      if (sector.sectorId != null) this.sectorLabels.set(sector.sectorId, { name: nameText, seats: seatsText, blocked: blockedText, bgRect: bgRect });
 
       // Apply visibility for non-external labels (normal sectors)
       if (!nameText.getAttr('externalLabel')) {
@@ -2191,12 +2263,15 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
           if (mode === 'none') {
               nameText.visible(false);
               seatsText.visible(false);
+              blockedText.visible(false);
           } else if (mode === 'name') {
               nameText.visible(true);
               seatsText.visible(false);
+              blockedText.visible(false);
           } else if (mode === 'name_seats') {
               nameText.visible(true);
               seatsText.visible(true);
+              blockedText.visible(blockedText.text() !== '');
           }
       }
     } catch (e) { /* ignore labeling cache errors */ }
@@ -2388,10 +2463,20 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
           const seats = this.sectorSeats.get(sector.sectorId! ) ?? [];
           const seatIds: number[] = seats.map(s => s.getAttr('seatId')).filter((id: any) => typeof id === 'number');
           const total = seatIds.length > 0 ? seatIds.length : (sector.numberOfSeats ?? 0);
-          const seatsText = this.isReservationLike()
-            ? `Seats: ${this.computeAllocatedSeatsForSeatIds(seatIds)} / ${total}`
-            : `Seats: ${total}`;
+          let seatsText = `Seats: ${total}`;
+          let blockedText = '';
+          if (this.isReservationLike()) {
+            const stats = this.computeSeatStats(seatIds);
+            seatsText = `Seats: ${stats.allocated - stats.blocked} / ${total - stats.blocked}`;
+            if (stats.blocked > 0) {
+              blockedText = `${stats.blocked} blocked`;
+            }
+          }
           (texts[1] as Konva.Text).text(seatsText);
+          if (texts.length > 2) {
+             (texts[2] as Konva.Text).text(blockedText);
+             (texts[2] as Konva.Text).visible(blockedText !== '' && this.sectorLabelMode() === 'name_seats');
+          }
         } catch (e) {
           (texts[1] as Konva.Text).text(`Seats: ${sector.numberOfSeats ?? 0}`);
         }
@@ -2413,10 +2498,32 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         const seatNodes = this.sectorSeats.get(sectorId) ?? [];
         const seatIds: number[] = seatNodes.map(s => s.getAttr('seatId')).filter((id: any) => typeof id === 'number');
         const totalSeatsForLabel = seatIds.length > 0 ? seatIds.length : (sector.numberOfSeats ?? 0);
-        const seatsLabelExternal = this.isReservationLike()
-          ? `Seats: ${this.computeAllocatedSeatsForSeatIds(seatIds)} / ${totalSeatsForLabel}`
-          : `Seats: ${totalSeatsForLabel}`;
+        let seatsLabelExternal = `Seats: ${totalSeatsForLabel}`;
+        let blockedLabelExternal = '';
+        if (this.isReservationLike()) {
+          const stats = this.computeSeatStats(seatIds);
+          seatsLabelExternal = `Seats: ${stats.allocated - stats.blocked} / ${totalSeatsForLabel - stats.blocked}`;
+          if (stats.blocked > 0) {
+            blockedLabelExternal = `${stats.blocked} blocked`;
+          }
+        }
         try { cached.seats.text(seatsLabelExternal); } catch { /* ignore */ }
+        try { 
+          if (cached.blocked) {
+            cached.blocked.text(blockedLabelExternal);
+            const isVisible = blockedLabelExternal !== '' && this.sectorLabelMode() === 'name_seats';
+            cached.blocked.visible(isVisible);
+            
+            if (cached.bgRect) {
+               const bgPadding = 6;
+               let bgHeight = cached.name.height() + cached.seats.height() + bgPadding * 2 + 4;
+               if (isVisible) {
+                  bgHeight += cached.blocked.height() + 2;
+               }
+               cached.bgRect.height(bgHeight);
+            }
+          }
+        } catch { /* ignore */ }
 
         // If the group stored an update function for external label absolute positions, call it
         try {
@@ -3692,6 +3799,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     const allSeats: Konva.Circle[] = [];
     this.sectorSeats.forEach(seats => allSeats.push(...seats));
 
+    const isBlockedSelected = this.isBlockedSelected();
     let anyChanged = false;
   allSeats.forEach(seat => {
       try {
@@ -3700,6 +3808,11 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         const seatId = seat.getAttr('seatId') as number | undefined;
         if (!seatId) return;
         if (currentPid == null) return; // nothing to clear
+
+        // Clear blocked seats only if "Blocked" item is selected
+        if (currentPid === this.BLOCKED_PARTICIPANT_ID && !isBlockedSelected) {
+          return;
+        }
 
         // Determine reservation id similar to single-seat handler
         let reservationId: number | undefined;
@@ -3988,6 +4101,11 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         const currentPid = seat.getAttr('participantId') as number | null | undefined;
         if (selectedParticipantId != null) {
           return currentPid === selectedParticipantId;
+        }
+        // If no participant is selected, clear all assigned seats EXCEPT blocked seats
+        // (Blocked seats are only cleared if Blocked is explicitly selected)
+        if (currentPid === this.BLOCKED_PARTICIPANT_ID) {
+          return false;
         }
         return currentPid != null;
       } catch (e) {

@@ -139,6 +139,8 @@ BEGIN
   RETURN IFNULL(total, 0);
 END$$
 
+
+
 CREATE FUNCTION get_venue_seat_count(p_venue_id BIGINT) RETURNS int
     READS SQL DATA
     DETERMINISTIC
@@ -205,6 +207,17 @@ CREATE TABLE user_details (
 
 
 DELIMITER $$
+
+CREATE FUNCTION get_event_blocked_seat_count(p_event_id BIGINT) RETURNS int
+    READS SQL DATA
+    DETERMINISTIC
+BEGIN
+    DECLARE blocked_count INT;
+    SELECT COUNT(*) INTO blocked_count
+    FROM seat_block
+    WHERE event_id = p_event_id;
+    RETURN IFNULL(blocked_count, 0);
+END$$
 
 CREATE FUNCTION has_allocation_errors(p_event_id BIGINT) RETURNS VARCHAR(1)
     READS SQL DATA

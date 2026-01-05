@@ -253,7 +253,7 @@
 
           <tr mat-header-row *matHeaderRowDef="['name', 'seatColor', 'numberOfTickets', 'actions']"></tr>
           <tr mat-row *matRowDef="let row; columns: ['name', 'seatColor', 'numberOfTickets', 'actions'];" 
-              [class.editing-row]="row.participantId === 'new' || editingParticipant() === row.participantId"></tr>
+              [class.editing-row]="row.participantId === -1 || editingParticipant() === row.participantId"></tr>
           <tr mat-footer-row *matFooterRowDef="['name', 'seatColor', 'numberOfTickets', 'actions']"></tr>
         </table>
         </div>

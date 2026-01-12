@@ -282,12 +282,12 @@ export class EventDetailComponent implements OnInit {
     if (!eventId) return;
 
     // Show loading state or disable button
-    console.log('Generating report for participant:', participantId);
+    console.log('Generating ticket for participant:', participantId);
 
     this.eventApi.eventsEventIdParticipantsParticipantIdReportGet(eventId, participantId, 'response').subscribe({
       next: (response: any) => {
         // Extract filename from Content-Disposition header
-        const filename = this.getFilenameFromContentDisposition(response) || `participant_report_${participantId}.pdf`;
+        const filename = this.getFilenameFromContentDisposition(response) || `participant_ticket_${participantId}.pdf`;
         
         // Create a blob URL and trigger download
         const blob = new Blob([response.body], { type: 'application/pdf' });
@@ -301,9 +301,9 @@ export class EventDetailComponent implements OnInit {
         window.URL.revokeObjectURL(url);
       },
       error: (err) => {
-        console.error('Error generating participant report:', err);
+        console.error('Error generating participant ticket:', err);
         // Enhanced error handling with user-friendly messages
-        let errorMessage = 'Failed to generate report. ';
+        let errorMessage = 'Failed to generate ticket. ';
         
         if (err.status === 404) {
           errorMessage += 'Participant or event not found.';
@@ -334,12 +334,12 @@ export class EventDetailComponent implements OnInit {
     }
 
     // Show loading state or disable button
-    console.log('Generating ZIP file with all participant reports for event:', eventId);
+    console.log('Generating ZIP file with all participant tickets for event:', eventId);
 
     this.eventApi.eventsEventIdParticipantsReportsZipGet(eventId, 'response').subscribe({
       next: (response: any) => {
         // Extract filename from Content-Disposition header
-        const filename = this.getFilenameFromContentDisposition(response) || `participant_reports_event_${eventId}.zip`;
+        const filename = this.getFilenameFromContentDisposition(response) || `participant_tickets_event_${eventId}.zip`;
         
         // Create a blob URL and trigger download
         const blob = new Blob([response.body], { type: 'application/zip' });
@@ -352,12 +352,12 @@ export class EventDetailComponent implements OnInit {
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
         
-        console.log(`Successfully downloaded ZIP file with ${participantCount} participant reports`);
+        console.log(`Successfully downloaded ZIP file with ${participantCount} participant tickets`);
       },
       error: (err) => {
-        console.error('Error generating ZIP file with participant reports:', err);
+        console.error('Error generating ZIP file with participant tickets:', err);
         // Enhanced error handling with user-friendly messages
-        let errorMessage = 'Failed to generate reports ZIP file. ';
+        let errorMessage = 'Failed to generate tickets ZIP file. ';
         
         if (err.status === 404) {
           errorMessage += 'Event not found or no participants registered.';

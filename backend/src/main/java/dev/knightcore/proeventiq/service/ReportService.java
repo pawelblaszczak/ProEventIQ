@@ -22,6 +22,7 @@ import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory;
+import org.apache.pdfbox.pdmodel.graphics.state.RenderingMode;
 import javax.imageio.ImageIO;
 import javax.imageio.spi.IIORegistry;
 import java.awt.image.BufferedImage;
@@ -169,6 +170,7 @@ public class ReportService {
         }
     }
     
+
     private byte[] createPdfReport(EventEntity event, ParticipantEntity participant, ShowEntity show, VenueEntity venue, UserEntity organizer) throws IOException {
         try (PDDocument document = new PDDocument()) {
             PDPage page = new PDPage(PDRectangle.A4);
@@ -176,193 +178,224 @@ public class ReportService {
             
             PDPageContentStream contentStream = new PDPageContentStream(document, page);
             try {
-                // Set up fonts with Unicode support for Polish characters
+                // Set up fonts
                 PDFont headerFont;
                 PDFont bodyFont;
+                PDFont serifFont;
+                PDFont serifBoldFont;
                 
                 try {
-                    // Try to load Arial fonts from Windows system using PDType0Font for full Unicode support
+                    // Try to load Arial fonts from Windows system using PDType0Font for full Unicode
                     java.io.File arialBoldFile = new java.io.File("C:/Windows/Fonts/arialbd.ttf");
                     java.io.File arialFile = new java.io.File("C:/Windows/Fonts/arial.ttf");
+                    java.io.File timesBoldFile = new java.io.File("C:/Windows/Fonts/timesbd.ttf");
+                    java.io.File timesFile = new java.io.File("C:/Windows/Fonts/times.ttf");
                     
-                    // Check if font files exist
-                    if (!arialBoldFile.exists() || !arialFile.exists()) {
-                        throw new IOException("Arial font files not found in Windows/Fonts directory");
+                    if (!arialBoldFile.exists() || !arialFile.exists() || !timesBoldFile.exists() || !timesFile.exists()) {
+                         // Fallback partially if some are missing, but simplicity throws here
+                         if (!arialBoldFile.exists() || !arialFile.exists()) throw new IOException("Arial fonts not found");
                     }
                     
-                    // Load fonts using PDType0Font for full Unicode support
                     headerFont = PDType0Font.load(document, arialBoldFile);
                     bodyFont = PDType0Font.load(document, arialFile);
                     
-                    log.info("Successfully loaded Arial fonts with PDType0Font and full Unicode support");
+                    if (timesBoldFile.exists() && timesFile.exists()) {
+                        serifBoldFont = PDType0Font.load(document, timesBoldFile);
+                        serifFont = PDType0Font.load(document, timesFile);
+                    } else {
+                        // Fallback serif
+                         serifBoldFont = new PDType1Font(Standard14Fonts.FontName.TIMES_BOLD);
+                         serifFont = new PDType1Font(Standard14Fonts.FontName.TIMES_ROMAN);
+                    }
+
+                    log.info("Successfully loaded system fonts");
                 } catch (Exception e) {
-                    // Fallback to standard fonts without Polish support
-                    log.warn("Could not load Unicode fonts, falling back to standard fonts. Polish characters will be converted to ASCII equivalents: {}", e.getMessage());
+                    log.warn("Could not load system fonts, falling back to standard fonts: {}", e.getMessage());
                     headerFont = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
                     bodyFont = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
+                    serifBoldFont = new PDType1Font(Standard14Fonts.FontName.TIMES_BOLD);
+                    serifFont = new PDType1Font(Standard14Fonts.FontName.TIMES_ROMAN);
                 }
-                
-                float margin = 50;
-                float yPosition = page.getMediaBox().getHeight() - margin;
-                float lineHeight = 20;
 
-                // Centered title: Reservation confirmation with organizer logo on the right
-                String reportTitle = "Reservation confirmation";
-                float titleWidth = headerFont.getStringWidth(reportTitle) / 1000 * 20;
                 float pageWidth = page.getMediaBox().getWidth();
-                float titleX = (pageWidth - titleWidth) / 2;
-                
-                // Save original yPosition for logo alignment
-                float titleYPosition = yPosition;
-                
-                // Draw title
-                contentStream.beginText();
-                contentStream.setFont(headerFont, 20);
-                contentStream.newLineAtOffset(titleX, yPosition);
-                safeShowText(contentStream, reportTitle);
-                contentStream.endText();
-                
-                // Add organizer logo on the right side, aligned with the title
-                if (organizer != null && organizer.getThumbnail() != null && organizer.getThumbnailContentType() != null) {
-                    try {
-                        // Try direct PDFBox embed first
-                        PDImageXObject logoImage;
-                        try {
-                            logoImage = PDImageXObject.createFromByteArray(document, organizer.getThumbnail(), "organizer_logo");
-                        } catch (Exception inner) {
-                            // Fallback: try decoding with ImageIO and wrap with LosslessFactory
-                            BufferedImage buffered = tryDecodeImage(organizer.getThumbnail());
-                            if (buffered != null) {
-                                logoImage = LosslessFactory.createFromImage(document, buffered);
-                            } else {
-                                throw new IOException("Could not decode organizer thumbnail (ImageIO + SVG fallback failed)");
-                            }
-                        }
+                float pageHeight = page.getMediaBox().getHeight();
+                float margin = 50;
+                float yPosition = pageHeight - margin;
+                float lineHeight = 15;
 
-                        float logoSize = 80; // Enlarged logo size
-                        float logoX = pageWidth - margin - logoSize; // Right aligned
-                        float logoY = titleYPosition - logoSize + 15; // Aligned with title
-                        contentStream.drawImage(logoImage, logoX, logoY, logoSize, logoSize);
-                    } catch (Exception e) {
-                        log.warn("Could not load organizer logo: {}", e.getMessage());
-                    }
+                // --- 1. Top Description Text ---
+                
+                contentStream.setFont(serifFont, 14); // Header
+                // Center "Szanowni Państwo"
+                float szanHeaderWidth = serifFont.getStringWidth("Szanowni Państwo") / 1000f * 14;
+                float szanHeaderX = (pageWidth - szanHeaderWidth) / 2;
+                contentStream.beginText();
+                contentStream.newLineAtOffset(szanHeaderX, yPosition);
+                safeShowText(contentStream, "Szanowni Państwo");
+                contentStream.endText();
+                yPosition -= lineHeight * 2;
+
+                // Content Font
+                contentStream.setFont(serifFont, 11);
+
+                String showName = show.getName() != null ? show.getName() : "";
+                String venueName = venue.getName() != null ? venue.getName() : "";
+                // Use city from venue if possible, otherwise hardcoded Wrocław in image
+                String city = venue.getCity() != null ? venue.getCity() : "Wrocławiu"; 
+                String venueAddress = venue.getAddress() != null ? venue.getAddress() : "";
+                
+                // Construct the paragraph
+                String introText = "Poniżej przesyłamy informacje dotyczące rewii na lodzie pt. \"" + showName + "\", " +
+                                   "która odbędzie się w " + venueName.toUpperCase() + " przy ul. " + venueAddress + " we " + city + ".";
+                
+                // Wrap and draw intro text
+                for (String line : wrapText(introText, pageWidth - 2 * margin, serifFont, 11)) {
+                     contentStream.beginText();
+                     contentStream.newLineAtOffset(margin, yPosition);
+                     safeShowText(contentStream, line);
+                     contentStream.endText();
+                     yPosition -= lineHeight;
+                }
+                yPosition -= lineHeight;
+
+                // Bullet points
+                String[] bullets = {
+                    "- prosimy o przybycie około 20 minut przed rozpoczęciem widowiska w celu kupna biletów i zajęcia miejsc na widowni",
+                    "- czas trwania rewii to około 65 minut",
+                    "- dostępne formy płatności:"
+                };
+                
+                 for (String bullet : bullets) {
+                     for(String line : wrapText(bullet, pageWidth - 2 * margin, serifFont, 11)) {
+                        contentStream.beginText();
+                        contentStream.newLineAtOffset(margin, yPosition);
+                        safeShowText(contentStream, line);
+                        contentStream.endText();
+                        yPosition -= lineHeight;
+                     }
                 }
                 
-                yPosition -= lineHeight + 15;
-
-                // Event organizer section with current user data
-                if (organizer != null) {
-                    // ensure space for organizer block
-                    var _ps = ensurePageHasSpace(document, page, contentStream, margin, yPosition, 100);
-                    page = _ps.page; contentStream = _ps.contentStream; yPosition = _ps.yPosition;
-                    contentStream.beginText();
-                    contentStream.setFont(headerFont, 14);
-                    contentStream.newLineAtOffset(margin, yPosition);
-                    safeShowText(contentStream, "Event organizer");
-                    contentStream.endText();
-                    yPosition -= lineHeight + 5;
-
-                    // Get current user data from Keycloak
-                    String organizerName = keycloakUserService.getCurrentUserFullName().orElse(
-                        organizer.getName() != null ? organizer.getName() : "N/A"
-                    );
-                    String organizerEmail = keycloakUserService.getCurrentUserEmail().orElse("N/A");
-                    String organizerAddress = organizer.getAddress() != null ? organizer.getAddress() : "N/A";
-
-                    // Organizer name
-                    contentStream.beginText();
-                    contentStream.setFont(bodyFont, 12);
-                    contentStream.newLineAtOffset(margin + 20, yPosition);
-                    safeShowText(contentStream, "Name: " + organizerName);
-                    contentStream.endText();
-                    yPosition -= lineHeight;
-                    
-                    // Organizer email
-                    contentStream.beginText();
-                    contentStream.setFont(bodyFont, 12);
-                    contentStream.newLineAtOffset(margin + 20, yPosition);
-                    safeShowText(contentStream, "Email: " + organizerEmail);
-                    contentStream.endText();
-                    yPosition -= lineHeight;
-                    
-                    // Organizer address
-                    contentStream.beginText();
-                    contentStream.setFont(bodyFont, 12);
-                    contentStream.newLineAtOffset(margin + 20, yPosition);
-                    safeShowText(contentStream, "Address: " + organizerAddress);
-                    contentStream.endText();
-                    yPosition -= lineHeight + 10; // Extra spacing after organizer section
+                // Indented payment options
+                float indent = 20;
+                String[] payments = {
+                    "1. w dniu rewii, gotówką w kasach znajdujących się na arenie (prosimy o odliczoną kwotę w możliwie wysokich nominałach)",
+                    "2. przelewem na konto:"
+                };
+                 for (String pay : payments) {
+                     for(String line : wrapText(pay, pageWidth - 2 * margin - indent, serifFont, 11)) {
+                        contentStream.beginText();
+                        contentStream.newLineAtOffset(margin + indent, yPosition);
+                        safeShowText(contentStream, line);
+                        contentStream.endText();
+                        yPosition -= lineHeight;
+                     }
+                }
+                
+                // Bank Details
+                String bankInfo1 = "MAGIC Sp. z o.o.";
+                String bankInfo2 = "ul. Półkole 2, 31-559 Kraków";
+                String bankInfo3 = "ING Bank nr konta: 08 1050 1445 1000 0090 8067 4980";
+                String bankInfo4 = "(prosimy o zabranie dowodu wpłaty i okazanie go w kasie)";
+                
+                float bankIndent = margin + indent + 10;
+                yPosition -= 4; // visual spacing
+                
+                contentStream.beginText(); contentStream.newLineAtOffset(bankIndent, yPosition); safeShowText(contentStream, bankInfo1); contentStream.endText(); yPosition -= lineHeight;
+                contentStream.beginText(); contentStream.newLineAtOffset(bankIndent, yPosition); safeShowText(contentStream, bankInfo2); contentStream.endText(); yPosition -= lineHeight;
+                contentStream.beginText(); contentStream.newLineAtOffset(bankIndent, yPosition); safeShowText(contentStream, bankInfo3); contentStream.endText(); yPosition -= lineHeight;
+                contentStream.beginText(); contentStream.newLineAtOffset(bankIndent, yPosition); safeShowText(contentStream, bankInfo4); contentStream.endText(); yPosition -= lineHeight;
+                
+                yPosition -= 8 + lineHeight;
+                String[] footerNotes = {
+                    "- na dole strony załączamy bilet wstępu",
+                    "- szczegółowy wykaz rzędów oraz miejsc na widowni dla Państwa grupy znajduje się nad biletem",
+                    "- prosimy o wydrukowanie biletu wraz z powyższymi informacjami i zabranie ze sobą na miejsce",                    
+                };
+                 for (String note : footerNotes) {
+                     for(String line : wrapText(note, pageWidth - 2 * margin, serifFont, 11)) {
+                        contentStream.beginText();
+                        contentStream.newLineAtOffset(margin, yPosition);
+                        safeShowText(contentStream, line);
+                        contentStream.endText();
+                        yPosition -= lineHeight;
+                     }
+                }
+                
+                yPosition -= lineHeight;
+                
+                // "Dziękujemy" - Center
+                contentStream.setFont(serifBoldFont, 12);
+                float dziekWidth = serifBoldFont.getStringWidth("Dziękujemy") / 1000f * 12;
+                contentStream.beginText();
+                contentStream.newLineAtOffset((pageWidth - dziekWidth)/2, yPosition);
+                safeShowText(contentStream, "Dziękujemy");
+                contentStream.endText();
+                yPosition -= lineHeight * 2;                
+                
+                // Prepare data for seats section
+                java.util.List<dev.knightcore.proeventiq.entity.ReservationEntity> reservations = reservationRepository.findByEventIdAndParticipantId(event.getEventId(), participant.getParticipantId());
+                java.util.Map<Long, dev.knightcore.proeventiq.entity.SeatEntity> seatMap = new java.util.HashMap<>();
+                for (var res : reservations) {
+                    seatRepository.findById(res.getSeatId()).ifPresent(s -> seatMap.put(s.getSeatId(), s));
+                }
+                
+                java.util.Map<String, java.util.Map<String, java.util.List<Integer>>> grouped = new java.util.TreeMap<>();
+                for (var seat : seatMap.values()) {
+                    var row = seat.getSeatRow();
+                    var sector = (row != null) ? row.getSector() : null;
+                    String sectorName = (sector != null && sector.getName() != null) ? "sektor " + sector.getName() : "Unknown Sector";
+                    String rowName = (row != null && row.getName() != null) ? row.getName() : 
+                                     ((row != null && row.getOrderNumber() != null) ? String.valueOf(row.getOrderNumber()) : "?");
+                    grouped.computeIfAbsent(sectorName, k -> new java.util.TreeMap<>());
+                    grouped.get(sectorName).computeIfAbsent(rowName, k -> new java.util.ArrayList<>()).add(seat.getOrderNumber());
                 }
 
-                // Reservation holder label and name
-                // ensure space for reservation holder
-                var _ps2 = ensurePageHasSpace(document, page, contentStream, margin, yPosition, 60);
-                page = _ps2.page; contentStream = _ps2.contentStream; yPosition = _ps2.yPosition;
-                contentStream.setFont(headerFont, 14);
-                contentStream.beginText();
-                contentStream.newLineAtOffset(margin, yPosition);
-                safeShowText(contentStream, "Reservation holder");
-                contentStream.endText();
-                yPosition -= lineHeight + 5;
-
-                contentStream.setFont(bodyFont, 14);
-                contentStream.beginText();
-                contentStream.newLineAtOffset(margin + 20, yPosition);
-                safeShowText(contentStream, participant.getName() != null ? participant.getName() : "N/A");
-                contentStream.endText();
-                yPosition -= lineHeight + 5;
-
-                // Add participant address
-                if (participant.getAddress() != null && !participant.getAddress().trim().isEmpty()) {
-                    contentStream.setFont(bodyFont, 12);
-                    contentStream.beginText();
-                    contentStream.newLineAtOffset(margin + 20, yPosition);
-                    safeShowText(contentStream, participant.getAddress());
-                    contentStream.endText();
-                    yPosition -= lineHeight + 10;
-                } else {
-                    yPosition -= 10;
+                // Calculate required height for seats block
+                
+                float seatsBlockHeight = calculateSeatsBlockHeight(grouped, bodyFont, lineHeight, pageWidth - 40); 
+                float totalBlockHeight = seatsBlockHeight + lineHeight;
+                
+                float footerHeight = 215f;
+                float requiredSpace = totalBlockHeight + footerHeight + 10; // Total needed: content + footer + small gap
+                
+                // Check if everything fits on current page
+                if (yPosition > requiredSpace) {
+                    // It fits! Push content down to be close to footer (keep tiny safety gap)
+                    float targetBottomY = footerHeight + 2;
+                    yPosition = targetBottomY + totalBlockHeight;
                 }
+                // Otherwise render from current yPosition (natural flow)
 
-                // Removed PARTICIPANT INFORMATION section as requested
-                
-                // Date & location section
-                var _ps3 = ensurePageHasSpace(document, page, contentStream, margin, yPosition, 120);
-                page = _ps3.page; contentStream = _ps3.contentStream; yPosition = _ps3.yPosition;
-                var psDate = addSection(document, page, contentStream, headerFont, bodyFont, margin, yPosition, lineHeight,
-                    "Date & location", new String[]{
-                        "Date & Time: " + (event.getDateTime() != null ? event.getDateTime().format(DATE_TIME_FORMATTER) : "N/A"),
-                        "Venue: " + (venue.getName() != null ? venue.getName() : "N/A"),
-                        "Address: " + formatAddress(venue)
-                    });
-                page = psDate.page; contentStream = psDate.contentStream; yPosition = psDate.yPosition;
-                
-                // Show information with thumbnail layout
-                var _ps4 = ensurePageHasSpace(document, page, contentStream, margin, yPosition, 160);
-                page = _ps4.page; contentStream = _ps4.contentStream; yPosition = _ps4.yPosition;
-                var psShow = addShowSection(document, page, contentStream, headerFont, bodyFont, margin, yPosition, lineHeight, show);
-                page = psShow.page; contentStream = psShow.contentStream; yPosition = psShow.yPosition;
+                yPosition -= lineHeight;
 
-                // Seats section - show reserved seats grouped by sector and row
-                var _ps5 = ensurePageHasSpace(document, page, contentStream, margin, yPosition, 200);
-                page = _ps5.page; contentStream = _ps5.contentStream; yPosition = _ps5.yPosition;
-                var psSeats = addSeatsSection(document, page, contentStream, headerFont, bodyFont, margin, yPosition, lineHeight, event, participant);
-                page = psSeats.page; contentStream = psSeats.contentStream; yPosition = psSeats.yPosition;
-                // Removed VENUE INFORMATION section as requested
+                // --- 2. Seats Section ---
+                PageState currentState = new PageState(page, contentStream, yPosition);
+                // Call addSeatsSection (which now takes grouped map)
+                currentState = addSeatsSection(document, currentState.page, currentState.contentStream, serifBoldFont, bodyFont, margin, currentState.yPosition, lineHeight, grouped);
                 
-                // Footer
-                yPosition -= 30;
-                contentStream.setFont(bodyFont, 10);
-                contentStream.beginText();
-                contentStream.newLineAtOffset(margin, yPosition);
-                safeShowText(contentStream, "Report generated on: " + java.time.LocalDateTime.now().format(DATE_TIME_FORMATTER));
-                contentStream.endText();
+                page = currentState.page;
+                contentStream = currentState.contentStream;
+                yPosition = currentState.yPosition;
+
+                // --- 3. Ticket Footer (Blue) ---
+                // Check if space exists on current page for the footer (Ticket)
+                // We want the ticket stick to the bottom. If yPosition is high enough, we can put it on this page.
+                // But we must NOT draw over text.
+                // Since this is a footer at y=0 to 215, we need yPosition > 215.
                 
-                yPosition -= 15;
-                contentStream.beginText();
-                contentStream.newLineAtOffset(margin, yPosition);
-                safeShowText(contentStream, "ProEventIQ - Event Management System");
-                contentStream.endText();
+                 // Only move footer to a new page if it would overlap the content.
+                 // We intentionally allow content to end very close to the footer.
+                 if (yPosition < footerHeight + 2) {
+                     // Add new page
+                     if (contentStream != null) contentStream.close();
+                     page = new PDPage(PDRectangle.A4);
+                     document.addPage(page);
+                     contentStream = new PDPageContentStream(document, page);
+                     // Note: We need to re-set fonts if we were writing text, but drawTicketFooter handles its own fonts/rendering
+                }
+                
+                drawTicketFooter(document, page, contentStream, event, participant, venue, organizer, show, serifBoldFont, bodyFont);
+
             } finally {
                 try { if (contentStream != null) contentStream.close(); } catch (Exception ignored) {}
             }
@@ -374,241 +407,328 @@ public class ReportService {
         }
     }
 
-    private PageState addSeatsSection(PDDocument document, PDPage page, PDPageContentStream contentStream, PDFont headerFont, PDFont bodyFont,
-                                  float margin, float yPosition, float lineHeight, EventEntity event, ParticipantEntity participant) throws IOException {
-        // Section title
-        contentStream.setFont(headerFont, 14);
-        contentStream.beginText();
-        contentStream.newLineAtOffset(margin, yPosition);
-        safeShowText(contentStream, "Seats");
-        contentStream.endText();
-        yPosition -= lineHeight + 5;
+    private void drawTicketFooter(PDDocument document, PDPage page, PDPageContentStream contentStream, 
+                                  EventEntity event, ParticipantEntity participant, VenueEntity venue, UserEntity organizer, ShowEntity show,
+                                  PDFont serifBoldFont, PDFont bodyFont) throws IOException {
+                float pageWidth = page.getMediaBox().getWidth();
+                // Footer Height
+                float footerHeight = 215f; 
+                float footerY = 0; // Bottom of the page
+                
+                // Draw Blue Background
+                // SkyBlue: (135, 206, 250)
+                contentStream.setNonStrokingColor(135/255f, 206/255f, 250/255f);
+                contentStream.addRect(0, 0, pageWidth, footerHeight);
+                contentStream.fill();
+                
+                // --- Data Fields ---
+                float startY = footerHeight - 32; 
+                float lineHeight = 35;
+                float valueBoxX = 140; 
+                float valueBoxWidth = 200;
+                float valueBoxHeight = 25;
+                java.awt.Color labelColor = new java.awt.Color(0, 51, 102); // Navy Blue
+                
+                drawField(contentStream, serifBoldFont, bodyFont, "Data:", 
+                    event.getDateTime() != null ? event.getDateTime().format(DATE_TIME_FORMATTER) : "", 
+                    startY, valueBoxX, valueBoxWidth, valueBoxHeight, labelColor);
+                
+                drawField(contentStream, serifBoldFont, bodyFont, "Miejsce:", 
+                    venue.getName() != null ? venue.getName() : "",
+                    startY - lineHeight, valueBoxX, valueBoxWidth, valueBoxHeight, labelColor);
+                
+                int ticketCount = reservationRepository.findByEventIdAndParticipantId(event.getEventId(), participant.getParticipantId()).size();
+                
+                drawField(contentStream, serifBoldFont, bodyFont, "Liczba biletów:", 
+                    String.valueOf(ticketCount),
+                    startY - 2 * lineHeight, valueBoxX, valueBoxWidth, valueBoxHeight, labelColor);
+                
+                drawField(contentStream, serifBoldFont, bodyFont, "Cena 1 biletu:", 
+                    "", 
+                    startY - 3 * lineHeight, valueBoxX, valueBoxWidth, valueBoxHeight, labelColor);
+                
 
-        // Fetch reservations for this participant and event
-        java.util.List<dev.knightcore.proeventiq.entity.ReservationEntity> reservations = reservationRepository.findByEventIdAndParticipantId(event.getEventId(), participant.getParticipantId());
+                // --- "BILET" Text ---
+                float biletY = 25; 
+                float biletX = valueBoxX + 10; 
+                
+                contentStream.setFont(serifBoldFont, 60);
 
-        if (reservations.isEmpty()) {
-            contentStream.setFont(bodyFont, 12);
-            contentStream.beginText();
-            contentStream.newLineAtOffset(margin + 20, yPosition);
-            safeShowText(contentStream, "No seats reserved");
-            contentStream.endText();
-            yPosition -= lineHeight + 10;
-            return new PageState(page, contentStream, yPosition);
-        }
-
-        // Load seat entities
-        java.util.Map<Long, dev.knightcore.proeventiq.entity.SeatEntity> seatMap = new java.util.HashMap<>();
-        for (var res : reservations) {
-            seatRepository.findById(res.getSeatId()).ifPresent(s -> seatMap.put(s.getSeatId(), s));
-        }
-
-        // Group by sector -> row -> list of seat orderNumbers
-        java.util.Map<String, java.util.Map<String, java.util.List<Integer>>> grouped = new java.util.TreeMap<>();
-        for (var seat : seatMap.values()) {
-            var row = seat.getSeatRow();
-            if (row == null) continue;
-            var sector = row.getSector();
-            String sectorName = sector != null ? (sector.getName() != null ? sector.getName() : "Sector " + sector.getSectorId()) : "Unknown sector";
-            String rowName = row.getName() != null ? row.getName() : (row.getOrderNumber() != null ? "Row " + row.getOrderNumber() : "Unknown row");
-
-            grouped.computeIfAbsent(sectorName, k -> new java.util.TreeMap<>());
-            var rows = grouped.get(sectorName);
-            rows.computeIfAbsent(rowName, k -> new java.util.ArrayList<>());
-            var seatNumbers = rows.get(rowName);
-            if (seat.getOrderNumber() != null) seatNumbers.add(seat.getOrderNumber());
-        }
-
-        int overallTotal = 0;
-        contentStream.setFont(bodyFont, 12);
-
-        // Table column x offsets
-        float col1X = margin + 20;             // Row
-        float col2X = margin + 140;            // Seats (ranges)
-        float col3X = margin + 420;            // Total
-        float rangesMaxWidth = col3X - col2X - 10;
-    // Table horizontal bounds used for drawing separators and backgrounds
-    float tableLeft = col1X - 20;
-    float tableRight = col3X + 60;
-
-    for (var sectorEntry : grouped.entrySet()) {
-            // Sector title
-            var _psSect = ensurePageHasSpace(document, page, contentStream, margin, yPosition, 40);
-            page = _psSect.page; contentStream = _psSect.contentStream; yPosition = _psSect.yPosition;
-            contentStream.beginText();
-            contentStream.setFont(headerFont, 12);
-            contentStream.newLineAtOffset(margin + 10, yPosition);
-            safeShowText(contentStream, "Sector: " + sectorEntry.getKey());
-            contentStream.endText();
-            yPosition -= lineHeight;
-
-            // Table header
-            contentStream.beginText();
-            contentStream.setFont(headerFont, 11);
-            contentStream.newLineAtOffset(col1X, yPosition);
-            safeShowText(contentStream, "Row");
-            contentStream.endText();
-
-            contentStream.beginText();
-            contentStream.setFont(headerFont, 11);
-            contentStream.newLineAtOffset(col2X, yPosition);
-            safeShowText(contentStream, "Seats");
-            contentStream.endText();
-
-            contentStream.beginText();
-            contentStream.setFont(headerFont, 11);
-            contentStream.newLineAtOffset(col3X, yPosition);
-            safeShowText(contentStream, "Total");
-            contentStream.endText();
-            // Table horizontal separators will be drawn only above summary rows;
-            // use alternating background for data rows instead.
-
-            yPosition -= lineHeight;
-
-            int sectorTotal = 0;
-            int rowIdx = 0; // for alternating backgrounds per row within this sector
-            contentStream.setFont(bodyFont, 11);
-
-            for (var rowEntry : sectorEntry.getValue().entrySet()) {
-                var seatNums = rowEntry.getValue();
-                seatNums.sort(Integer::compareTo);
-                int rowCount = seatNums.size();
-                sectorTotal += rowCount;
-                overallTotal += rowCount;
-
-                String ranges = buildRanges(seatNums);
-                String[] wrapped = wrapText(ranges, rangesMaxWidth, bodyFont, 11);
-
-                boolean firstLine = true;
-                boolean fillDark = (rowIdx % 2 == 0);
-
-                // Ensure there's enough space for the whole wrapped row (all lines)
-                int requiredHeight = Math.max( (int)(wrapped.length * lineHeight) + 8, 40);
-                var _psRow = ensurePageHasSpace(document, page, contentStream, margin, yPosition, requiredHeight);
-                page = _psRow.page; contentStream = _psRow.contentStream; yPosition = _psRow.yPosition;
-
-                // Draw alternating background rectangle covering the whole logical row using font metrics
-                float fontSize = 11f; // we're using bodyFont at 11
-                var fd = bodyFont.getFontDescriptor();
-                float ascent = fd != null && fd.getAscent() != 0 ? fd.getAscent() / 1000f * fontSize : fontSize * 0.7f;
-                float descent = fd != null ? Math.abs(fd.getDescent()) / 1000f * fontSize : fontSize * 0.2f;
-                float singleLineHeight = ascent + descent + 2f; // small extra leading
-                float totalRowHeight = singleLineHeight * wrapped.length;
-                float padding = 2f;
-                // rectTop is slightly above the ascent of the first line; rectY is bottom of the rectangle
-                float rectTop = yPosition + ascent + padding;
-                float rectY = rectTop - totalRowHeight - padding;
-                float rectHeight = totalRowHeight + padding * 2f;
-                try {
-                    if (fillDark) contentStream.setNonStrokingColor(0.94f); else contentStream.setNonStrokingColor(0.98f);
-                    contentStream.addRect(tableLeft, rectY, tableRight - tableLeft, rectHeight);
-                    contentStream.fill();
-                    // Restore fill color for text
-                    contentStream.setNonStrokingColor(0f);
-                } catch (IOException ignored) {}
-
-                for (String line : wrapped) {
-                    // Row name only on first wrapped line
-                    if (firstLine) {
-                        contentStream.beginText();
-                        contentStream.newLineAtOffset(col1X, yPosition);
-                        safeShowText(contentStream, rowEntry.getKey());
-                        contentStream.endText();
+                // Shadow
+                contentStream.setRenderingMode(RenderingMode.FILL);
+                contentStream.setNonStrokingColor(100/255f, 160/255f, 210/255f); 
+                contentStream.beginText();
+                float shadowOffset = 3f;
+                contentStream.newLineAtOffset(biletX + shadowOffset, biletY - shadowOffset);
+                safeShowText(contentStream, "BILET");
+                contentStream.endText();
+                
+                // Set "BILET" style
+                contentStream.setRenderingMode(RenderingMode.FILL_STROKE);
+                contentStream.setNonStrokingColor(1f, 1f, 1f); 
+                contentStream.setStrokingColor(60/255f, 120/255f, 180/255f); 
+                contentStream.setLineWidth(1.0f);
+                
+                contentStream.beginText();
+                contentStream.newLineAtOffset(biletX, biletY);
+                safeShowText(contentStream, "BILET");
+                contentStream.endText();
+                
+                contentStream.setRenderingMode(RenderingMode.FILL);
+                contentStream.setNonStrokingColor(0f, 0f, 0f); // Reset to black
+                
+                // --- Logo (Bottom Left) ---
+                if (organizer != null && organizer.getThumbnail() != null) {
+                    try {
+                        PDImageXObject logoImage = null;
+                        try {
+                            logoImage = PDImageXObject.createFromByteArray(document, organizer.getThumbnail(), "organizer_logo");
+                        } catch (Exception inner) {
+                             BufferedImage buffered = tryDecodeImage(organizer.getThumbnail());
+                            if (buffered != null) {
+                                logoImage = LosslessFactory.createFromImage(document, buffered);
+                            }
+                        }
+                        
+                        if (logoImage != null) {
+                            float logoSize = 60; 
+                            float logoX = 50; // Centered under "Cena 1 biletu" label (approx center ~80)
+                            float logoY = 15; // Aligned roughly with "BILET" baseline
+                            contentStream.drawImage(logoImage, logoX, logoY, logoSize, logoSize);
+                        }
+                    } catch (Exception e) {
+                        log.warn("Could not load organizer logo: {}", e.getMessage());
                     }
-
-                    // Seats/ranges
-                    contentStream.beginText();
-                    contentStream.newLineAtOffset(col2X, yPosition);
-                    safeShowText(contentStream, line);
-                    contentStream.endText();
-
-                    // Total only on first line (right-aligned inside Total column)
-                    if (firstLine) {
-                        String val = String.valueOf(rowCount);
-                        float valFontSize = 11f;
-                        float valWidth = bodyFont.getStringWidth(val) / 1000f * valFontSize;
-                        float rightEdge = tableRight - 12f; // padding from right bound
-                        float valX = rightEdge - valWidth;
-                        contentStream.beginText();
-                        contentStream.newLineAtOffset(valX, yPosition);
-                        safeShowText(contentStream, val);
-                        contentStream.endText();
-                    }
-
-                    yPosition -= lineHeight;
-                    firstLine = false;
                 }
-                rowIdx++;
+
+                // --- Show Logo (Bottom Right) ---
+                if (show != null && show.getThumbnail() != null) {
+                    try {
+                        PDImageXObject showLogoImage = null;
+                        try {
+                            showLogoImage = PDImageXObject.createFromByteArray(document, show.getThumbnail(), "show_logo");
+                        } catch (Exception inner) {
+                             BufferedImage buffered = tryDecodeImage(show.getThumbnail());
+                            if (buffered != null) {
+                                showLogoImage = LosslessFactory.createFromImage(document, buffered);
+                            }
+                        }
+                        
+                        if (showLogoImage != null) {
+                            float imageHeight = footerHeight;
+                            float scale = imageHeight / showLogoImage.getHeight();
+                            float imageWidth = showLogoImage.getWidth() * scale;
+                            float logoX = pageWidth - imageWidth - 20; 
+                            float logoY = 0; 
+                            contentStream.drawImage(showLogoImage, logoX, logoY, imageWidth, imageHeight);
+                        }
+                    } catch (Exception e) {
+                        log.warn("Could not load show logo: {}", e.getMessage());
+                    }
+                }
+    }
+
+    private void drawField(PDPageContentStream contentStream, PDFont labelFont, PDFont valueFont, 
+                           String label, String value, 
+                           float y, float boxX, float boxWidth, float boxHeight,
+                           java.awt.Color labelColor) throws IOException {
+        // Label calculation
+        float fontSize = 14;
+        float textWidth = labelFont.getStringWidth(label) / 1000f * fontSize;
+        float startTextX = (boxX - 10) - textWidth; // 10 units padding from box
+        
+        // Draw Label with custom color
+        contentStream.setNonStrokingColor(labelColor.getRed()/255f, labelColor.getGreen()/255f, labelColor.getBlue()/255f);
+        contentStream.setFont(labelFont, fontSize);
+        contentStream.beginText();
+        contentStream.newLineAtOffset(startTextX, y + (boxHeight - fontSize)/2 + 2); // Vertically center approx
+        safeShowText(contentStream, label);
+        contentStream.endText();
+        
+        // Draw White Box
+        contentStream.setNonStrokingColor(1f, 1f, 1f); // White
+        contentStream.addRect(boxX, y, boxWidth, boxHeight);
+        contentStream.fill();
+        
+        // Draw Value inside Box
+        if (value != null && !value.isEmpty()) {
+            contentStream.setNonStrokingColor(0f, 0f, 0f); // Black text
+            contentStream.setFont(valueFont, 12);
+            contentStream.beginText();
+            contentStream.newLineAtOffset(boxX + 5, y + 7); // Padding inside box
+            safeShowText(contentStream, value);
+            contentStream.endText();
+        }
+    }
+
+
+    private PageState addSeatsSection(PDDocument document, PDPage page, PDPageContentStream contentStream, PDFont headerFont, PDFont bodyFont,
+                                  float margin, float yPosition, float lineHeight,
+                                  java.util.Map<String, java.util.Map<String, java.util.List<Integer>>> grouped) throws IOException {
+        LayoutResult result = layoutSeatsSection(document, page, contentStream, bodyFont, lineHeight, grouped, false, yPosition);
+        return result.pageState;
+    }
+
+    private float calculateSeatsBlockHeight(java.util.Map<String, java.util.Map<String, java.util.List<Integer>>> grouped, PDFont bodyFont, float lineHeight, float tableWidth) {
+        // Create dummy document/page for metric calculation context if needed, but mostly we just need font metrics.
+        // We pass tableWidth via a hack or just assume layoutSeatsSection calculates width from page size.
+        // layoutSeatsSection uses page.getMediaBox().
+        // We can create a dummy PDPage with the correct width.
+        PDPage dummyPage = new PDPage(new PDRectangle(tableWidth + 40, 842)); // 40 = 2*20 margins
+        try {
+            LayoutResult result = layoutSeatsSection(null, dummyPage, null, bodyFont, lineHeight, grouped, true, 800);
+            return result.totalHeight;
+        } catch (IOException e) {
+            return 0f;
+        }
+    }
+
+    private static class SeatRenderLine {
+        String text;
+        boolean highlight;
+        float height;
+        public SeatRenderLine(String text, boolean highlight, float height) {
+            this.text = text;
+            this.highlight = highlight;
+            this.height = height;
+        }
+    }
+
+    private static class LayoutResult {
+        float totalHeight;
+        PageState pageState;
+        public LayoutResult(float totalHeight, PageState pageState) {
+            this.totalHeight = totalHeight;
+            this.pageState = pageState;
+        }
+    }
+
+    private LayoutResult layoutSeatsSection(PDDocument document, PDPage page, PDPageContentStream contentStream, 
+                                          PDFont bodyFont, float lineHeight,
+                                          java.util.Map<String, java.util.Map<String, java.util.List<Integer>>> grouped,
+                                          boolean dryRun, float startY) throws IOException {
+        
+        float currentY = startY;
+        float sideMargin = 20;
+        final float finalPageWidth = page.getMediaBox().getWidth();
+        // float tableWidth = finalPageWidth - 2 * sideMargin;
+
+        // Determine Columns (Fixed 4 columns width logic as requested)
+        int maxCols = 4;
+        float colGap = 5f;
+        float availableWidth = finalPageWidth - (2 * sideMargin);
+        float colWidth = (availableWidth - (maxCols - 1) * colGap) / maxCols;
+
+        java.util.List<String> sectorKeys = new java.util.ArrayList<>(grouped.keySet());
+        
+        // Process in batches
+        for (int batchStart = 0; batchStart < sectorKeys.size(); batchStart += maxCols) {
+            int batchEnd = Math.min(batchStart + maxCols, sectorKeys.size());
+            java.util.List<String> batchKeys = sectorKeys.subList(batchStart, batchEnd);
+
+            // Prepare Lines
+            java.util.List<java.util.List<SeatRenderLine>> batchColumns = new java.util.ArrayList<>();
+            int maxLines = 0;
+
+            for (String secKey : batchKeys) {
+                java.util.List<SeatRenderLine> colLines = new java.util.ArrayList<>();
+                
+                // 1. Header (Sector Name)
+                // Highlight box height = 14 approx
+                colLines.add(new SeatRenderLine(secKey, true, 14f)); 
+                
+                // 2. Rows
+                var rowsMap = grouped.get(secKey);
+                for (var rowEntry : rowsMap.entrySet()) {
+                    String rowName = rowEntry.getKey();
+                    var seatNums = rowEntry.getValue();
+                    seatNums.sort(Integer::compareTo);
+                    String ranges = buildRanges(seatNums);
+                    String lineText = "rząd " + rowName + " / miejsce " + ranges;
+                    
+                    String[] wrapped = wrapText(lineText, colWidth - 5, bodyFont, 11); // -5 padding
+                    for (String w : wrapped) {
+                        colLines.add(new SeatRenderLine(w, false, lineHeight));
+                    }
+                    // Small gap after row entry? calculated as per line
+                }
+                batchColumns.add(colLines);
+                maxLines = Math.max(maxLines, colLines.size());
             }
 
-            // Sector total row
-            // Draw horizontal separator above the sector total summary row
-            var _psSectTotal = ensurePageHasSpace(document, page, contentStream, margin, yPosition, 30);
-            page = _psSectTotal.page; contentStream = _psSectTotal.contentStream; yPosition = _psSectTotal.yPosition;
-            try {
-                contentStream.setStrokingColor(0.7f, 0.7f, 0.7f);
-                contentStream.setLineWidth(0.6f);
-                float sepY = yPosition + (lineHeight - 8f);
-                contentStream.moveTo(tableLeft, sepY);
-                contentStream.lineTo(tableRight, sepY);
-                contentStream.stroke();
-            } catch (IOException ignored) {}
-            contentStream.setFont(headerFont, 11);
-            // Right-align sector total value with Total column
-            String sectorLabel = "Sector total:";
-            String sectorVal = String.valueOf(sectorTotal);
-            float labelFontSize = 11f;
-            float valFontSize = 11f;
-            float labelWidth = headerFont.getStringWidth(sectorLabel) / 1000f * labelFontSize;
-            float valWidth = headerFont.getStringWidth(sectorVal) / 1000f * valFontSize;
-            float rightEdge = tableRight - 12f;
-            float valX = rightEdge - valWidth;
-            float labelX = valX - 8f - labelWidth;
-            contentStream.beginText();
-            contentStream.newLineAtOffset(labelX, yPosition);
-            safeShowText(contentStream, sectorLabel);
-            contentStream.endText();
-            contentStream.beginText();
-            contentStream.newLineAtOffset(valX, yPosition);
-            safeShowText(contentStream, sectorVal);
-            contentStream.endText();
-            yPosition -= lineHeight + 5;
+            // Render/Measure Row by Row
+            for (int i = 0; i < maxLines; i++) {
+                float rowMaxHeight = 0;
+                // Find height of this visual row
+                for (var colLines : batchColumns) {
+                    if (i < colLines.size()) {
+                        rowMaxHeight = Math.max(rowMaxHeight, colLines.get(i).height);
+                    }
+                }
+                // Add padding between lines? usually included in lineHeight.
+                // But for Highlight header, we might want manual spacing?
+                // Using max height covers it.
+
+                if (!dryRun) {
+                    // Check Page Space
+                    if (currentY - rowMaxHeight < 50) { // Should leave space for footer if on last page? 
+                        // But here we just respect generic bottom margin.
+                        // However, we want the footer to fit.
+                        // Assuming 50 margin is safely clear of footer zone or triggers break.
+                        if (contentStream != null) contentStream.close();
+                        PDPage newPage = new PDPage(PDRectangle.A4);
+                        document.addPage(newPage);
+                        page = newPage;
+                        contentStream = new PDPageContentStream(document, page);
+                        currentY = page.getMediaBox().getHeight() - 50;
+                    }
+
+                    // Draw
+                    for (int c = 0; c < batchColumns.size(); c++) {
+                        var colLines = batchColumns.get(c);
+                        if (i < colLines.size()) {
+                            SeatRenderLine item = colLines.get(i);
+                            float drawX = sideMargin + c * (colWidth + colGap);
+                            
+                            if (item.highlight) {
+                                // Draw Box (Full Column Width)
+                                float textWidth = bodyFont.getStringWidth(item.text) / 1000f * 11f;
+                                float boxW = colWidth;
+                                
+                                contentStream.setNonStrokingColor(230/255f, 200/255f, 230/255f); 
+                                contentStream.addRect(drawX, currentY - 3, boxW, item.height);
+                                contentStream.fill();
+                                contentStream.setNonStrokingColor(0,0,0);
+                                
+                                // Center Text
+                                float centeredX = drawX + (colWidth - textWidth) / 2;
+                                
+                                contentStream.beginText();
+                                contentStream.setFont(bodyFont, 11);
+                                contentStream.newLineAtOffset(centeredX, currentY); 
+                                safeShowText(contentStream, item.text);
+                                contentStream.endText();
+                            } else {
+                                contentStream.beginText();
+                                contentStream.setFont(bodyFont, 11);
+                                contentStream.newLineAtOffset(drawX + 5, currentY); // Indent row info
+                                safeShowText(contentStream, item.text);
+                                contentStream.endText();
+                            }
+                        }
+                    }
+                }
+                currentY -= rowMaxHeight;
+            }
+            // Gap between batches (only if not last batch)
+            if (batchEnd < sectorKeys.size()) {
+                currentY -= 5f; // Decreased gap logic
+            }
         }
 
-        // Overall total
-    var _psEnd = ensurePageHasSpace(document, page, contentStream, margin, yPosition, 40);
-    page = _psEnd.page; contentStream = _psEnd.contentStream; yPosition = _psEnd.yPosition;
-    try {
-        contentStream.setStrokingColor(0.7f, 0.7f, 0.7f);
-        contentStream.setLineWidth(0.7f);
-        float sepY = yPosition + (lineHeight - 8f);
-        contentStream.moveTo(tableLeft, sepY);
-        contentStream.lineTo(tableRight, sepY);
-        contentStream.stroke();
-    } catch (IOException ignored) {}
-    contentStream.setFont(headerFont, 12);
-    // Right-align overall total label and value to the Total column
-    String totalLabel = "Total seats reserved:";
-    String totalVal = String.valueOf(overallTotal);
-    float totalLabelSize = 12f;
-    float totalValSize = 12f;
-    float totalLabelWidth = headerFont.getStringWidth(totalLabel) / 1000f * totalLabelSize;
-    float totalValWidth = headerFont.getStringWidth(totalVal) / 1000f * totalValSize;
-    float totalRightEdge = tableRight - 12f;
-    float totalValX = totalRightEdge - totalValWidth;
-    float totalLabelX = totalValX - 8f - totalLabelWidth;
-    contentStream.beginText();
-    contentStream.newLineAtOffset(totalLabelX, yPosition);
-    safeShowText(contentStream, totalLabel);
-    contentStream.endText();
-    contentStream.beginText();
-    contentStream.newLineAtOffset(totalValX, yPosition);
-    safeShowText(contentStream, totalVal);
-    contentStream.endText();
-    yPosition -= lineHeight + 10;
-
-    return new PageState(page, contentStream, yPosition);
+        return new LayoutResult(startY - currentY, new PageState(page, contentStream, currentY));
     }
+
 
     /**
      * Build a compact ranges string from sorted list of integers: [1,2,3,5,7,8] -> "1-3, 5, 7-8".

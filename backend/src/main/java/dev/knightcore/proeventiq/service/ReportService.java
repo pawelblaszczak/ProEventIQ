@@ -498,10 +498,15 @@ public class ReportService {
                         }
                         
                         if (logoImage != null) {
-                            float logoSize = 60; 
+                            float maxLogoSize = 60; 
                             float logoX = 50; // Centered under "Cena 1 biletu" label (approx center ~80)
                             float logoY = 15; // Aligned roughly with "BILET" baseline
-                            contentStream.drawImage(logoImage, logoX, logoY, logoSize, logoSize);
+                            
+                            float scale = Math.min(maxLogoSize / logoImage.getWidth(), maxLogoSize / logoImage.getHeight());
+                            float width = logoImage.getWidth() * scale;
+                            float height = logoImage.getHeight() * scale;
+                            
+                            contentStream.drawImage(logoImage, logoX, logoY, width, height);
                         }
                     } catch (Exception e) {
                         log.warn("Could not load organizer logo: {}", e.getMessage());

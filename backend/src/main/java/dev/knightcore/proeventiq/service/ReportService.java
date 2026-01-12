@@ -340,10 +340,13 @@ public class ReportService {
                 }
                 
                 java.util.Map<String, java.util.Map<String, java.util.List<Integer>>> grouped = new java.util.TreeMap<>();
+                java.util.Set<String> sectorNames = new java.util.TreeSet<>();
                 for (var seat : seatMap.values()) {
                     var row = seat.getSeatRow();
                     var sector = (row != null) ? row.getSector() : null;
-                    String sectorName = (sector != null && sector.getName() != null) ? "sektor " + sector.getName() : "Unknown Sector";
+                    String rawSectorName = (sector != null && sector.getName() != null) ? sector.getName() : "?";
+                    sectorNames.add(rawSectorName);
+                    String sectorName = "sektor " + rawSectorName;
                     String rowName = (row != null && row.getName() != null) ? row.getName() : 
                                      ((row != null && row.getOrderNumber() != null) ? String.valueOf(row.getOrderNumber()) : "?");
                     grouped.computeIfAbsent(sectorName, k -> new java.util.TreeMap<>());
@@ -394,7 +397,7 @@ public class ReportService {
                      // Note: We need to re-set fonts if we were writing text, but drawTicketFooter handles its own fonts/rendering
                 }
                 
-                drawTicketFooter(document, page, contentStream, event, participant, venue, organizer, show, serifBoldFont, bodyFont);
+                drawTicketFooter(document, page, contentStream, event, participant, venue, organizer, show, sectorNames, serifBoldFont, bodyFont);
 
             } finally {
                 try { if (contentStream != null) contentStream.close(); } catch (Exception ignored) {}
@@ -409,6 +412,7 @@ public class ReportService {
 
     private void drawTicketFooter(PDDocument document, PDPage page, PDPageContentStream contentStream, 
                                   EventEntity event, ParticipantEntity participant, VenueEntity venue, UserEntity organizer, ShowEntity show,
+                                  java.util.Set<String> sectorNames,
                                   PDFont serifBoldFont, PDFont bodyFont) throws IOException {
                 float pageWidth = page.getMediaBox().getWidth();
                 // Footer Height
@@ -429,18 +433,21 @@ public class ReportService {
                 float valueBoxHeight = 25;
                 java.awt.Color labelColor = new java.awt.Color(0, 51, 102); // Navy Blue
                 
+                DateTimeFormatter customDateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy 'r. godz.' HH:mm");
+                
                 drawField(contentStream, serifBoldFont, bodyFont, "Data:", 
-                    event.getDateTime() != null ? event.getDateTime().format(DATE_TIME_FORMATTER) : "", 
+                    event.getDateTime() != null ? event.getDateTime().format(customDateFormatter) : "", 
                     startY, valueBoxX, valueBoxWidth, valueBoxHeight, labelColor);
                 
-                drawField(contentStream, serifBoldFont, bodyFont, "Miejsce:", 
-                    venue.getName() != null ? venue.getName() : "",
+                drawField(contentStream, serifBoldFont, bodyFont, "Sektor:", 
+                    String.join(" + ", sectorNames),
                     startY - lineHeight, valueBoxX, valueBoxWidth, valueBoxHeight, labelColor);
                 
-                int ticketCount = reservationRepository.findByEventIdAndParticipantId(event.getEventId(), participant.getParticipantId()).size();
+                String ticketCountStr = (participant.getChildrenTicketCount() != null ? participant.getChildrenTicketCount() : 0) + " dzieci + " + 
+                                        (participant.getGuardianTicketCount() != null ? participant.getGuardianTicketCount() : 0) + " opiekunów";
                 
                 drawField(contentStream, serifBoldFont, bodyFont, "Liczba biletów:", 
-                    String.valueOf(ticketCount),
+                    ticketCountStr,
                     startY - 2 * lineHeight, valueBoxX, valueBoxWidth, valueBoxHeight, labelColor);
                 
                 drawField(contentStream, serifBoldFont, bodyFont, "Cena 1 biletu:", 

@@ -185,30 +185,54 @@ public class ReportService {
                 PDFont serifBoldFont;
                 
                 try {
-                    // Try to load Arial fonts from Windows system using PDType0Font for full Unicode
-                    java.io.File arialBoldFile = new java.io.File("C:/Windows/Fonts/arialbd.ttf");
-                    java.io.File arialFile = new java.io.File("C:/Windows/Fonts/arial.ttf");
-                    java.io.File timesBoldFile = new java.io.File("C:/Windows/Fonts/timesbd.ttf");
-                    java.io.File timesFile = new java.io.File("C:/Windows/Fonts/times.ttf");
+                    // Try to load system fonts with cross-platform support
+                    // Prioritize metric-compatible fonts (Liberation, DejaVu) for Linux compatibility
+                    java.io.File sansBoldFile = findSystemFont(
+                        "LiberationSans-Bold.ttf",      // Linux - metric-compatible with Arial
+                        "DejaVuSans-Bold.ttf",          // Linux - alternative
+                        "arialbd.ttf",                  // Windows
+                        "Arial-Bold.ttf"                // macOS
+                    );
+                    java.io.File sansFile = findSystemFont(
+                        "LiberationSans-Regular.ttf",   // Linux - metric-compatible with Arial
+                        "DejaVuSans.ttf",               // Linux - alternative
+                        "arial.ttf",                    // Windows
+                        "Arial.ttf"                     // macOS
+                    );
+                    java.io.File serifBoldFile = findSystemFont(
+                        "LiberationSerif-Bold.ttf",     // Linux - metric-compatible with Times
+                        "DejaVuSerif-Bold.ttf",         // Linux - alternative
+                        "timesbd.ttf",                  // Windows
+                        "Times-Bold.ttf",               // macOS
+                        "TimesNewRomanPS-BoldMT.ttf"
+                    );
+                    java.io.File serifRegularFile = findSystemFont(
+                        "LiberationSerif-Regular.ttf",  // Linux - metric-compatible with Times
+                        "DejaVuSerif.ttf",              // Linux - alternative
+                        "times.ttf",                    // Windows
+                        "Times.ttf",                    // macOS
+                        "TimesNewRomanPSMT.ttf"
+                    );
                     
-                    if (!arialBoldFile.exists() || !arialFile.exists() || !timesBoldFile.exists() || !timesFile.exists()) {
-                         // Fallback partially if some are missing, but simplicity throws here
-                         if (!arialBoldFile.exists() || !arialFile.exists()) throw new IOException("Arial fonts not found");
+                    if (sansBoldFile == null || sansFile == null) {
+                        throw new IOException("Required sans-serif fonts not found on system");
                     }
                     
-                    headerFont = PDType0Font.load(document, arialBoldFile);
-                    bodyFont = PDType0Font.load(document, arialFile);
+                    headerFont = PDType0Font.load(document, sansBoldFile);
+                    bodyFont = PDType0Font.load(document, sansFile);
                     
-                    if (timesBoldFile.exists() && timesFile.exists()) {
-                        serifBoldFont = PDType0Font.load(document, timesBoldFile);
-                        serifFont = PDType0Font.load(document, timesFile);
+                    if (serifBoldFile != null && serifRegularFile != null) {
+                        serifBoldFont = PDType0Font.load(document, serifBoldFile);
+                        serifFont = PDType0Font.load(document, serifRegularFile);
                     } else {
                         // Fallback serif
                          serifBoldFont = new PDType1Font(Standard14Fonts.FontName.TIMES_BOLD);
                          serifFont = new PDType1Font(Standard14Fonts.FontName.TIMES_ROMAN);
                     }
 
-                    log.info("Successfully loaded system fonts");
+                    log.info("Successfully loaded system fonts: {} (sans) and {} (serif)", 
+                        sansFile.getName(), 
+                        serifRegularFile != null ? serifRegularFile.getName() : "standard");
                 } catch (Exception e) {
                     log.warn("Could not load system fonts, falling back to standard fonts: {}", e.getMessage());
                     headerFont = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
@@ -289,8 +313,8 @@ public class ReportService {
                 yPosition -= lineHeight;
                 
                 // "Dziękujemy" - Center
-                contentStream.setFont(serifBoldFont, 12);
-                float dziekWidth = serifBoldFont.getStringWidth("Dziękujemy") / 1000f * 12;
+                contentStream.setFont(serifFont, 14);
+                float dziekWidth = serifFont.getStringWidth("Dziękujemy") / 1000f * 14;
                 contentStream.beginText();
                 contentStream.newLineAtOffset((pageWidth - dziekWidth)/2, yPosition);
                 safeShowText(contentStream, "Dziękujemy");
@@ -1348,5 +1372,62 @@ public class ReportService {
         yPosition -= lineHeight;
         
         return yPosition;
+    }
+    
+    /**
+     * Finds a system font file by trying multiple possible names and locations.
+     * Supports both Windows and Linux font directories.
+     * 
+     * @param fontNames possible font file names to search for
+     * @return File object if font is found, null otherwise
+     */
+    private java.io.File findSystemFont(String... fontNames) {
+        // Common font directories for different operating systems
+        String[] fontDirectories = {
+            // Windows
+            "C:/Windows/Fonts",
+            System.getenv("WINDIR") != null ? System.getenv("WINDIR") + "/Fonts" : null,
+            // Linux
+            "/usr/share/fonts/truetype",
+            "/usr/share/fonts/truetype/msttcorefonts",
+            "/usr/share/fonts/truetype/liberation",
+            "/usr/share/fonts/truetype/dejavu",
+            "/usr/local/share/fonts",
+            "/usr/share/fonts/TTF",
+            // macOS
+            "/Library/Fonts",
+            "/System/Library/Fonts",
+            System.getProperty("user.home") + "/Library/Fonts"
+        };
+        
+        for (String fontName : fontNames) {
+            for (String directory : fontDirectories) {
+                if (directory == null) continue;
+                
+                java.io.File fontFile = new java.io.File(directory, fontName);
+                if (fontFile.exists() && fontFile.isFile()) {
+                    log.debug("Found font: {} at {}", fontName, fontFile.getAbsolutePath());
+                    return fontFile;
+                }
+                
+                // Also try searching recursively one level deep for Linux font dirs
+                java.io.File dir = new java.io.File(directory);
+                if (dir.exists() && dir.isDirectory()) {
+                    java.io.File[] subdirs = dir.listFiles(java.io.File::isDirectory);
+                    if (subdirs != null) {
+                        for (java.io.File subdir : subdirs) {
+                            java.io.File fontFileInSubdir = new java.io.File(subdir, fontName);
+                            if (fontFileInSubdir.exists() && fontFileInSubdir.isFile()) {
+                                log.debug("Found font: {} at {}", fontName, fontFileInSubdir.getAbsolutePath());
+                                return fontFileInSubdir;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        log.debug("Font not found: {}", String.join(", ", fontNames));
+        return null;
     }
 }

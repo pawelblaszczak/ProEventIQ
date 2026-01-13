@@ -66,6 +66,7 @@ export class EventDetailComponent implements OnInit {
   public participants = signal<Participant[]>([]);
   public reservations = signal<Reservation[]>([]);
   public editingParticipant = signal<string | null>(null);
+  public showTicketDescription = signal(false);
 
   /** Returns the sum of numberOfTickets for all participants */
   public getTotalTickets(): number {

@@ -229,6 +229,7 @@ public class EventService {
         dto.setShowId(entity.getShowId());
         dto.setVenueId(entity.getVenueId());
         dto.setDateTime(entity.getDateTime().atOffset(ZoneOffset.UTC));
+        dto.setTicketDescription(entity.getTicketDescription());
         // Set show and venue names from the loaded entities
         if (entity.getShow() != null) {
             dto.setShowName(entity.getShow().getName());
@@ -268,6 +269,7 @@ public class EventService {
         entity.setShowId(input.getShowId());
         entity.setVenueId(input.getVenueId());
         entity.setDateTime(input.getDateTime().toLocalDateTime());
+        entity.setTicketDescription(input.getTicketDescription());
     }
     
     private dev.knightcore.proeventiq.api.model.Show convertShowEntityToDto(dev.knightcore.proeventiq.entity.ShowEntity entity) {

@@ -39,3 +39,7 @@ Event:
     hasAllocationErrors:
       type: boolean
       description: Indicates if there are allocation errors for the event
+    ticketDescription:
+      type: string
+      description: Description for the ticket for the event
+    

@@ -59,7 +59,8 @@ export class EventEditComponent {
     this.form = fb.group({
       showId: ['', Validators.required],
       venueId: ['', Validators.required],
-      dateTime: ['', Validators.required]
+      dateTime: ['', Validators.required],
+      ticketDescription: ['']
     });
     this.route.paramMap.subscribe(params => {
       const idParam = params.get('id');
@@ -106,7 +107,8 @@ export class EventEditComponent {
         this.form.patchValue({
           showId: event.showId,
           venueId: event.venueId,
-          dateTime: this.formatDateTimeForForm(event.dateTime!)
+          dateTime: this.formatDateTimeForForm(event.dateTime!),
+          ticketDescription: event.ticketDescription
         });
         // Set display values for autocomplete fields
         const show = this.shows().find(s => s.showId === event.showId);

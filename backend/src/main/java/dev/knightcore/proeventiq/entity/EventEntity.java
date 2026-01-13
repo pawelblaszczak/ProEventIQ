@@ -22,6 +22,9 @@ public class EventEntity {
     @Column(name = "date_time", nullable = false)
     private LocalDateTime dateTime;
     
+    @Column(name = "ticket_description", columnDefinition = "TEXT")
+    private String ticketDescription;
+    
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "show_id", insertable = false, updatable = false)
     private ShowEntity show;
@@ -102,6 +105,14 @@ public class EventEntity {
 
     public void setDateTime(LocalDateTime dateTime) {
         this.dateTime = dateTime;
+    }
+
+    public String getTicketDescription() {
+        return ticketDescription;
+    }
+
+    public void setTicketDescription(String ticketDescription) {
+        this.ticketDescription = ticketDescription;
     }
 
     public ShowEntity getShow() {

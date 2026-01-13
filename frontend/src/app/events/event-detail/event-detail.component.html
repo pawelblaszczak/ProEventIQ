@@ -95,6 +95,14 @@
             {{ event()?.venueName }}<ng-container *ngIf="event()?.address">, {{ event()?.address }}</ng-container><ng-container *ngIf="event()?.city">, {{ event()?.city }}</ng-container><ng-container *ngIf="event()?.country">, {{ event()?.country }}</ng-container>
           </div>
         </div>
+        <div class="info-item full-width" *ngIf="event()?.ticketDescription">
+          <div class="info-label" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; user-select: none;" (click)="showTicketDescription.set(!showTicketDescription())">
+            Ticket Description
+            <mat-icon [style.transform]="showTicketDescription() ? 'rotate(180deg)' : 'rotate(0deg)'" style="transition: transform 0.2s;">expand_more</mat-icon>
+            <span style="font-size: 0.8em; font-weight: normal; color: #666; text-transform: none;">(Click to {{ showTicketDescription() ? 'hide' : 'show' }})</span>
+          </div>
+          <div class="info-value animate-fade-in" *ngIf="showTicketDescription()" style="white-space: pre-wrap; margin-top: 0.5rem;">{{ event()?.ticketDescription }}</div>
+        </div>
       </div>
     </mat-card-content>
     

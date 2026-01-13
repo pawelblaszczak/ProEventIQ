@@ -62,6 +62,14 @@
             <mat-icon matSuffix>schedule</mat-icon>
             <mat-error *ngIf="form.get('dateTime')?.hasError('required')">Date and time are required</mat-error>
           </mat-form-field>
+          
+          <!-- Ticket Description -->
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Ticket Description</mat-label>
+            <textarea matInput formControlName="ticketDescription" rows="10" placeholder="Enter ticket description information"></textarea>
+            <mat-icon matSuffix>description</mat-icon>
+            <mat-hint>Information printed on tickets</mat-hint>
+          </mat-form-field>
         </div>
 
         @if (loading()) {

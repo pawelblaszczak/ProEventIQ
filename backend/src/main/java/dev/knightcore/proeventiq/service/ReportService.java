@@ -237,73 +237,38 @@ public class ReportService {
 
                 // Content Font
                 contentStream.setFont(serifFont, 11);
-
-                String showName = show.getName() != null ? show.getName() : "";
-                String venueName = venue.getName() != null ? venue.getName() : "";
-                // Use city from venue if possible, otherwise hardcoded Wrocław in image
-                String city = venue.getCity() != null ? venue.getCity() : "Wrocławiu"; 
-                String venueAddress = venue.getAddress() != null ? venue.getAddress() : "";
                 
-                // Construct the paragraph
-                String introText = "Poniżej przesyłamy informacje dotyczące rewii na lodzie pt. \"" + showName + "\", " +
-                                   "która odbędzie się w " + venueName.toUpperCase() + " przy ul. " + venueAddress + " we " + city + ".";
-                
-                // Wrap and draw intro text
-                for (String line : wrapText(introText, pageWidth - 2 * margin, serifFont, 11)) {
-                     contentStream.beginText();
-                     contentStream.newLineAtOffset(margin, yPosition);
-                     safeShowText(contentStream, line);
-                     contentStream.endText();
-                     yPosition -= lineHeight;
-                }
-                yPosition -= lineHeight;
-
-                // Bullet points
-                String[] bullets = {
-                    "- prosimy o przybycie około 20 minut przed rozpoczęciem widowiska w celu kupna biletów i zajęcia miejsc na widowni",
-                    "- czas trwania rewii to około 65 minut",
-                    "- dostępne formy płatności:"
-                };
-                
-                 for (String bullet : bullets) {
-                     for(String line : wrapText(bullet, pageWidth - 2 * margin, serifFont, 11)) {
-                        contentStream.beginText();
-                        contentStream.newLineAtOffset(margin, yPosition);
-                        safeShowText(contentStream, line);
-                        contentStream.endText();
-                        yPosition -= lineHeight;
-                     }
+                String ticketDescription = event.getTicketDescription();
+                if (ticketDescription == null || ticketDescription.trim().isEmpty()) {
+                     java.time.format.DateTimeFormatter dateFormatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                     java.time.format.DateTimeFormatter timeFormatter = java.time.format.DateTimeFormatter.ofPattern("HH:mm");
+                     String dateStr = event.getDateTime().format(dateFormatter);
+                     String timeStr = event.getDateTime().format(timeFormatter);
+                     
+                     ticketDescription = "Poniżej przesyłamy informacje dotyczące przedstawienia pt. \"" + show.getName() + "\".\n" +
+                                       "Data: " + dateStr + " godz. " + timeStr + "\n" +
+                                       "Miejsce: " + venue.getName() + "\n" +
+                                       "Adres: " + venue.getAddress()+ ", " + venue.getCity() + ", " + venue.getCountry() + "\n";
                 }
                 
-                // Indented payment options
-                float indent = 20;
-                String[] payments = {
-                    "1. w dniu rewii, gotówką w kasach znajdujących się na arenie (prosimy o odliczoną kwotę w możliwie wysokich nominałach)",
-                    "2. przelewem na konto:"
-                };
-                 for (String pay : payments) {
-                     for(String line : wrapText(pay, pageWidth - 2 * margin - indent, serifFont, 11)) {
-                        contentStream.beginText();
-                        contentStream.newLineAtOffset(margin + indent, yPosition);
-                        safeShowText(contentStream, line);
-                        contentStream.endText();
-                        yPosition -= lineHeight;
-                     }
+                // Process ticket description line by line to preserve paragraphs
+                String[] descParagraphs = ticketDescription.split("\\r?\\n");
+                
+                for (String paragraph : descParagraphs) {
+                    if (paragraph.trim().isEmpty()) {
+                         // Empty line
+                         yPosition -= lineHeight;
+                         continue;
+                    }
+                    
+                    for (String line : wrapText(paragraph, pageWidth - 2 * margin, serifFont, 11)) {
+                         contentStream.beginText();
+                         contentStream.newLineAtOffset(margin, yPosition);
+                         safeShowText(contentStream, line);
+                         contentStream.endText();
+                         yPosition -= lineHeight;
+                    }
                 }
-                
-                // Bank Details
-                String bankInfo1 = "MAGIC Sp. z o.o.";
-                String bankInfo2 = "ul. Półkole 2, 31-559 Kraków";
-                String bankInfo3 = "ING Bank nr konta: 08 1050 1445 1000 0090 8067 4980";
-                String bankInfo4 = "(prosimy o zabranie dowodu wpłaty i okazanie go w kasie)";
-                
-                float bankIndent = margin + indent + 10;
-                yPosition -= 4; // visual spacing
-                
-                contentStream.beginText(); contentStream.newLineAtOffset(bankIndent, yPosition); safeShowText(contentStream, bankInfo1); contentStream.endText(); yPosition -= lineHeight;
-                contentStream.beginText(); contentStream.newLineAtOffset(bankIndent, yPosition); safeShowText(contentStream, bankInfo2); contentStream.endText(); yPosition -= lineHeight;
-                contentStream.beginText(); contentStream.newLineAtOffset(bankIndent, yPosition); safeShowText(contentStream, bankInfo3); contentStream.endText(); yPosition -= lineHeight;
-                contentStream.beginText(); contentStream.newLineAtOffset(bankIndent, yPosition); safeShowText(contentStream, bankInfo4); contentStream.endText(); yPosition -= lineHeight;
                 
                 yPosition -= 8 + lineHeight;
                 String[] footerNotes = {
@@ -530,9 +495,28 @@ public class ReportService {
                             float imageHeight = footerHeight;
                             float scale = imageHeight / showLogoImage.getHeight();
                             float imageWidth = showLogoImage.getWidth() * scale;
-                            float logoX = pageWidth - imageWidth - 20; 
-                            float logoY = 0; 
-                            contentStream.drawImage(showLogoImage, logoX, logoY, imageWidth, imageHeight);
+                            
+                            // Calculate available width to avoid overlap with data fields
+                            // data fields end at valueBoxX + valueBoxWidth = 340
+                            // We give 20 padding from data fields, and 20 right margin
+                            float maxWidth = pageWidth - (valueBoxX + valueBoxWidth + 20) - 20; 
+                            
+                            if (imageWidth > maxWidth) {
+                                // Crop the image centered if it's too wide
+                                contentStream.saveGraphicsState();
+                                float clipX = pageWidth - 20 - maxWidth;
+                                contentStream.addRect(clipX, 0, maxWidth, imageHeight);
+                                contentStream.clip();
+                                
+                                // Center the image in the available space
+                                float imageX = clipX + (maxWidth - imageWidth) / 2;
+                                contentStream.drawImage(showLogoImage, imageX, 0, imageWidth, imageHeight);
+                                contentStream.restoreGraphicsState();
+                            } else {
+                                float logoX = pageWidth - imageWidth - 20; 
+                                float logoY = 0; 
+                                contentStream.drawImage(showLogoImage, logoX, logoY, imageWidth, imageHeight);
+                            }
                         }
                     } catch (Exception e) {
                         log.warn("Could not load show logo: {}", e.getMessage());
@@ -936,52 +920,72 @@ public class ReportService {
             return new String[]{"No description available"};
         }
         
+        // Pre-process text to handle tabs and non-breaking spaces consistently
+        // Replace tabs with 4 spaces to preserve indentation intent
+        text = text.replace("\t", "    ");
+        // Replace NBSP with normal space so splitting works consistently
+        text = text.replace('\u00A0', ' ');
+        
         // For width calculation, we need to use sanitized text
         // But we want to return the original text split properly
+        // sanitizeText might replace characters but shouldn't add/remove spaces if we handled NBSP already
         String sanitizedForCalculation = replacePolishCharacters(sanitizeText(text));
         
         try {
-            String[] originalWords = text.split("\\s+");
-            String[] sanitizedWords = sanitizedForCalculation.split("\\s+");
+            // Split by single space to preserve multiple spaces/indentation
+            // -1 limit ensures trailing empty strings are included if necessary (though usually strict split is enough)
+            String[] originalWords = text.split(" ", -1);
+            String[] sanitizedWords = sanitizedForCalculation.split(" ", -1);
             
-            // Make sure both arrays have the same length (they should)
+            // Make sure both arrays have the same length
             if (originalWords.length != sanitizedWords.length) {
-                log.warn("Word count mismatch after sanitization, using fallback");
+                log.warn("Word count mismatch after sanitization (orig={}, san={}), using fallback", 
+                        originalWords.length, sanitizedWords.length);
                 return splitTextIntoChunks(text, 80);
             }
             
             java.util.List<String> lines = new java.util.ArrayList<>();
-            StringBuilder currentOriginalLine = new StringBuilder();
-            StringBuilder currentSanitizedLine = new StringBuilder();
+            
+            java.util.List<String> currentOriginalWords = new java.util.ArrayList<>();
+            java.util.List<String> currentSanitizedWords = new java.util.ArrayList<>();
             
             for (int i = 0; i < originalWords.length; i++) {
                 String originalWord = originalWords[i];
                 String sanitizedWord = sanitizedWords[i];
                 
-                String testSanitizedLine = currentSanitizedLine.length() > 0 ? 
-                    currentSanitizedLine + " " + sanitizedWord : sanitizedWord;
-                String testOriginalLine = currentOriginalLine.length() > 0 ? 
-                    currentOriginalLine + " " + originalWord : originalWord;
+                // Construct a test string to check width
+                String testSanitizedLine;
+                if (currentSanitizedWords.isEmpty()) {
+                    testSanitizedLine = sanitizedWord;
+                } else {
+                    testSanitizedLine = String.join(" ", currentSanitizedWords) + " " + sanitizedWord;
+                }
                 
                 float textWidth = font.getStringWidth(testSanitizedLine) / 1000 * fontSize;
                 
                 if (textWidth <= maxWidth) {
-                    currentSanitizedLine = new StringBuilder(testSanitizedLine);
-                    currentOriginalLine = new StringBuilder(testOriginalLine);
+                    currentOriginalWords.add(originalWord);
+                    currentSanitizedWords.add(sanitizedWord);
                 } else {
-                    if (currentOriginalLine.length() > 0) {
-                        lines.add(currentOriginalLine.toString());
-                        currentSanitizedLine = new StringBuilder(sanitizedWord);
-                        currentOriginalLine = new StringBuilder(originalWord);
+                    if (!currentOriginalWords.isEmpty()) {
+                        lines.add(String.join(" ", currentOriginalWords));
+                        currentOriginalWords.clear();
+                        currentSanitizedWords.clear();
+                        currentOriginalWords.add(originalWord);
+                        currentSanitizedWords.add(sanitizedWord);
                     } else {
-                        // Word is too long, add it anyway
+                        // Single word is too long, add it anyway to avoid infinite loop or dropping content
                         lines.add(originalWord);
+                        // Start fresh next loop (though logic effectively handled by adding and continuing, 
+                        // but here we already added to lines, so clear)
+                        currentOriginalWords.clear();
+                        currentSanitizedWords.clear();
                     }
                 }
             }
             
-            if (currentOriginalLine.length() > 0) {
-                lines.add(currentOriginalLine.toString());
+            if (!currentOriginalWords.isEmpty()) {
+                lines.add(String.join(" ", currentOriginalWords));
             }
             
             return lines.toArray(new String[0]);

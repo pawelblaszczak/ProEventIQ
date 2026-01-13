@@ -198,11 +198,11 @@
                     matTooltip="Zoom In">
               <mat-icon>zoom_in</mat-icon>
             </button>
-
-            <button mat-stroked-button 
+            <button mat-icon-button 
                     (click)="resetZoom()"
+                    [disabled]="getCurrentZoom() === 1"
                     matTooltip="Reset Zoom">
-              Reset
+              <mat-icon>settings_backup_restore</mat-icon>
             </button>
             <div class="vertical-divider"></div>
           </div>
@@ -241,13 +241,20 @@
                 <mat-option value="name_seats">Name & Seats</mat-option>
                 <mat-option value="none">None</mat-option>
               </mat-select>
-            </mat-form-field>
+            </mat-form-field>            
             <button mat-icon-button 
                     class="view-toggle-btn"
                     [color]="showSeats() ? 'primary' : ''"
                     (click)="toggleSeats()"
                     [matTooltip]="'Toggle Seats (' + (showSeats() ? 'ON' : 'OFF') + ')'">
               <mat-icon>event_seat</mat-icon>
+            </button>
+            <button mat-icon-button 
+                    class="view-toggle-btn"
+                    [color]="showOrders() ? 'primary' : ''"
+                    (click)="toggleOrders()"
+                    [matTooltip]="'Toggle Sector Orders (' + (showOrders() ? 'ON' : 'OFF') + ')'">
+              <mat-icon>format_list_numbered</mat-icon>
             </button>
             <button mat-icon-button 
                     class="view-toggle-btn"

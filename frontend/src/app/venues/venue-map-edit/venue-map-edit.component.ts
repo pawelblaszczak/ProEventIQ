@@ -308,6 +308,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   private readonly canvasResizeSubject = new Subject<void>();
   private readonly zoomLevel = signal(1);
   public readonly showSeats = signal(false);
+  public readonly showOrders = signal(false);
   public readonly sectorLabelMode = signal<'auto' | 'name' | 'name_seats' | 'none'>('auto');
 
   setSectorLabelMode(mode: 'auto' | 'name' | 'name_seats' | 'none') {
@@ -475,6 +476,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       const z = this.zoomLevel();
       const l = this.sectorLabelMode();
       const s = this.showSeats();
+      const o = this.showOrders();
       const g = this.showGrid();
       
       if (v && v.venueId && this.settingsLoaded) {
@@ -575,6 +577,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         if (typeof settings.showSeats === 'boolean') {
           this.showSeats.set(settings.showSeats);
         }
+        if (typeof settings.showOrders === 'boolean') {
+          this.showOrders.set(settings.showOrders);
+        }
         if (typeof settings.showGrid === 'boolean') {
           this.showGrid.set(settings.showGrid);
         }
@@ -601,6 +606,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         zoomLevel: this.zoomLevel(),
         sectorLabelMode: this.sectorLabelMode(),
         showSeats: this.showSeats(),
+        showOrders: this.showOrders(),
         showGrid: this.showGrid()
       };
       localStorage.setItem(key, JSON.stringify(settings));
@@ -1862,8 +1868,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     }
 
   // Add sector name and seat count labels inside the sector - maintain readable size
-    // Build display name with order number if defined
-    const displayName = (sector.orderNumber != null && sector.orderNumber > 0)
+    // Build display name with order number if defined and enabled
+    const showOrder = this.showOrders() && (sector.orderNumber != null && sector.orderNumber > 0);
+    const displayName = showOrder
       ? `${sector.orderNumber}. ${sector.name ?? 'Unnamed Sector'}`
       : (sector.name ?? 'Unnamed Sector');
     const nameText = new Konva.Text({
@@ -5075,6 +5082,11 @@ console.log("addSelectionIndicators2");
   public toggleSeats(): void {
     this.showSeats.update(v => !v);
     this.updateSeatsVisibility();
+  }
+
+  public toggleOrders(): void {
+    this.showOrders.update(v => !v);
+    this.forceReRender();
   }
 
   private applyZoom(): void {

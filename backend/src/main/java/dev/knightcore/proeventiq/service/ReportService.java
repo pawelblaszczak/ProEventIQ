@@ -95,6 +95,48 @@ public class ReportService {
         PageState(PDPage p, PDPageContentStream cs, float y) { this.page = p; this.contentStream = cs; this.yPosition = y; }
     }
 
+    private static class RowKey implements Comparable<RowKey> {
+        final String name;
+        final Integer orderNumber;
+
+        public RowKey(String name, Integer orderNumber) {
+            this.name = name;
+            this.orderNumber = orderNumber;
+        }
+
+        @Override
+        public int compareTo(RowKey other) {
+            if (this.orderNumber != null && other.orderNumber != null) {
+                int cmp = this.orderNumber.compareTo(other.orderNumber);
+                if (cmp != 0) return cmp;
+            }
+            if (this.name != null && other.name != null) {
+                return this.name.compareTo(other.name);
+            }
+            if (this.name == null && other.name == null) return 0;
+            return this.name == null ? 1 : -1;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof RowKey)) return false;
+            RowKey rowKey = (RowKey) o;
+            return java.util.Objects.equals(name, rowKey.name) &&
+                   java.util.Objects.equals(orderNumber, rowKey.orderNumber);
+        }
+
+        @Override
+        public int hashCode() {
+            return java.util.Objects.hash(name, orderNumber);
+        }
+
+        @Override
+        public String toString() {
+            return name;
+        }
+    }
+
     private PageState ensurePageHasSpace(PDDocument document, PDPage page, PDPageContentStream contentStream, float margin, float yPosition, int requiredHeight) throws IOException {
         if (yPosition - requiredHeight < margin) {
             try { if (contentStream != null) contentStream.close(); } catch (Exception ignored) {}
@@ -171,6 +213,21 @@ public class ReportService {
     }
     
 
+    private float calculateTextHeight(String text, float width, PDFont font, int fontSize, float lineHeight) {
+        if (text == null) return 0;
+        String[] paragraphs = text.split("\\r?\\n");
+        float totalHeight = 0;
+        for (String paragraph : paragraphs) {
+             if (paragraph.trim().isEmpty()) {
+                 totalHeight += lineHeight;
+                 continue;
+             }
+             String[] lines = wrapText(paragraph, width, font, fontSize);
+             totalHeight += lines.length * lineHeight;
+        }
+        return totalHeight;
+    }
+
     private byte[] createPdfReport(EventEntity event, ParticipantEntity participant, ShowEntity show, VenueEntity venue, UserEntity organizer) throws IOException {
         try (PDDocument document = new PDDocument()) {
             PDPage page = new PDPage(PDRectangle.A4);
@@ -203,24 +260,8 @@ public class ReportService {
                 float pageWidth = page.getMediaBox().getWidth();
                 float pageHeight = page.getMediaBox().getHeight();
                 float margin = 50;
-                float yPosition = pageHeight - margin;
-                float lineHeight = 15;
 
-                // --- 1. Top Description Text ---
-                
-                contentStream.setFont(serifFont, 14); // Header
-                // Center "Szanowni Państwo"
-                float szanHeaderWidth = serifFont.getStringWidth("Szanowni Państwo") / 1000f * 14;
-                float szanHeaderX = (pageWidth - szanHeaderWidth) / 2;
-                contentStream.beginText();
-                contentStream.newLineAtOffset(szanHeaderX, yPosition);
-                safeShowText(contentStream, "Szanowni Państwo");
-                contentStream.endText();
-                yPosition -= lineHeight * 2;
-
-                // Content Font
-                contentStream.setFont(serifFont, 11);
-                
+                // --- Prepare Data ---
                 String ticketDescription = event.getTicketDescription();
                 if (ticketDescription == null || ticketDescription.trim().isEmpty()) {
                      java.time.format.DateTimeFormatter dateFormatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -233,6 +274,100 @@ public class ReportService {
                                        "Miejsce: " + venue.getName() + "\n" +
                                        "Adres: " + venue.getAddress()+ ", " + venue.getCity() + ", " + venue.getCountry() + "\n";
                 }
+
+                String[] footerNotes = {
+                    "- na dole strony załączamy bilet wstępu",
+                    "- szczegółowy wykaz rzędów oraz miejsc na widowni dla Państwa grupy znajduje się nad biletem",
+                    "- prosimy o wydrukowanie biletu wraz z powyższymi informacjami i zabranie ze sobą na miejsce",                    
+                };
+                
+                // Prepare data for seats section
+                java.util.List<dev.knightcore.proeventiq.entity.ReservationEntity> reservations = reservationRepository.findByEventIdAndParticipantId(event.getEventId(), participant.getParticipantId());
+                java.util.Map<Long, dev.knightcore.proeventiq.entity.SeatEntity> seatMap = new java.util.HashMap<>();
+                for (var res : reservations) {
+                    seatRepository.findById(res.getSeatId()).ifPresent(s -> seatMap.put(s.getSeatId(), s));
+                }
+                
+                java.util.Map<String, java.util.Map<RowKey, java.util.List<Integer>>> grouped = new java.util.TreeMap<>();
+                java.util.Set<String> sectorNames = new java.util.TreeSet<>();
+                for (var seat : seatMap.values()) {
+                    var row = seat.getSeatRow();
+                    var sector = (row != null) ? row.getSector() : null;
+                    String rawSectorName = (sector != null && sector.getName() != null) ? sector.getName() : "?";
+                    sectorNames.add(rawSectorName);
+                    String sectorName = "sektor " + rawSectorName;
+                    
+                    String rowNameStr = (row != null && row.getName() != null) ? row.getName() : 
+                                     ((row != null && row.getOrderNumber() != null) ? String.valueOf(row.getOrderNumber()) : "?");
+                    Integer rowOrder = (row != null) ? row.getOrderNumber() : null;
+                    RowKey rowKey = new RowKey(rowNameStr, rowOrder);
+                    
+                    grouped.computeIfAbsent(sectorName, k -> new java.util.TreeMap<>());
+                    grouped.get(sectorName).computeIfAbsent(rowKey, k -> new java.util.ArrayList<>()).add(seat.getOrderNumber());
+                }
+
+                // --- Calculate Font Size ---
+                int currentFontSize = 11;
+                float currentLineHeight = 15;
+                float footerHeight = 215f;
+    
+                float safetyGap = 20;
+                float contentWidth = pageWidth - 2 * margin;
+
+                // Max available vertical space for content (excluding footer)
+                float maxContentHeight = pageHeight - margin - footerHeight - safetyGap;
+
+                // Try sizes 11 down to 6
+                for (int size = 11; size >= 6; size--) {
+                     float lh = (size == 11) ? 15 : (size * 1.4f); // heuristic
+                     
+                     float usedHeight = lh * 2; // "Szanowni Państwo" (using dynamic lineHeight spacing)
+                     
+                     usedHeight += calculateTextHeight(ticketDescription, contentWidth, serifFont, size, lh);
+                     usedHeight += 8 + lh; // Spacing before footer notes
+                     
+                     for(String note : footerNotes) {
+                         usedHeight += calculateTextHeight(note, contentWidth, serifFont, size, lh);
+                     }
+                     usedHeight += lh; // spacing
+                     usedHeight += lh * 2; // "Dziękujemy"
+                     
+                     // Seats
+                     float seatsH = calculateSeatsBlockHeight(grouped, bodyFont, lh, pageWidth - 40, size);
+                     usedHeight += seatsH + lh; // + spacing
+                     
+                     if (usedHeight <= maxContentHeight) {
+                         currentFontSize = size;
+                         currentLineHeight = lh;
+                         break;
+                     }
+                     
+                     // If still doesn't fit at 6, we use 6 and let it span pages
+                     if (size == 6) {
+                         currentFontSize = 6;
+                         currentLineHeight = 6 * 1.4f;
+                     }
+                }
+                
+                // --- Render with Calculated Font ---
+                float yPosition = pageHeight - margin;
+                float lineHeight = currentLineHeight;
+                int fontSize = currentFontSize;
+
+                // --- 1. Top Description Text ---
+                
+                contentStream.setFont(serifFont, 14); // Header
+                // Center "Szanowni Państwo"
+                float szanHeaderWidth = serifFont.getStringWidth("Szanowni Państwo") / 1000f * 14;
+                float szanHeaderX = (pageWidth - szanHeaderWidth) / 2;
+                contentStream.beginText();
+                contentStream.newLineAtOffset(szanHeaderX, yPosition);
+                safeShowText(contentStream, "Szanowni Państwo");
+                contentStream.endText();
+                yPosition -= lineHeight * 2; // Dynamic spacing
+
+                // Content Font
+                contentStream.setFont(serifFont, fontSize); // Use dynamic font size
                 
                 // Process ticket description line by line to preserve paragraphs
                 String[] descParagraphs = ticketDescription.split("\\r?\\n");
@@ -244,7 +379,7 @@ public class ReportService {
                          continue;
                     }
                     
-                    for (String line : wrapText(paragraph, pageWidth - 2 * margin, serifFont, 11)) {
+                    for (String line : wrapText(paragraph, pageWidth - 2 * margin, serifFont, fontSize)) {
                          contentStream.beginText();
                          contentStream.newLineAtOffset(margin, yPosition);
                          safeShowText(contentStream, line);
@@ -254,13 +389,9 @@ public class ReportService {
                 }
                 
                 yPosition -= 8 + lineHeight;
-                String[] footerNotes = {
-                    "- na dole strony załączamy bilet wstępu",
-                    "- szczegółowy wykaz rzędów oraz miejsc na widowni dla Państwa grupy znajduje się nad biletem",
-                    "- prosimy o wydrukowanie biletu wraz z powyższymi informacjami i zabranie ze sobą na miejsce",                    
-                };
+                
                  for (String note : footerNotes) {
-                     for(String line : wrapText(note, pageWidth - 2 * margin, serifFont, 11)) {
+                     for(String line : wrapText(note, pageWidth - 2 * margin, serifFont, fontSize)) {
                         contentStream.beginText();
                         contentStream.newLineAtOffset(margin, yPosition);
                         safeShowText(contentStream, line);
@@ -278,35 +409,12 @@ public class ReportService {
                 contentStream.newLineAtOffset((pageWidth - dziekWidth)/2, yPosition);
                 safeShowText(contentStream, "Dziękujemy");
                 contentStream.endText();
-                yPosition -= lineHeight * 2;                
+                yPosition -= lineHeight * 2; // Fixed spacing        
                 
-                // Prepare data for seats section
-                java.util.List<dev.knightcore.proeventiq.entity.ReservationEntity> reservations = reservationRepository.findByEventIdAndParticipantId(event.getEventId(), participant.getParticipantId());
-                java.util.Map<Long, dev.knightcore.proeventiq.entity.SeatEntity> seatMap = new java.util.HashMap<>();
-                for (var res : reservations) {
-                    seatRepository.findById(res.getSeatId()).ifPresent(s -> seatMap.put(s.getSeatId(), s));
-                }
-                
-                java.util.Map<String, java.util.Map<String, java.util.List<Integer>>> grouped = new java.util.TreeMap<>();
-                java.util.Set<String> sectorNames = new java.util.TreeSet<>();
-                for (var seat : seatMap.values()) {
-                    var row = seat.getSeatRow();
-                    var sector = (row != null) ? row.getSector() : null;
-                    String rawSectorName = (sector != null && sector.getName() != null) ? sector.getName() : "?";
-                    sectorNames.add(rawSectorName);
-                    String sectorName = "sektor " + rawSectorName;
-                    String rowName = (row != null && row.getName() != null) ? row.getName() : 
-                                     ((row != null && row.getOrderNumber() != null) ? String.valueOf(row.getOrderNumber()) : "?");
-                    grouped.computeIfAbsent(sectorName, k -> new java.util.TreeMap<>());
-                    grouped.get(sectorName).computeIfAbsent(rowName, k -> new java.util.ArrayList<>()).add(seat.getOrderNumber());
-                }
-
                 // Calculate required height for seats block
-                
-                float seatsBlockHeight = calculateSeatsBlockHeight(grouped, bodyFont, lineHeight, pageWidth - 40); 
+                float seatsBlockHeight = calculateSeatsBlockHeight(grouped, bodyFont, lineHeight, pageWidth - 40, fontSize); 
                 float totalBlockHeight = seatsBlockHeight + lineHeight;
                 
-                float footerHeight = 215f;
                 float requiredSpace = totalBlockHeight + footerHeight + 10; // Total needed: content + footer + small gap
                 
                 // Check if everything fits on current page
@@ -322,7 +430,7 @@ public class ReportService {
                 // --- 2. Seats Section ---
                 PageState currentState = new PageState(page, contentStream, yPosition);
                 // Call addSeatsSection (which now takes grouped map)
-                currentState = addSeatsSection(document, currentState.page, currentState.contentStream, serifBoldFont, bodyFont, margin, currentState.yPosition, lineHeight, grouped);
+                currentState = addSeatsSection(document, currentState.page, currentState.contentStream, serifBoldFont, bodyFont, margin, currentState.yPosition, lineHeight, grouped, fontSize);
                 
                 page = currentState.page;
                 contentStream = currentState.contentStream;
@@ -543,19 +651,19 @@ public class ReportService {
 
     private PageState addSeatsSection(PDDocument document, PDPage page, PDPageContentStream contentStream, PDFont headerFont, PDFont bodyFont,
                                   float margin, float yPosition, float lineHeight,
-                                  java.util.Map<String, java.util.Map<String, java.util.List<Integer>>> grouped) throws IOException {
-        LayoutResult result = layoutSeatsSection(document, page, contentStream, bodyFont, lineHeight, grouped, false, yPosition);
+                                  java.util.Map<String, java.util.Map<RowKey, java.util.List<Integer>>> grouped, int fontSize) throws IOException {
+        LayoutResult result = layoutSeatsSection(document, page, contentStream, bodyFont, lineHeight, grouped, false, yPosition, fontSize);
         return result.pageState;
     }
 
-    private float calculateSeatsBlockHeight(java.util.Map<String, java.util.Map<String, java.util.List<Integer>>> grouped, PDFont bodyFont, float lineHeight, float tableWidth) {
+    private float calculateSeatsBlockHeight(java.util.Map<String, java.util.Map<RowKey, java.util.List<Integer>>> grouped, PDFont bodyFont, float lineHeight, float tableWidth, int fontSize) {
         // Create dummy document/page for metric calculation context if needed, but mostly we just need font metrics.
         // We pass tableWidth via a hack or just assume layoutSeatsSection calculates width from page size.
         // layoutSeatsSection uses page.getMediaBox().
         // We can create a dummy PDPage with the correct width.
         PDPage dummyPage = new PDPage(new PDRectangle(tableWidth + 40, 842)); // 40 = 2*20 margins
         try {
-            LayoutResult result = layoutSeatsSection(null, dummyPage, null, bodyFont, lineHeight, grouped, true, 800);
+            LayoutResult result = layoutSeatsSection(null, dummyPage, null, bodyFont, lineHeight, grouped, true, 800, fontSize);
             return result.totalHeight;
         } catch (IOException e) {
             return 0f;
@@ -584,8 +692,8 @@ public class ReportService {
 
     private LayoutResult layoutSeatsSection(PDDocument document, PDPage page, PDPageContentStream contentStream, 
                                           PDFont bodyFont, float lineHeight,
-                                          java.util.Map<String, java.util.Map<String, java.util.List<Integer>>> grouped,
-                                          boolean dryRun, float startY) throws IOException {
+                                          java.util.Map<String, java.util.Map<RowKey, java.util.List<Integer>>> grouped,
+                                          boolean dryRun, float startY, int fontSize) throws IOException {
         
         float currentY = startY;
         float sideMargin = 20;
@@ -613,19 +721,19 @@ public class ReportService {
                 java.util.List<SeatRenderLine> colLines = new java.util.ArrayList<>();
                 
                 // 1. Header (Sector Name)
-                // Highlight box height = 14 approx
-                colLines.add(new SeatRenderLine(secKey, true, 14f)); 
+                // Highlight box height = lineHeight approx (was fixed 14)
+                colLines.add(new SeatRenderLine(secKey, true, lineHeight)); 
                 
                 // 2. Rows
                 var rowsMap = grouped.get(secKey);
                 for (var rowEntry : rowsMap.entrySet()) {
-                    String rowName = rowEntry.getKey();
+                    String rowName = rowEntry.getKey().name;
                     var seatNums = rowEntry.getValue();
                     seatNums.sort(Integer::compareTo);
                     String ranges = buildRanges(seatNums);
                     String lineText = "rząd " + rowName + " / miejsce " + ranges;
                     
-                    String[] wrapped = wrapText(lineText, colWidth - 5, bodyFont, 11); // -5 padding
+                    String[] wrapped = wrapText(lineText, colWidth - 5, bodyFont, fontSize); // -5 padding
                     for (String w : wrapped) {
                         colLines.add(new SeatRenderLine(w, false, lineHeight));
                     }
@@ -671,7 +779,7 @@ public class ReportService {
                             
                             if (item.highlight) {
                                 // Draw Box (Full Column Width)
-                                float textWidth = bodyFont.getStringWidth(item.text) / 1000f * 11f;
+                                float textWidth = bodyFont.getStringWidth(item.text) / 1000f * fontSize;
                                 float boxW = colWidth;
                                 
                                 contentStream.setNonStrokingColor(230/255f, 200/255f, 230/255f); 
@@ -683,13 +791,13 @@ public class ReportService {
                                 float centeredX = drawX + (colWidth - textWidth) / 2;
                                 
                                 contentStream.beginText();
-                                contentStream.setFont(bodyFont, 11);
+                                contentStream.setFont(bodyFont, fontSize);
                                 contentStream.newLineAtOffset(centeredX, currentY); 
                                 safeShowText(contentStream, item.text);
                                 contentStream.endText();
                             } else {
                                 contentStream.beginText();
-                                contentStream.setFont(bodyFont, 11);
+                                contentStream.setFont(bodyFont, fontSize);
                                 contentStream.newLineAtOffset(drawX + 5, currentY); // Indent row info
                                 safeShowText(contentStream, item.text);
                                 contentStream.endText();

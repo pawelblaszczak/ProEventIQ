@@ -185,60 +185,19 @@ public class ReportService {
                 PDFont serifBoldFont;
                 
                 try {
-                    // Try to load system fonts with cross-platform support
-                    // Prioritize metric-compatible fonts (Liberation, DejaVu) for Linux compatibility
-                    java.io.File sansBoldFile = findSystemFont(
-                        "LiberationSans-Bold.ttf",      // Linux - metric-compatible with Arial
-                        "DejaVuSans-Bold.ttf",          // Linux - alternative
-                        "arialbd.ttf",                  // Windows
-                        "Arial-Bold.ttf"                // macOS
-                    );
-                    java.io.File sansFile = findSystemFont(
-                        "LiberationSans-Regular.ttf",   // Linux - metric-compatible with Arial
-                        "DejaVuSans.ttf",               // Linux - alternative
-                        "arial.ttf",                    // Windows
-                        "Arial.ttf"                     // macOS
-                    );
-                    java.io.File serifBoldFile = findSystemFont(
-                        "LiberationSerif-Bold.ttf",     // Linux - metric-compatible with Times
-                        "DejaVuSerif-Bold.ttf",         // Linux - alternative
-                        "timesbd.ttf",                  // Windows
-                        "Times-Bold.ttf",               // macOS
-                        "TimesNewRomanPS-BoldMT.ttf"
-                    );
-                    java.io.File serifRegularFile = findSystemFont(
-                        "LiberationSerif-Regular.ttf",  // Linux - metric-compatible with Times
-                        "DejaVuSerif.ttf",              // Linux - alternative
-                        "times.ttf",                    // Windows
-                        "Times.ttf",                    // macOS
-                        "TimesNewRomanPSMT.ttf"
-                    );
+                    // Te pliki muszą być w src/main/resources/fonts/
+                    bodyFont = PDType0Font.load(document, getClass().getResourceAsStream("/fonts/arimo-regular.ttf"));
+                    headerFont = PDType0Font.load(document, getClass().getResourceAsStream("/fonts/arimo-bold.ttf"));
+                    serifFont = PDType0Font.load(document, getClass().getResourceAsStream("/fonts/ptserif-regular.ttf"));
+                    serifBoldFont = PDType0Font.load(document, getClass().getResourceAsStream("/fonts/ptserif-bold.ttf"));
                     
-                    if (sansBoldFile == null || sansFile == null) {
-                        throw new IOException("Required sans-serif fonts not found on system");
-                    }
-                    
-                    headerFont = PDType0Font.load(document, sansBoldFile);
-                    bodyFont = PDType0Font.load(document, sansFile);
-                    
-                    if (serifBoldFile != null && serifRegularFile != null) {
-                        serifBoldFont = PDType0Font.load(document, serifBoldFile);
-                        serifFont = PDType0Font.load(document, serifRegularFile);
-                    } else {
-                        // Fallback serif
-                         serifBoldFont = new PDType1Font(Standard14Fonts.FontName.TIMES_BOLD);
-                         serifFont = new PDType1Font(Standard14Fonts.FontName.TIMES_ROMAN);
-                    }
-
-                    log.info("Successfully loaded system fonts: {} (sans) and {} (serif)", 
-                        sansFile.getName(), 
-                        serifRegularFile != null ? serifRegularFile.getName() : "standard");
+                    log.info("Załadowano czcionki Arimo i PT Serif z zasobów - raport będzie wyglądał wszędzie tak samo.");
                 } catch (Exception e) {
-                    log.warn("Could not load system fonts, falling back to standard fonts: {}", e.getMessage());
-                    headerFont = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
+                    log.error("Nie znaleziono czcionek w zasobach! Powrót do standardów.");
                     bodyFont = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
-                    serifBoldFont = new PDType1Font(Standard14Fonts.FontName.TIMES_BOLD);
+                    headerFont = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
                     serifFont = new PDType1Font(Standard14Fonts.FontName.TIMES_ROMAN);
+                    serifBoldFont = new PDType1Font(Standard14Fonts.FontName.TIMES_BOLD);
                 }
 
                 float pageWidth = page.getMediaBox().getWidth();
@@ -386,7 +345,7 @@ public class ReportService {
                      // Note: We need to re-set fonts if we were writing text, but drawTicketFooter handles its own fonts/rendering
                 }
                 
-                drawTicketFooter(document, page, contentStream, event, participant, venue, organizer, show, sectorNames, serifBoldFont, bodyFont);
+                drawTicketFooter(document, page, contentStream, event, participant, venue, organizer, show, sectorNames, serifFont, serifBoldFont, bodyFont);
 
             } finally {
                 try { if (contentStream != null) contentStream.close(); } catch (Exception ignored) {}
@@ -402,7 +361,7 @@ public class ReportService {
     private void drawTicketFooter(PDDocument document, PDPage page, PDPageContentStream contentStream, 
                                   EventEntity event, ParticipantEntity participant, VenueEntity venue, UserEntity organizer, ShowEntity show,
                                   java.util.Set<String> sectorNames,
-                                  PDFont serifBoldFont, PDFont bodyFont) throws IOException {
+                                  PDFont serifFont, PDFont serifBoldFont, PDFont bodyFont) throws IOException {
                 float pageWidth = page.getMediaBox().getWidth();
                 // Footer Height
                 float footerHeight = 215f; 
@@ -424,22 +383,22 @@ public class ReportService {
                 
                 DateTimeFormatter customDateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy 'r. godz.' HH:mm");
                 
-                drawField(contentStream, serifBoldFont, bodyFont, "Data:", 
+                drawField(contentStream, serifFont, bodyFont, "Data:", 
                     event.getDateTime() != null ? event.getDateTime().format(customDateFormatter) : "", 
                     startY, valueBoxX, valueBoxWidth, valueBoxHeight, labelColor);
                 
-                drawField(contentStream, serifBoldFont, bodyFont, "Sektor:", 
+                drawField(contentStream, serifFont, bodyFont, "Sektor:", 
                     String.join(" + ", sectorNames),
                     startY - lineHeight, valueBoxX, valueBoxWidth, valueBoxHeight, labelColor);
                 
                 String ticketCountStr = (participant.getChildrenTicketCount() != null ? participant.getChildrenTicketCount() : 0) + " dzieci + " + 
                                         (participant.getGuardianTicketCount() != null ? participant.getGuardianTicketCount() : 0) + " opiekunów";
                 
-                drawField(contentStream, serifBoldFont, bodyFont, "Liczba biletów:", 
+                drawField(contentStream, serifFont, bodyFont, "Liczba biletów:", 
                     ticketCountStr,
                     startY - 2 * lineHeight, valueBoxX, valueBoxWidth, valueBoxHeight, labelColor);
                 
-                drawField(contentStream, serifBoldFont, bodyFont, "Cena 1 biletu:", 
+                drawField(contentStream, serifFont, bodyFont, "Cena 1 biletu:", 
                     "", 
                     startY - 3 * lineHeight, valueBoxX, valueBoxWidth, valueBoxHeight, labelColor);
                 
@@ -1372,62 +1331,5 @@ public class ReportService {
         yPosition -= lineHeight;
         
         return yPosition;
-    }
-    
-    /**
-     * Finds a system font file by trying multiple possible names and locations.
-     * Supports both Windows and Linux font directories.
-     * 
-     * @param fontNames possible font file names to search for
-     * @return File object if font is found, null otherwise
-     */
-    private java.io.File findSystemFont(String... fontNames) {
-        // Common font directories for different operating systems
-        String[] fontDirectories = {
-            // Windows
-            "C:/Windows/Fonts",
-            System.getenv("WINDIR") != null ? System.getenv("WINDIR") + "/Fonts" : null,
-            // Linux
-            "/usr/share/fonts/truetype",
-            "/usr/share/fonts/truetype/msttcorefonts",
-            "/usr/share/fonts/truetype/liberation",
-            "/usr/share/fonts/truetype/dejavu",
-            "/usr/local/share/fonts",
-            "/usr/share/fonts/TTF",
-            // macOS
-            "/Library/Fonts",
-            "/System/Library/Fonts",
-            System.getProperty("user.home") + "/Library/Fonts"
-        };
-        
-        for (String fontName : fontNames) {
-            for (String directory : fontDirectories) {
-                if (directory == null) continue;
-                
-                java.io.File fontFile = new java.io.File(directory, fontName);
-                if (fontFile.exists() && fontFile.isFile()) {
-                    log.debug("Found font: {} at {}", fontName, fontFile.getAbsolutePath());
-                    return fontFile;
-                }
-                
-                // Also try searching recursively one level deep for Linux font dirs
-                java.io.File dir = new java.io.File(directory);
-                if (dir.exists() && dir.isDirectory()) {
-                    java.io.File[] subdirs = dir.listFiles(java.io.File::isDirectory);
-                    if (subdirs != null) {
-                        for (java.io.File subdir : subdirs) {
-                            java.io.File fontFileInSubdir = new java.io.File(subdir, fontName);
-                            if (fontFileInSubdir.exists() && fontFileInSubdir.isFile()) {
-                                log.debug("Found font: {} at {}", fontName, fontFileInSubdir.getAbsolutePath());
-                                return fontFileInSubdir;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
-        log.debug("Font not found: {}", String.join(", ", fontNames));
-        return null;
     }
 }

@@ -46,10 +46,10 @@ paths:
     $ref: './participant/participant-controller.yaml#/participantsByEvent'
   /events/{eventId}/participants/{participantId}:
     $ref: './participant/participant-controller.yaml#/participantById'
-  /events/{eventId}/participants/{participantId}/report:
-    $ref: './participant/participant-controller.yaml#/participantReport'
-  /events/{eventId}/participants/reports-zip:
-    $ref: './participant/participant-controller.yaml#/participantReportsZip'
+  /events/{eventId}/participants/{participantId}/ticket:
+    $ref: './participant/participant-controller.yaml#/participantTicket'
+  /events/{eventId}/participants/tickets-zip:
+    $ref: './participant/participant-controller.yaml#/participantTicketsZip'
   /users:
     $ref: './user/user-controller.yaml#/users'
   /users/{userId}:

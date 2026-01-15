@@ -285,7 +285,7 @@ export class EventDetailComponent implements OnInit {
     // Show loading state or disable button
     console.log('Generating ticket for participant:', participantId);
 
-    this.eventApi.eventsEventIdParticipantsParticipantIdReportGet(eventId, participantId, 'response').subscribe({
+    this.eventApi.eventsEventIdParticipantsParticipantIdTicketGet(eventId, participantId, 'response').subscribe({
       next: (response: any) => {
         // Extract filename from Content-Disposition header
         const filename = this.getFilenameFromContentDisposition(response) || `participant_ticket_${participantId}.pdf`;
@@ -337,7 +337,7 @@ export class EventDetailComponent implements OnInit {
     // Show loading state or disable button
     console.log('Generating ZIP file with all participant tickets for event:', eventId);
 
-    this.eventApi.eventsEventIdParticipantsReportsZipGet(eventId, 'response').subscribe({
+    this.eventApi.eventsEventIdParticipantsTicketsZipGet(eventId, 'response').subscribe({
       next: (response: any) => {
         // Extract filename from Content-Disposition header
         const filename = this.getFilenameFromContentDisposition(response) || `participant_tickets_event_${eventId}.zip`;

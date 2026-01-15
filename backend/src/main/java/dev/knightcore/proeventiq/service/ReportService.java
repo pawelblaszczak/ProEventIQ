@@ -158,11 +158,9 @@ public class ReportService {
         return new PageState(page, contentStream, yPosition);
     }
     
-    // (Removed PageContext helper; use explicit page checks in createPdfReport)
-    
     @Transactional(readOnly = true)
-    public Optional<byte[]> generateParticipantReport(Long eventId, Long participantId) {
-        log.info("Generating PDF report for participant {} in event {}", participantId, eventId);
+    public Optional<byte[]> generateParticipantTicket(Long eventId, Long participantId) {
+        log.info("Generating PDF ticket for participant {} in event {}", participantId, eventId);
         
         try {
             // Fetch all required data
@@ -203,11 +201,11 @@ public class ReportService {
             }
             
             // Generate PDF
-            byte[] pdfBytes = createPdfReport(event, participant, show, venue, organizer);
+            byte[] pdfBytes = createPdfTicket(event, participant, show, venue, organizer);
             return Optional.of(pdfBytes);
             
         } catch (Exception e) {
-            log.error("Error generating participant report: {}", e.getMessage(), e);
+            log.error("Error generating participant ticket: {}", e.getMessage(), e);
             return Optional.empty();
         }
     }
@@ -228,7 +226,7 @@ public class ReportService {
         return totalHeight;
     }
 
-    private byte[] createPdfReport(EventEntity event, ParticipantEntity participant, ShowEntity show, VenueEntity venue, UserEntity organizer) throws IOException {
+    private byte[] createPdfTicket(EventEntity event, ParticipantEntity participant, ShowEntity show, VenueEntity venue, UserEntity organizer) throws IOException {
         try (PDDocument document = new PDDocument()) {
             PDPage page = new PDPage(PDRectangle.A4);
             document.addPage(page);
@@ -1296,8 +1294,8 @@ public class ReportService {
     }
     
     @Transactional(readOnly = true)
-    public Optional<byte[]> generateAllParticipantReportsZip(Long eventId) {
-        log.info("Generating ZIP file with all participant reports for event {}", eventId);
+    public Optional<byte[]> generateAllParticipantTicketsZip(Long eventId) {
+        log.info("Generating ZIP file with all participant tickets for event {}", eventId);
         
         try {
             // Check if event exists
@@ -1320,23 +1318,23 @@ public class ReportService {
                 
                 for (ParticipantEntity participant : participants) {
                     try {
-                        // Generate individual participant report
-                        Optional<byte[]> reportBytes = generateParticipantReport(eventId, participant.getParticipantId());
+                        // Generate individual participant ticket
+                        Optional<byte[]> ticketBytes = generateParticipantTicket(eventId, participant.getParticipantId());
                         
-                        if (reportBytes.isPresent()) {
-                            // Create ZIP entry for this participant report using centralized filename logic
-                            String fileName = generateParticipantReportFilename(eventId, participant.getParticipantId());
+                        if (ticketBytes.isPresent()) {
+                            // Create ZIP entry for this participant ticket using centralized filename logic
+                            String fileName = generateParticipantTicketFilename(eventId, participant.getParticipantId());
                             ZipEntry zipEntry = new ZipEntry(fileName);
                             zipStream.putNextEntry(zipEntry);
-                            zipStream.write(reportBytes.get());
+                            zipStream.write(ticketBytes.get());
                             zipStream.closeEntry();
                             
-                            log.debug("Added report for participant {} to ZIP", participant.getParticipantId());
+                            log.debug("Added ticket for participant {} to ZIP", participant.getParticipantId());
                         } else {
-                            log.warn("Failed to generate report for participant {}", participant.getParticipantId());
+                            log.warn("Failed to generate ticket for participant {}", participant.getParticipantId());
                         }
                     } catch (Exception e) {
-                        log.error("Error generating report for participant {}: {}", participant.getParticipantId(), e.getMessage());
+                        log.error("Error generating ticket for participant {}: {}", participant.getParticipantId(), e.getMessage());
                         // Continue with other participants even if one fails
                     }
                 }
@@ -1347,18 +1345,18 @@ public class ReportService {
             return Optional.of(zipBytes);
             
         } catch (Exception e) {
-            log.error("Error generating ZIP file of participant reports for event {}: {}", eventId, e.getMessage(), e);
+            log.error("Error generating ZIP file of participant tickets for event {}: {}", eventId, e.getMessage(), e);
             return Optional.empty();
         }
     }
 
     /**
-     * Generates a standardized filename for a single participant report
+     * Generates a standardized filename for a single participant ticket
      * @param eventId the event ID
      * @param participantId the participant ID
-     * @return formatted filename for the participant report
+     * @return formatted filename for the participant ticket
      */
-    public String generateParticipantReportFilename(Long eventId, Long participantId) {
+    public String generateParticipantTicketFilename(Long eventId, Long participantId) {
         try {
             // Fetch all required data for filename generation
             Optional<EventEntity> eventOpt = eventRepository.findById(eventId);
@@ -1366,7 +1364,7 @@ public class ReportService {
             
             if (eventOpt.isEmpty() || participantOpt.isEmpty()) {
                 log.warn("Event or participant not found for filename generation - eventId: {}, participantId: {}", eventId, participantId);
-                return String.format("participant_report_%s_event_%d.pdf", participantId, eventId);
+                return String.format("participant_ticket_%s_event_%d.pdf", participantId, eventId);
             }
             
             EventEntity event = eventOpt.get();
@@ -1375,7 +1373,7 @@ public class ReportService {
             Optional<ShowEntity> showOpt = showRepository.findById(event.getShowId());
             if (showOpt.isEmpty()) {
                 log.warn("Show not found for filename generation - eventId: {}", eventId);
-                return String.format("participant_report_%s_event_%d.pdf", participantId, eventId);
+                return String.format("participant_ticket_%s_event_%d.pdf", participantId, eventId);
             }
             
             ShowEntity show = showOpt.get();
@@ -1389,18 +1387,18 @@ public class ReportService {
             return String.format("%s_%s_%s.pdf", participantName, date, showName);
             
         } catch (Exception e) {
-            log.error("Error generating filename for participant report: {}", e.getMessage());
+            log.error("Error generating filename for participant ticket: {}", e.getMessage());
             // Fallback to simple format
-            return String.format("participant_report_%s_event_%d.pdf", participantId, eventId);
+            return String.format("participant_ticket_%s_event_%d.pdf", participantId, eventId);
         }
     }
 
     /**
-     * Generates a standardized filename for the ZIP file containing all participant reports
+     * Generates a standardized filename for the ZIP file containing all participant tickets
      * @param eventId the event ID
      * @return formatted filename for the ZIP file
      */
-    public String generateParticipantReportsZipFilename(Long eventId) {
+    public String generateParticipantTicketsZipFilename(Long eventId) {
         try {
             // Fetch event and show
             Optional<EventEntity> eventOpt = eventRepository.findById(eventId);

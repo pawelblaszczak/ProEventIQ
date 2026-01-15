@@ -218,19 +218,19 @@ public class EventController implements EventsApi {
         }
     }
 
-    public ResponseEntity<org.springframework.core.io.Resource> eventsEventIdParticipantsParticipantIdReportGet(Long eventId, Long participantId) {
-        log.info("Generating participant report for participant {} in event ID: {}", participantId, eventId);
+    public ResponseEntity<org.springframework.core.io.Resource> eventsEventIdParticipantsParticipantIdTicketGet(Long eventId, Long participantId) {
+        log.info("Generating participant ticket for participant {} in event ID: {}", participantId, eventId);
         try {
-            return reportService.generateParticipantReport(eventId, participantId)
-                    .map(reportBytes -> {
+            return reportService.generateParticipantTicket(eventId, participantId)
+                    .map(ticketBytes -> {
                         HttpHeaders headers = new HttpHeaders();
                         headers.setContentType(MediaType.APPLICATION_PDF);
                         // Use centralized filename generation from ReportService
-                        String filename = reportService.generateParticipantReportFilename(eventId, participantId);
+                        String filename = reportService.generateParticipantTicketFilename(eventId, participantId);
                         headers.set(HttpHeaders.CONTENT_DISPOSITION, 
                             "attachment; filename=" + filename);
                         
-                        org.springframework.core.io.Resource resource = new ByteArrayResource(reportBytes);
+                        org.springframework.core.io.Resource resource = new ByteArrayResource(ticketBytes);
                         return ResponseEntity.ok()
                                 .headers(headers)
                                 .body(resource);
@@ -240,21 +240,21 @@ public class EventController implements EventsApi {
             log.error(INVALID_EVENT_ID_FORMAT, eventId);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
-            log.error("Error generating participant report: {}", e.getMessage());
+            log.error("Error generating participant ticket: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
     @Override
-    public ResponseEntity<Resource> eventsEventIdParticipantsReportsZipGet(Long eventId) {
-        log.info("Generating ZIP of all participant reports for event ID: {}", eventId);
+    public ResponseEntity<Resource> eventsEventIdParticipantsTicketsZipGet(Long eventId) {
+        log.info("Generating ZIP of all participant tickets for event ID: {}", eventId);
         try {
-            return reportService.generateAllParticipantReportsZip(eventId)
+            return reportService.generateAllParticipantTicketsZip(eventId)
                     .map(zipBytes -> {
                         HttpHeaders headers = new HttpHeaders();
                         headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
                         // Use centralized filename generation from ReportService
-                        String filename = reportService.generateParticipantReportsZipFilename(eventId);
+                        String filename = reportService.generateParticipantTicketsZipFilename(eventId);
                         headers.set(HttpHeaders.CONTENT_DISPOSITION, 
                             "attachment; filename=" + filename);
                         
@@ -268,7 +268,7 @@ public class EventController implements EventsApi {
             log.error(INVALID_EVENT_ID_FORMAT, eventId);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
-            log.error("Error generating ZIP of participant reports: {}", e.getMessage());
+            log.error("Error generating ZIP of participant tickets: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

@@ -10,16 +10,36 @@ export class ColorService {
    */
   public getAvailableColors(): string[] {
     return [
-      '#FF4444', // Red
-      '#FF8800', // Orange
-      '#FFDD00', // Yellow
-      '#44AA44', // Green
-      '#00CCCC', // Cyan
-      '#4488FF', // Blue
-      '#8844FF', // Purple
-      '#FF44AA', // Pink
-      '#666666', // Gray
-      '#AA4400', // Brown
+      '#E6194B',
+      '#3CB44B',
+      '#0082C8',
+      '#F58230',
+      '#911EB4',
+      '#46F0F0',
+      '#F032E6',
+      '#D2F53C',
+      '#FABED4',
+      '#008080',
+      '#DCBEFF',
+      '#AA6E28',
+      '#FFFAC8',
+      '#800000',
+      '#AAFFC3',
+      '#808000',
+      '#FFD7B4',
+      '#000080',
+      '#808080',
+      '#000000',
+      '#FF5500',
+      '#00AAFF',
+      '#00C88C',
+      '#FF008C',
+      '#8CFF00',
+      '#FFC800',
+      '#5A3CFF',
+      '#005FB4',
+      '#B478FF',
+      '#00965A',
     ];
   }
 
@@ -29,6 +49,20 @@ export class ColorService {
   public generateRandomColor(): string {
     const colors = this.getAvailableColors();
     return colors[Math.floor(Math.random() * colors.length)];
+  }
+
+  /**
+   * Returns an unused color from the palette given a list of used colors.
+   * If all colors are used, returns a random color from the palette.
+   * Comparison is case-insensitive and ignores surrounding whitespace.
+   */
+  public getUnusedColor(usedColors: (string | undefined)[]): string {
+    const palette = this.getAvailableColors();
+    const usedNormalized = new Set(usedColors.filter(Boolean).map(c => (c || '').trim().toLowerCase()));
+    for (const color of palette) {
+      if (!usedNormalized.has(color.trim().toLowerCase())) return color;
+    }
+    return this.generateRandomColor();
   }
 
   /**

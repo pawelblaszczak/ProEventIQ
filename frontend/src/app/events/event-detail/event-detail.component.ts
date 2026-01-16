@@ -18,13 +18,13 @@ import { Show } from '../../api/model/show';
 import { Venue } from '../../api/model/venue';
 import { ProEventIQService } from '../../api/api/pro-event-iq.service';
 import { ConfirmationDialogService, ColorService } from '../../shared';
-import { ColorPickerDialogComponent } from './color-picker-dialog';
 import { Participant } from '../../api/model/participant';
 import { Reservation } from '../../api/model/reservation';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { forkJoin } from 'rxjs';
 import { VenueMapEditComponent } from '../../venues/venue-map-edit/venue-map-edit.component';
 import { EventService } from '../event.service';
+import { ColorPickerDialogComponent } from './color-picker-dialog/color-picker-dialog.component';
 
 @Component({
   selector: 'app-event-detail',
@@ -424,7 +424,7 @@ export class EventDetailComponent implements OnInit {
       eventId: this.eventId() || 0,
       name: '',
       address: '',
-      seatColor: this.generateRandomColor(),
+      seatColor: this.colorService.getUnusedColor(currentParticipants.map(p => p.seatColor)),
       childrenTicketCount: 0,
       guardianTicketCount: 1,
       allTicketCount: 1

@@ -677,7 +677,16 @@
             "SUBTITLE": "Dodaj uczestników, aby zarządzać rezerwacjami i biletami na to wydarzenie."
         },
         "CHILDREN": "Dzieci",
-        "GUARDIANS": "Opiekunowie"
+        "GUARDIANS": "Opiekunowie",
+        "COLOR_PICKER": {
+          "TITLE": "Wybierz kolor miejsca",
+          "NO_COLOR": "Brak wybranego koloru",
+          "PREDEFINED": "Kolory zdefiniowane",
+          "CUSTOM": "Kolor niestandardowy",
+          "HEX_LABEL": "Kod koloru (hex)",
+          "PICKER_TITLE": "Wybierak koloru",
+          "SELECT": "Wybierz kolor"
+        }
     },
     "EDIT": {
         "ADD_TITLE": "Dodaj nowe wydarzenie",

@@ -652,7 +652,16 @@
             "SUBTITLE": "Add participants to manage reservations and tickets for this event."
         },
         "CHILDREN": "Children",
-        "GUARDIANS": "Guardians"
+        "GUARDIANS": "Guardians",
+        "COLOR_PICKER": {
+          "TITLE": "Choose Seat Color",
+          "NO_COLOR": "No color selected",
+          "PREDEFINED": "Predefined Colors",
+          "CUSTOM": "Custom Color",
+          "HEX_LABEL": "Hex Color Code",
+          "PICKER_TITLE": "Color picker",
+          "SELECT": "Select Color"
+        }
     },
     "EDIT": {
         "ADD_TITLE": "Add New Event",

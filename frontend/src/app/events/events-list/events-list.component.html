@@ -1,13 +1,13 @@
 <div class="events-container">
   <div class="header-section">
     <div class="header-content">
-      <h1 class="page-title">Upcoming Events</h1>
-      <p class="page-subtitle">Browse all scheduled performances and shows</p>
+      <h1 class="page-title">{{ 'EVENTS.LIST.TITLE' | translate }}</h1>
+      <p class="page-subtitle">{{ 'EVENTS.LIST.SUBTITLE' | translate }}</p>
     </div>
     <div class="actions">
-      <button mat-raised-button color="primary" (click)="addEvent()" class="edit-button" aria-label="Add event">
+      <button mat-raised-button color="primary" (click)="addEvent()" class="edit-button" [attr.aria-label]="'EVENTS.LIST.ADD_BUTTON' | translate">
         <mat-icon>add</mat-icon>
-        ADD EVENT
+        {{ 'EVENTS.LIST.ADD_BUTTON' | translate }}
       </button>
     </div>
   </div>
@@ -17,29 +17,29 @@
       <div class="filter-container">
         <div class="filter-row" style="display: flex; gap: 16px;">
           <mat-form-field appearance="outline" class="search-field" style="flex: 1; min-width: 0;">
-            <mat-label>Search Events</mat-label>
-            <input matInput (input)="applyFilter($event)" placeholder="Search by show, venue, etc.">
+            <mat-label>{{ 'EVENTS.LIST.SEARCH_LABEL' | translate }}</mat-label>
+            <input matInput (input)="applyFilter($event)" [placeholder]="'EVENTS.LIST.SEARCH_PLACEHOLDER' | translate">
             <mat-icon matSuffix>search</mat-icon>
           </mat-form-field>
           <div style="display: flex; flex: 1; min-width: 0; gap: 16px;">
             <mat-form-field appearance="outline" class="filter-field" style="flex: 1; min-width: 0;">
-              <mat-label>Date from</mat-label>
-              <input matInput type="date" placeholder="Filter from date" (input)="filterByDateFrom($event)" [value]="today">
+              <mat-label>{{ 'EVENTS.LIST.FILTER_DATE_FROM' | translate }}</mat-label>
+              <input matInput type="date" [placeholder]="'EVENTS.LIST.FILTER_DATE_FROM_PLACEHOLDER' | translate" (input)="filterByDateFrom($event)" [value]="today">
               <mat-icon matSuffix>event</mat-icon>
             </mat-form-field>
             <mat-form-field appearance="outline" class="filter-field" style="flex: 1; min-width: 0;">
-              <mat-label>Date to</mat-label>
-              <input matInput type="date" placeholder="Filter to date" (input)="filterByDateTo($event)">
+              <mat-label>{{ 'EVENTS.LIST.FILTER_DATE_TO' | translate }}</mat-label>
+              <input matInput type="date" [placeholder]="'EVENTS.LIST.FILTER_DATE_TO_PLACEHOLDER' | translate" (input)="filterByDateTo($event)">
               <mat-icon matSuffix>event</mat-icon>
             </mat-form-field>
           </div>
         </div>
         <div class="advanced-filters" style="display: flex; gap: 16px;">
           <mat-form-field appearance="outline" class="filter-field" style="flex: 1; min-width: 0;">
-            <mat-label>Show</mat-label>
-            <input type="text" matInput [matAutocomplete]="autoShow" (input)="filterShowInput($event)" [value]="showInputValue" placeholder="Type or select show">
+            <mat-label>{{ 'EVENTS.LIST.FILTER_SHOW' | translate }}</mat-label>
+            <input type="text" matInput [matAutocomplete]="autoShow" (input)="filterShowInput($event)" [value]="showInputValue" [placeholder]="'EVENTS.LIST.FILTER_SHOW_PLACEHOLDER' | translate">
             <mat-autocomplete #autoShow="matAutocomplete" (optionSelected)="filterByShow($event)">
-              <mat-option value="">All Shows</mat-option>
+              <mat-option value="">{{ 'EVENTS.LIST.FILTER_SHOW_ALL' | translate }}</mat-option>
               @for (show of filteredShows() | orderByName; track show.showId) {
                 <mat-option [value]="show.showId">{{ show.name }}</mat-option>
               }
@@ -47,10 +47,10 @@
             <mat-icon matSuffix>theaters</mat-icon>
           </mat-form-field>
           <mat-form-field appearance="outline" class="filter-field" style="flex: 1; min-width: 0;">
-            <mat-label>Venue</mat-label>
-            <input type="text" matInput [matAutocomplete]="autoVenue" (input)="filterVenueInput($event)" [value]="venueInputValue" placeholder="Type or select venue">
+            <mat-label>{{ 'EVENTS.LIST.FILTER_VENUE' | translate }}</mat-label>
+            <input type="text" matInput [matAutocomplete]="autoVenue" (input)="filterVenueInput($event)" [value]="venueInputValue" [placeholder]="'EVENTS.LIST.FILTER_VENUE_PLACEHOLDER' | translate">
             <mat-autocomplete #autoVenue="matAutocomplete" (optionSelected)="filterByVenue($event)">
-              <mat-option value="">All Venues</mat-option>
+              <mat-option value="">{{ 'EVENTS.LIST.FILTER_VENUE_ALL' | translate }}</mat-option>
               @for (venue of filteredVenues() | orderByName; track venue.venueId) {
                 <mat-option [value]="venue.venueId">{{ venue.name }}</mat-option>
               }
@@ -65,24 +65,24 @@
   @if (isLoading()) {
     <div class="loading-spinner">
       <mat-spinner diameter="48"></mat-spinner>
-      <p class="loading-text">Loading events...</p>
+      <p class="loading-text">{{ 'EVENTS.LIST.LOADING' | translate }}</p>
     </div>
   } @else if (error()) {
     <div class="error-section">
       <app-error-display 
         [error]="error()!" 
-        title="Failed to Load Events" 
+        [title]="'EVENTS.LIST.ERROR_TITLE' | translate" 
         icon="event_note"
         cssClass="events-error">
       </app-error-display>
       <div class="error-actions">
         <button mat-raised-button color="primary" (click)="retry()">
           <mat-icon>refresh</mat-icon>
-          Retry
+          {{ 'EVENTS.LIST.RETRY' | translate }}
         </button>
         <button mat-stroked-button (click)="resetFilters()">
           <mat-icon>filter_list_off</mat-icon>
-          Reset Filters
+          {{ 'EVENTS.LIST.RESET_FILTERS' | translate }}
         </button>
       </div>
     </div>
@@ -90,9 +90,9 @@
     <mat-card class="empty-state">
       <mat-card-content>
         <mat-icon class="empty-icon">event_note</mat-icon>
-        <h2>No Events Found</h2>
-        <p>There are no events matching your criteria.</p>
-        <button mat-stroked-button color="primary" (click)="resetFilters()">Reset Filters</button>
+        <h2>{{ 'EVENTS.LIST.EMPTY_TITLE' | translate }}</h2>
+        <p>{{ 'EVENTS.LIST.EMPTY_DESC' | translate }}</p>
+        <button mat-stroked-button color="primary" (click)="resetFilters()">{{ 'EVENTS.LIST.RESET_FILTERS' | translate }}</button>
       </mat-card-content>
     </mat-card>
   } @else {
@@ -111,7 +111,7 @@
             
             <div class="event-details" style="min-width:0;">
               <div class="event-header">
-                <h3 class="event-title">{{ event.showName || 'Untitled Show' }}</h3>
+                <h3 class="event-title">{{ event.showName || ('EVENTS.LIST.UNTITLED_SHOW' | translate) }}</h3>
               </div>
               
               <div class="event-meta">
@@ -121,22 +121,22 @@
                 </div>
                 <div class="meta-item">
                   <mat-icon>location_on</mat-icon>
-                  <span>{{ event.venueName || 'TBD' }}</span>
+                  <span>{{ event.venueName || ('EVENTS.LIST.TBD' | translate) }}</span>
                 </div>
                 <div class="meta-item">
                   <mat-icon>public</mat-icon>
-                  <span>{{ event.country || 'Unknown Country' }}</span>
+                  <span>{{ event.country || ('EVENTS.LIST.UNKNOWN_COUNTRY' | translate) }}</span>
                 </div>
                 <div class="meta-item">
                   <mat-icon>location_city</mat-icon>
-                  <span>{{ event.city || 'Unknown City' }}</span>
+                  <span>{{ event.city || ('EVENTS.LIST.UNKNOWN_CITY' | translate) }}</span>
                 </div>
               </div>
             </div>
             
             <!-- Fixed-width error column so the warning icon stays in the same horizontal position for every row -->
             <div class="error-column" style="width:36px; display:flex; align-items:center; justify-content:center;">
-              <mat-icon *ngIf="event.hasAllocationErrors" color="warn" style="font-size:20px; line-height:20px; transform: translateY(2px);" matTooltip="Allocation errors for this event">warning</mat-icon>
+              <mat-icon *ngIf="event.hasAllocationErrors" color="warn" style="font-size:20px; line-height:20px; transform: translateY(2px);" [matTooltip]="'EVENTS.LIST.ALLOCATION_ERRORS' | translate">warning</mat-icon>
             </div>
 
             <div class="seat-status">
@@ -145,7 +145,7 @@
                 <div style="display: flex; flex-direction: column; justify-content: center; align-items: center;">
                   <span class="seat-text" [style.color]="getSeatStatusColor(event)" style="line-height: 1.2;">{{ getSeatStatusText(event) }}</span>
                   @if (event.blockedSeats && event.blockedSeats > 0) {
-                    <span class="blocked-text" [style.color]="getSeatStatusColor(event)" style="font-size: 0.75rem; line-height: 1.1;">{{ event.blockedSeats }} blocked</span>
+                    <span class="blocked-text" [style.color]="getSeatStatusColor(event)" style="font-size: 0.75rem; line-height: 1.1;">{{ event.blockedSeats }} {{ 'EVENTS.LIST.BLOCKED' | translate }}</span>
                   }
                 </div>
               </div>

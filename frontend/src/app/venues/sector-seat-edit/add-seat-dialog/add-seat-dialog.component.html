@@ -4,25 +4,25 @@
     <div class="dialog-icon">
       <mat-icon color="primary">event_seat</mat-icon>
     </div>
-    <h2 mat-dialog-title class="dialog-title">Add Seats</h2>
+    <h2 mat-dialog-title class="dialog-title">{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_SEAT.TITLE' | translate }}</h2>
   </div>
   
   <mat-dialog-content class="dialog-content">
     <form [formGroup]="addSeatForm" class="add-seat-form">
       <mat-form-field appearance="outline" class="form-field">
-        <mat-label>Select Row</mat-label>
+        <mat-label>{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_SEAT.ROW_LABEL' | translate }}</mat-label>
         <mat-select formControlName="selectedRowId" required>
           <mat-option *ngFor="let row of data.rows" [value]="row.seatRowId">
             {{ row.name || 'Row ' + row.orderNumber }}
           </mat-option>
         </mat-select>
         <mat-error *ngIf="addSeatForm.get('selectedRowId')?.hasError('required')">
-          Please select a row
+          {{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_SEAT.ROW_REQUIRED' | translate }}
         </mat-error>
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="form-field">
-        <mat-label>Number of Seats</mat-label>
+        <mat-label>{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_SEAT.COUNT_LABEL' | translate }}</mat-label>
         <input matInput 
                type="number" 
                formControlName="seatCount" 
@@ -30,13 +30,13 @@
                max="50" 
                required>
         <mat-error *ngIf="addSeatForm.get('seatCount')?.hasError('required')">
-          Please enter number of seats
+          {{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_SEAT.COUNT_REQUIRED' | translate }}
         </mat-error>
         <mat-error *ngIf="addSeatForm.get('seatCount')?.hasError('min')">
-          Must add at least 1 seat
+          {{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_SEAT.MIN_SEATS' | translate }}
         </mat-error>
         <mat-error *ngIf="addSeatForm.get('seatCount')?.hasError('max')">
-          Cannot add more than 50 seats at once
+          {{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_SEAT.MAX_SEATS' | translate }}
         </mat-error>
       </mat-form-field>
     </form>
@@ -48,7 +48,7 @@
             (click)="onCancel()" 
             class="cancel-button">
       <mat-icon>close</mat-icon>
-      Cancel
+      {{ 'BUTTON.CANCEL' | translate }}
     </button>
     
     <button mat-raised-button 
@@ -58,7 +58,7 @@
             [disabled]="addSeatForm.invalid"
             class="confirm-button">
       <mat-icon>add</mat-icon>
-      Add Seats
+      {{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_SEAT.SUBMIT' | translate }}
     </button>
   </mat-dialog-actions>
 </div>

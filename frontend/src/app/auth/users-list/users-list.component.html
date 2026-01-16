@@ -3,9 +3,9 @@
     <mat-card-header>
       <mat-card-title>
         <mat-icon class="title-icon">people</mat-icon>
-        Users Management
+        {{ 'AUTH.USERS.TITLE' | translate }}
       </mat-card-title>
-      <mat-card-subtitle>Manage all users in the system</mat-card-subtitle>
+      <mat-card-subtitle>{{ 'AUTH.USERS.SUBTITLE' | translate }}</mat-card-subtitle>
     </mat-card-header>
 
     <mat-divider></mat-divider>
@@ -14,7 +14,7 @@
       <!-- Loading State -->
       <div *ngIf="loading()" class="loading-container">
         <mat-spinner diameter="50"></mat-spinner>
-        <p>Loading users...</p>
+        <p>{{ 'AUTH.USERS.LOADING' | translate }}</p>
       </div>
 
       <!-- Error State -->
@@ -23,7 +23,7 @@
         <p class="error-message">{{ error() }}</p>
         <button mat-stroked-button (click)="clearError()" class="retry-button">
           <mat-icon>refresh</mat-icon>
-          Retry
+          {{ 'BUTTON.RETRY' | translate }}
         </button>
       </div>
 
@@ -31,14 +31,14 @@
       <div *ngIf="!loading() && !error()" class="table-container">
         <div *ngIf="users().length === 0" class="empty-state">
           <mat-icon class="empty-icon">people_outline</mat-icon>
-          <h3>No Users Found</h3>
-          <p>There are no users in the system yet.</p>
+          <h3>{{ 'AUTH.USERS.EMPTY_TITLE' | translate }}</h3>
+          <p>{{ 'AUTH.USERS.EMPTY_DESC' | translate }}</p>
         </div>
 
         <table *ngIf="users().length > 0" mat-table [dataSource]="users()" class="users-table">
           <!-- Avatar & Email Column -->
           <ng-container matColumnDef="email">
-            <th mat-header-cell *matHeaderCellDef>User</th>
+            <th mat-header-cell *matHeaderCellDef>{{ 'AUTH.USERS.COL_USER' | translate }}</th>
             <td mat-cell *matCellDef="let user" class="user-cell">
               <div class="user-info">
                 <div class="user-avatar">
@@ -54,34 +54,34 @@
 
           <!-- Name Column -->
           <ng-container matColumnDef="name">
-            <th mat-header-cell *matHeaderCellDef>Full Name</th>
+            <th mat-header-cell *matHeaderCellDef>{{ 'AUTH.USERS.COL_NAME' | translate }}</th>
             <td mat-cell *matCellDef="let user">
-              {{ user.name || 'Not specified' }}
+              {{ user.name || ('COMMON.NOT_SPECIFIED' | translate) }}
             </td>
           </ng-container>
 
           <!-- Address Column -->
           <ng-container matColumnDef="address">
-            <th mat-header-cell *matHeaderCellDef>Address</th>
+            <th mat-header-cell *matHeaderCellDef>{{ 'AUTH.USERS.COL_ADDRESS' | translate }}</th>
             <td mat-cell *matCellDef="let user" class="address-cell">
               <span *ngIf="user.address" [matTooltip]="user.address" class="address-text">
                 {{ user.address.length > 50 ? (user.address | slice:0:50) + '...' : user.address }}
               </span>
-              <span *ngIf="!user.address" class="no-address">Not specified</span>
+              <span *ngIf="!user.address" class="no-address">{{ 'COMMON.NOT_SPECIFIED' | translate }}</span>
             </td>
           </ng-container>
 
           <!-- Actions Column -->
           <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef>Actions</th>
+            <th mat-header-cell *matHeaderCellDef>{{ 'AUTH.USERS.COL_ACTIONS' | translate }}</th>
             <td mat-cell *matCellDef="let user" class="actions-cell">
               <button mat-icon-button 
-                      [matTooltip]="'View user details'" 
+                      [matTooltip]="'AUTH.USERS.TOOLTIP_VIEW' | translate" 
                       class="action-button">
                 <mat-icon>visibility</mat-icon>
               </button>
               <button mat-icon-button 
-                      [matTooltip]="'Edit user'" 
+                      [matTooltip]="'AUTH.USERS.TOOLTIP_EDIT' | translate" 
                       class="action-button">
                 <mat-icon>edit</mat-icon>
               </button>

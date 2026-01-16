@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MaterialModule } from '../material.module';
 import { Router } from '@angular/router';
+import { TranslateModule } from '@ngx-translate/core';
 
 interface Feature {
   icon: string;
@@ -19,7 +20,7 @@ interface Testimonial {
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, MaterialModule],
+  imports: [CommonModule, MaterialModule, TranslateModule],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss'
 })
@@ -28,35 +29,35 @@ export class HomeComponent {
   features: Feature[] = [
     {
       icon: 'event_seat',
-      title: 'Smart Seating Management',
-      description: 'Optimize your venue with intelligent seating arrangements and capacity management',
+      title: 'HOME.FEATURE_CARDS.1.TITLE',
+      description: 'HOME.FEATURE_CARDS.1.DESCRIPTION',
       benefits: [
-        'Dynamic seat allocation',
-        'Availability tracking',
-        'Accessibility compliance',
-        'Revenue optimization'
+        'HOME.FEATURE_CARDS.1.BENEFIT1',
+        'HOME.FEATURE_CARDS.1.BENEFIT2',
+        'HOME.FEATURE_CARDS.1.BENEFIT3',
+        'HOME.FEATURE_CARDS.1.BENEFIT4'
       ]
     },
     {
       icon: 'schedule',
-      title: 'Advanced Scheduling',
-      description: 'Streamline your event scheduling with our intuitive calendar and automated booking system',
+      title: 'HOME.FEATURE_CARDS.2.TITLE',
+      description: 'HOME.FEATURE_CARDS.2.DESCRIPTION',
       benefits: [
-        'Conflict-free scheduling',
-        'Automated notifications',
-        'Resource management',
-        'Multi-venue coordination'
+        'HOME.FEATURE_CARDS.2.BENEFIT1',
+        'HOME.FEATURE_CARDS.2.BENEFIT2',
+        'HOME.FEATURE_CARDS.2.BENEFIT3',
+        'HOME.FEATURE_CARDS.2.BENEFIT4'
       ]
     },
     {
       icon: 'analytics',
-      title: 'Powerful Analytics',
-      description: 'Make data-driven decisions with comprehensive analytics and detailed reporting tools',
+      title: 'HOME.FEATURE_CARDS.3.TITLE',
+      description: 'HOME.FEATURE_CARDS.3.DESCRIPTION',
       benefits: [
-  'Comprehensive reporting',
-  'Performance metrics',
-  'Predictive insights',
-  'Custom reports'
+        'HOME.FEATURE_CARDS.3.BENEFIT1',
+        'HOME.FEATURE_CARDS.3.BENEFIT2',
+        'HOME.FEATURE_CARDS.3.BENEFIT3',
+        'HOME.FEATURE_CARDS.3.BENEFIT4'
       ]
     }
   ];

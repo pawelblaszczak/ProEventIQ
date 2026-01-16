@@ -1,13 +1,13 @@
 <div class="shows-container">
   <div class="header-section">
     <div class="header-content">
-  <h1 class="page-title">Manage Your Shows</h1>
-  <p class="page-subtitle">Create, edit, and schedule the shows you host</p>
+  <h1 class="page-title">{{ 'SHOWS.LIST.TITLE' | translate }}</h1>
+  <p class="page-subtitle">{{ 'SHOWS.LIST.SUBTITLE' | translate }}</p>
     </div>
     <div class="actions">
-      <button mat-raised-button color="primary" (click)="addShow()" class="edit-button" aria-label="Add show">
+      <button mat-raised-button color="primary" (click)="addShow()" class="edit-button" [attr.aria-label]="'SHOWS.LIST.ADD_BUTTON' | translate">
         <mat-icon>add</mat-icon>
-        ADD SHOW
+        {{ 'SHOWS.LIST.ADD_BUTTON' | translate }}
       </button>
     </div>
   </div>
@@ -16,20 +16,20 @@
     <mat-card-content>
       <div class="filter-container">
         <mat-form-field appearance="outline" class="search-field">
-          <mat-label>Search Shows</mat-label>
-          <input matInput (keyup)="applyFilter($event)" placeholder="Search by name, description, etc.">
+          <mat-label>{{ 'SHOWS.LIST.SEARCH_LABEL' | translate }}</mat-label>
+          <input matInput (keyup)="applyFilter($event)" [placeholder]="'SHOWS.LIST.SEARCH_PLACEHOLDER' | translate">
           <mat-icon matSuffix>search</mat-icon>
         </mat-form-field>
         
         <div class="advanced-filters">
           <mat-form-field appearance="outline" class="filter-field">
-            <mat-label>Age from</mat-label>
-            <input matInput type="number" placeholder="Minimum age" (input)="filterByAgeRange($event)">
+            <mat-label>{{ 'SHOWS.LIST.AGE_FROM_LABEL' | translate }}</mat-label>
+            <input matInput type="number" [placeholder]="'SHOWS.LIST.AGE_FROM_PLACEHOLDER' | translate" (input)="filterByAgeRange($event)">
             <mat-icon matSuffix>cake</mat-icon>
           </mat-form-field>
           <mat-form-field appearance="outline" class="filter-field">
-            <mat-label>Age to</mat-label>
-            <input matInput type="number" placeholder="Maximum age" (input)="filterByMinAge($event)">
+            <mat-label>{{ 'SHOWS.LIST.AGE_TO_LABEL' | translate }}</mat-label>
+            <input matInput type="number" [placeholder]="'SHOWS.LIST.AGE_TO_PLACEHOLDER' | translate" (input)="filterByMinAge($event)">
             <mat-icon matSuffix>child_care</mat-icon>
           </mat-form-field>
         </div>
@@ -40,24 +40,24 @@
   @if (isLoading()) {
     <div class="loading-spinner">
       <mat-spinner diameter="48"></mat-spinner>
-      <p class="loading-text">Loading shows...</p>
+      <p class="loading-text">{{ 'SHOWS.LIST.LOADING' | translate }}</p>
     </div>
   } @else if (error()) {
     <div class="error-section">
       <app-error-display 
         [error]="error()!" 
-        title="Failed to Load Shows" 
+        [title]="'SHOWS.LIST.ERROR_TITLE' | translate" 
         icon="theater_comedy"
         cssClass="shows-error">
       </app-error-display>
       <div class="error-actions">
         <button mat-raised-button color="primary" (click)="retry()">
           <mat-icon>refresh</mat-icon>
-          Retry
+          {{ 'SHOWS.LIST.RETRY' | translate }}
         </button>
         <button mat-stroked-button (click)="resetFilters()">
           <mat-icon>filter_list_off</mat-icon>
-          Reset Filters
+          {{ 'SHOWS.LIST.RESET_FILTERS' | translate }}
         </button>
       </div>
     </div>
@@ -65,9 +65,9 @@
     <mat-card class="empty-state">
       <mat-card-content>
         <mat-icon class="empty-icon">theater_comedy</mat-icon>
-        <h2>No Shows Found</h2>
-        <p>There are no shows matching your criteria.</p>
-        <button mat-stroked-button color="primary" (click)="resetFilters()">Reset Filters</button>
+        <h2>{{ 'SHOWS.LIST.EMPTY_TITLE' | translate }}</h2>
+        <p>{{ 'SHOWS.LIST.EMPTY_DESC' | translate }}</p>
+        <button mat-stroked-button color="primary" (click)="resetFilters()">{{ 'SHOWS.LIST.RESET_FILTERS' | translate }}</button>
       </mat-card-content>
     </mat-card>
   } @else {
@@ -77,7 +77,7 @@
                   (click)="viewShowDetails(show.showId!)" 
                   (keydown)="onCardKeydown($event, show.showId!)"
                   tabindex="0"
-                  [attr.aria-label]="'View details for ' + show.name"
+                  [attr.aria-label]="('SHOWS.LIST.VIEW_DETAILS' | translate) + ' ' + show.name"
                   style="cursor: pointer;">
           <ng-container *ngIf="show.thumbnail; else noImage">
             <img mat-card-image [src]="'data:' + show.thumbnailContentType + ';base64,' + show.thumbnail" [alt]="show.name || 'Show'">
@@ -85,19 +85,19 @@
           <ng-template #noImage>
             <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; background: #f5f5f5; width: 100%;">
               <mat-icon style="font-size: 96px; color: #bdbdbd; width: 96px; height: 96px; display: flex; align-items: center; justify-content: center;">theater_comedy</mat-icon>
-              <span style="margin-top: 8px; color: #888; font-size: 16px; text-align: center;">No image available</span>
+              <span style="margin-top: 8px; color: #888; font-size: 16px; text-align: center;">{{ 'SHOWS.LIST.NO_IMAGE' | translate }}</span>
             </div>
           </ng-template>
           <mat-card-content>
             <div class="show-badges">
               <span class="show-badge age-badge">
                 <mat-icon>cake</mat-icon>
-                {{ show.ageFrom }}+ years
+                {{ show.ageFrom }}+ {{ 'SHOWS.LIST.YEARS' | translate }}
               </span>
               @if (show.ageTo && show.ageTo < 99) {
                 <span class="show-badge max-age-badge">
                   <mat-icon>elderly</mat-icon>
-                  up to {{ show.ageTo }}
+                  {{ 'SHOWS.LIST.UP_TO' | translate }} {{ show.ageTo }}
                 </span>
               }
             </div>

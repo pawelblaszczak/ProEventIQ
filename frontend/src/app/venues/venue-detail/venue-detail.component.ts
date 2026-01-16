@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { TranslateModule } from '@ngx-translate/core';
 import { Venue } from '../../api/model/venue';
 import { ProEventIQService } from '../../api/api/pro-event-iq.service';
 import { ConfirmationDialogService } from '../../shared';
@@ -26,7 +27,8 @@ import { VenueMapEditComponent } from '../venue-map-edit/venue-map-edit.componen
     MatDividerModule,
     MatExpansionModule,
     RouterModule,
-    VenueMapEditComponent
+    VenueMapEditComponent,
+    TranslateModule
   ],
   templateUrl: './venue-detail.component.html',
   styleUrls: ['./venue-detail.component.scss'],

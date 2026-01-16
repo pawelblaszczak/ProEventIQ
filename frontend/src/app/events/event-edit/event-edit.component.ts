@@ -10,6 +10,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ProEventIQService } from '../../api/api/pro-event-iq.service';
 import { EventInput } from '../../api/model/event-input';
 import { ShowOption } from '../../api/model/show-option';
@@ -29,7 +30,8 @@ import { VenueOption } from '../../api/model/venue-option';
     MatDividerModule,
     MatProgressSpinnerModule,
     MatSelectModule,
-    MatAutocompleteModule
+    MatAutocompleteModule,
+    TranslateModule
   ],
   templateUrl: './event-edit.component.html',
   styleUrls: ['./event-edit.component.scss'],
@@ -39,6 +41,7 @@ export class EventEditComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly eventApi = inject(ProEventIQService);
+  private readonly translate = inject(TranslateService);
 
   form: FormGroup;
   eventId: number | null = null;
@@ -118,7 +121,7 @@ export class EventEditComponent {
         this.loading.set(false);
       },
       error: () => {
-        this.error.set('Failed to load event.');
+        this.error.set(this.translate.instant('EVENTS.EDIT.ERROR_LOAD'));
         this.loading.set(false);
       }
     });
@@ -175,7 +178,7 @@ export class EventEditComponent {
         },
         error: (error) => {
           console.error('Create event error:', error);
-          this.error.set('Failed to create event.');
+          this.error.set(this.translate.instant('EVENTS.EDIT.ERROR_CREATE'));
           this.loading.set(false);
         }
       });
@@ -186,7 +189,7 @@ export class EventEditComponent {
         },
         error: (error) => {
           console.error('Update event error:', error);
-          this.error.set('Failed to update event.');
+          this.error.set(this.translate.instant('EVENTS.EDIT.ERROR_UPDATE'));
           this.loading.set(false);
         }
       });

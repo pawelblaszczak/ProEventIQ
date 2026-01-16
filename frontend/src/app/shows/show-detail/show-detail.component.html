@@ -2,7 +2,7 @@
   <div class="loading-icon-wrapper">
     <mat-progress-spinner color="primary" mode="indeterminate" diameter="50"></mat-progress-spinner>
   </div>
-  <p class="loading-text">Loading show details...</p>
+  <p class="loading-text">{{ 'SHOWS.DETAIL.LOADING' | translate }}</p>
   <div class="loading-progress-dots">
     <span class="dot"></span>
     <span class="dot"></span>
@@ -17,7 +17,7 @@
         <mat-icon color="warn">error_outline</mat-icon>
       </div>
       <div class="error-message">
-        <h3>Error Loading Show</h3>
+        <h3>{{ 'SHOWS.DETAIL.ERROR_TITLE' | translate }}</h3>
         <p>{{ error() }}</p>
       </div>
     </mat-card-content>
@@ -31,15 +31,15 @@
         <h1 class="show-name">{{ show()?.name }}</h1>
         <h2 class="show-subtitle">
           <mat-icon class="subtitle-icon">theaters</mat-icon>
-          Entertainment Show
+          {{ 'SHOWS.DETAIL.SHOW_TYPE' | translate }}
         </h2>
         <div class="show-stats">
           <div class="stat-item">
             <mat-icon>child_care</mat-icon>
             <div class="stat-content">
-              <span class="stat-inline" *ngIf="show()?.ageFrom !== undefined && show()?.ageTo !== undefined">Ages {{ show()?.ageFrom }} - {{ show()?.ageTo }}</span>
-              <span class="stat-inline" *ngIf="show()?.ageFrom !== undefined && show()?.ageTo === undefined">Ages {{ show()?.ageFrom }}+</span>
-              <span class="stat-inline" *ngIf="show()?.ageFrom === undefined">All Ages</span>
+              <span class="stat-inline" *ngIf="show()?.ageFrom !== undefined && show()?.ageTo !== undefined">{{ 'SHOWS.DETAIL.AGES_RANGE' | translate }} {{ show()?.ageFrom }} - {{ show()?.ageTo }}</span>
+              <span class="stat-inline" *ngIf="show()?.ageFrom !== undefined && show()?.ageTo === undefined">{{ 'SHOWS.DETAIL.AGES_FROM' | translate }} {{ show()?.ageFrom }}+</span>
+              <span class="stat-inline" *ngIf="show()?.ageFrom === undefined">{{ 'SHOWS.DETAIL.ALL_AGES' | translate }}</span>
             </div>
           </div>
         </div>
@@ -48,11 +48,11 @@
       <div *ngIf="show()?.thumbnail" class="show-image-container">
         <img class="show-hero-image" 
              [src]="'data:' + show()?.thumbnailContentType + ';base64,' + show()?.thumbnail" 
-             [alt]="show()?.name + ' thumbnail'">
+             [alt]="show()?.name + ' ' + ('SHOWS.DETAIL.THUMBNAIL' | translate)">
       </div>
       <div *ngIf="!show()?.thumbnail" class="show-image-placeholder">
         <mat-icon class="placeholder-icon" style="font-size: 72px; color: #bdbdbd;">theaters</mat-icon>
-        <p>No image available</p>
+        <p>{{ 'SHOWS.DETAIL.NO_IMAGE' | translate }}</p>
       </div>
     </div>
     
@@ -62,7 +62,7 @@
       <div class="show-details-header-row">
         <h3 class="section-title">
           <mat-icon>info</mat-icon>
-          Show Details
+          {{ 'SHOWS.DETAIL.SECTION_INFO' | translate }}
         </h3>
         <button mat-icon-button color="warn" (click)="onDelete()" class="delete-icon-btn" [disabled]="isLoading()" aria-label="Delete show">
           <mat-icon>delete</mat-icon>
@@ -70,28 +70,28 @@
       </div>
       <div class="show-info-grid">
         <div class="info-item">
-          <div class="info-label">Age Range</div>
+          <div class="info-label">{{ 'SHOWS.DETAIL.LABEL_AGE' | translate }}</div>
           <div class="info-value">
-            <span *ngIf="show()?.ageFrom !== undefined && show()?.ageTo !== undefined">{{ show()?.ageFrom }} - {{ show()?.ageTo }} years</span>
-            <span *ngIf="show()?.ageFrom !== undefined && show()?.ageTo === undefined">{{ show()?.ageFrom }}+ years</span>
-            <span *ngIf="show()?.ageFrom === undefined">All ages welcome</span>
+            <span *ngIf="show()?.ageFrom !== undefined && show()?.ageTo !== undefined">{{ show()?.ageFrom }} - {{ show()?.ageTo }} {{ 'SHOWS.DETAIL.YEARS' | translate }}</span>
+            <span *ngIf="show()?.ageFrom !== undefined && show()?.ageTo === undefined">{{ show()?.ageFrom }}+ {{ 'SHOWS.DETAIL.YEARS' | translate }}</span>
+            <span *ngIf="show()?.ageFrom === undefined">{{ 'SHOWS.DETAIL.ALL_AGES_WELCOME' | translate }}</span>
           </div>
         </div>
         
         <div class="info-item full-width">
-          <div class="info-label">Description</div>
-          <div class="info-value description">{{ show()?.description || 'No description available' }}</div>
+          <div class="info-label">{{ 'SHOWS.DETAIL.LABEL_DESCRIPTION' | translate }}</div>
+          <div class="info-value description">{{ show()?.description || ('SHOWS.DETAIL.NO_DESCRIPTION' | translate) }}</div>
         </div>
       </div>
     </mat-card-content>
     <mat-card-actions class="show-actions" align="end">
       <button mat-stroked-button (click)="goBack()" class="back-button">
         <mat-icon>arrow_back</mat-icon>
-        BACK TO LIST
+        {{ 'BUTTON.BACK_TO_LIST' | translate }}
       </button>
-      <button mat-raised-button color="primary" (click)="editShow()" aria-label="Edit show" class="edit-button">
+      <button mat-raised-button color="primary" (click)="editShow()" [attr.aria-label]="'SHOWS.DETAIL.EDIT_BUTTON' | translate" class="edit-button">
         <mat-icon>edit</mat-icon>
-        EDIT SHOW
+        {{ 'SHOWS.DETAIL.EDIT_BUTTON' | translate }}
       </button>
     </mat-card-actions>
   </mat-card>

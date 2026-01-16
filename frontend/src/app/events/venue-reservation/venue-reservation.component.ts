@@ -4,6 +4,7 @@ import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { VenueMapEditComponent } from '../../venues/venue-map-edit/venue-map-edit.component';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ProEventIQService } from '../../api/api/pro-event-iq.service';
@@ -24,7 +25,8 @@ import { forkJoin, Observable } from 'rxjs';
     MatIconModule,
     MatButtonModule,
     MatProgressSpinnerModule,
-    VenueMapEditComponent
+    VenueMapEditComponent,
+    TranslateModule
   ],
   templateUrl: './venue-reservation.component.html',
   styleUrls: ['./venue-reservation.component.scss'],
@@ -35,6 +37,7 @@ export class VenueReservationComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly api = inject(ProEventIQService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly translate = inject(TranslateService);
 
   venue = signal<Venue | null>(null);
   event = signal<Event | null>(null);
@@ -100,7 +103,7 @@ export class VenueReservationComponent implements OnInit {
       },
       error: err => {
         console.error('Failed to load venue', err);
-        this.error.set('Failed to load venue');
+        this.error.set(this.translate.instant('EVENTS.RESERVATION.ERROR_LOAD_VENUE'));
         this.loading.set(false);
       }
     });
@@ -123,7 +126,7 @@ export class VenueReservationComponent implements OnInit {
       },
       error: err => {
         console.error('Failed to load event', err);
-        this.eventError.set('Failed to load event');
+        this.eventError.set(this.translate.instant('EVENTS.RESERVATION.ERROR_LOAD_EVENT'));
         this.eventLoading.set(false);
       }
     });
@@ -152,7 +155,7 @@ export class VenueReservationComponent implements OnInit {
       },
       error: err => {
         console.error('Failed to load reservations or blocks', err);
-        this.reservationError.set('Failed to load reservations');
+        this.reservationError.set(this.translate.instant('EVENTS.RESERVATION.ERROR_LOAD_RESERVATIONS'));
         this.reservationLoading.set(false);
       }
     });
@@ -203,11 +206,15 @@ export class VenueReservationComponent implements OnInit {
     
     if (updates.length === 0) {
       console.log('No pending reservation updates to save');
-      this.snackBar.open('No reservation changes to save.', 'Close', {
-        duration: 2000,
-        horizontalPosition: 'center',
-        verticalPosition: 'top'
-      });
+      this.snackBar.open(
+        this.translate.instant('EVENTS.RESERVATION.NO_CHANGES_SNACK'), 
+        this.translate.instant('BUTTON.CLOSE'), 
+        {
+          duration: 2000,
+          horizontalPosition: 'center',
+          verticalPosition: 'top'
+        }
+      );
       return;
     }
 
@@ -272,21 +279,29 @@ export class VenueReservationComponent implements OnInit {
         this.loadReservations(eventId);
 
         this.reservationLoading.set(false);
-        this.snackBar.open('Reservation changes saved successfully!', 'Close', {
-          duration: 3000,
-          horizontalPosition: 'center',
-          verticalPosition: 'top'
-        });
+        this.snackBar.open(
+          this.translate.instant('EVENTS.RESERVATION.SAVE_SUCCESS'), 
+          this.translate.instant('BUTTON.CLOSE'), 
+          {
+            duration: 3000,
+            horizontalPosition: 'center',
+            verticalPosition: 'top'
+          }
+        );
       },
       error: err => {
         console.error('Failed to save batch reservation updates', err);
-        this.reservationError.set('Failed to save reservation updates');
+        this.reservationError.set(this.translate.instant('EVENTS.RESERVATION.SAVE_ERROR'));
         this.reservationLoading.set(false);
-        this.snackBar.open('Failed to save reservation changes. Please try again.', 'Close', {
-          duration: 5000,
-          horizontalPosition: 'center',
-          verticalPosition: 'top'
-        });
+        this.snackBar.open(
+          this.translate.instant('EVENTS.RESERVATION.SAVE_ERROR_SNACK'), 
+          this.translate.instant('BUTTON.CLOSE'), 
+          {
+            duration: 5000,
+            horizontalPosition: 'center',
+            verticalPosition: 'top'
+          }
+        );
       }
     });
   }

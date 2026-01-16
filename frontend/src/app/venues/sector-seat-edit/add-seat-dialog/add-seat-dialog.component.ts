@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { TranslateModule } from '@ngx-translate/core';
 
 export interface AddSeatDialogData {
   rows: Array<{
@@ -32,7 +33,8 @@ export interface AddSeatDialogResult {
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
-    MatSelectModule
+    MatSelectModule,
+    TranslateModule
   ],
   templateUrl: './add-seat-dialog.component.html',
   styleUrls: ['./add-seat-dialog.component.scss']

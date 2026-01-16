@@ -2,7 +2,7 @@
   <div class="loading-icon-wrapper">
     <mat-progress-spinner color="primary" mode="indeterminate" diameter="50"></mat-progress-spinner>
   </div>
-  <p class="loading-text">Loading venue details...</p>
+  <p class="loading-text">{{ 'VENUES.DETAIL.LOADING' | translate }}</p>
   <div class="loading-progress-dots">
     <span class="dot"></span>
     <span class="dot"></span>
@@ -17,7 +17,7 @@
         <mat-icon color="warn">error_outline</mat-icon>
       </div>
       <div class="error-message">
-        <h3>Error Loading Venue</h3>
+        <h3>{{ 'VENUES.DETAIL.ERROR_TITLE' | translate }}</h3>
         <p>{{ error() }}</p>
       </div>
     </mat-card-content>
@@ -36,13 +36,13 @@
           <div class="stat-item">
             <mat-icon>grid_view</mat-icon>
             <div class="stat-content">
-              <span class="stat-inline">{{ venue()?.sectors?.length || 0 }} Sectors</span>
+              <span class="stat-inline">{{ venue()?.sectors?.length || 0 }} {{ 'VENUES.COMMON.SECTORS' | translate }}</span>
             </div>
           </div>
           <div class="stat-item">
             <mat-icon>event_seat</mat-icon>
             <div class="stat-content">
-              <span class="stat-inline">{{ venue()?.numberOfSeats | number }} Seats</span>
+              <span class="stat-inline">{{ venue()?.numberOfSeats | number }} {{ 'VENUES.COMMON.SEATS' | translate }}</span>
             </div>
           </div>
         </div>
@@ -55,7 +55,7 @@
       </div>
       <div *ngIf="!venue()?.thumbnail" class="venue-image-placeholder">
         <mat-icon class="placeholder-icon" style="font-size: 72px; color: #bdbdbd;">image_not_supported</mat-icon>
-        <p>No image available</p>
+        <p>{{ 'COMMON.NO_IMAGE' | translate }}</p>
       </div>
     </div>
     
@@ -65,7 +65,7 @@
       <div class="venue-details-header-row">
         <h3 class="section-title">
           <mat-icon>info</mat-icon>
-          Venue Details
+          {{ 'VENUES.DETAIL.SECTION_INFO' | translate }}
         </h3>
         <button mat-icon-button color="warn" (click)="onDelete()" class="delete-icon-btn" [disabled]="loading()" aria-label="Delete venue">
           <mat-icon>delete</mat-icon>
@@ -73,24 +73,24 @@
       </div>
       <div class="venue-info-grid">
         <div class="info-item">
-          <div class="info-label">Address</div>
+          <div class="info-label">{{ 'VENUES.DETAIL.LABEL_ADDRESS' | translate }}</div>
           <div class="info-value">{{ getFullAddress() }}</div>
         </div>
         
         <div class="info-item full-width">
-          <div class="info-label">Description</div>
-          <div class="info-value description">{{ venue()?.description || 'No description available' }}</div>
+          <div class="info-label">{{ 'VENUES.DETAIL.LABEL_DESCRIPTION' | translate }}</div>
+          <div class="info-value description">{{ venue()?.description || ('VENUES.DETAIL.NO_DESCRIPTION' | translate) }}</div>
         </div>
       </div>
     </mat-card-content>
     <mat-card-actions class="venue-actions" align="end">
       <button mat-stroked-button routerLink="/venues" class="back-button">
         <mat-icon>arrow_back</mat-icon>
-        BACK TO LIST
+        {{ 'BUTTON.BACK_TO_LIST' | translate }}
       </button>
       <button mat-raised-button color="primary" [routerLink]="['/venues', venue()?.venueId, 'edit']" aria-label="Edit venue" class="edit-button">
         <mat-icon>edit</mat-icon>
-        EDIT VENUE
+        {{ 'BUTTON.EDIT_VENUE' | translate }}
       </button>
     </mat-card-actions>
   </mat-card>
@@ -103,13 +103,13 @@
       <h3 class="section-title" style="display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
         <span style="display: flex; align-items: center; gap: 0.5rem;">
           <mat-icon class="title-icon">map</mat-icon>
-          Venue Map
+          {{ 'VENUES.DETAIL.MAP_TITLE' | translate }}
         </span>
-        <span class="banner-subtitle">Interactive venue layout preview</span>
+        <span class="banner-subtitle">{{ 'VENUES.DETAIL.MAP_SUBTITLE' | translate }}</span>
       </h3>
-      <button mat-raised-button color="primary" class="edit-map-btn" [routerLink]="['/venues', venue()?.venueId, 'map-edit']" aria-label="Edit venue map">
+      <button mat-raised-button color="primary" class="edit-map-btn" [routerLink]="['/venues', venue()?.venueId, 'map-edit']" [attr.aria-label]="'VENUES.DETAIL.ARIA.EDIT_MAP' | translate">
         <mat-icon>edit</mat-icon>
-        Edit Map
+        {{ 'VENUES.DETAIL.EDIT_MAP_BTN' | translate }}
       </button>
     </div>
     <mat-card-content class="map-preview-content">

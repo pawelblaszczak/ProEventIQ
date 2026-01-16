@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, effect, inject, signal, computed, V
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -79,7 +80,8 @@ interface EditableSector extends Sector {
     MatSelectModule,
     FormsModule,
     RouterModule,
-    ErrorDisplayComponent
+    ErrorDisplayComponent,
+    TranslateModule
   ],
   templateUrl: './venue-map-edit.component.html',
   styleUrls: ['./venue-map-edit.component.scss'],
@@ -229,6 +231,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   private readonly router = inject(Router);
   private readonly venueApi = inject(ProEventIQService);
   private readonly confirmationDialog = inject(ConfirmationDialogService);
+  private readonly translate = inject(TranslateService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
 
@@ -891,7 +894,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     this.pendingReservationChanges = Array.from(this.pendingReservationMap.values());
     if (this.pendingReservationMap.size === 0 || this.pendingReservationChanges.length === 0) {
       // Provide user feedback even when there are no changes to save
-      this.snackBar.open('No reservation changes to save.', 'Close', {
+      this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.NO_CHANGES'), this.translate.instant('BUTTON.CLOSE'), {
         duration: 2000,
         horizontalPosition: 'center',
         verticalPosition: 'top'
@@ -2983,7 +2986,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
             hasTicketLimit = true;
             remainingTickets = tickets - reserved;
             if (remainingTickets <= 0) {
-                 this.snackBar.open(`Participant has reached their ticket limit (${tickets}).`, 'Close', { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
+                 this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.TICKET_LIMIT_REACHED', { tickets }), this.translate.instant('BUTTON.CLOSE'), { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
                  return;
             }
         }
@@ -3055,7 +3058,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     });
     
     if (shouldAssign && hasTicketLimit && remainingTickets <= 0 && seatsChanged > 0) {
-         this.snackBar.open(`Reserved ${seatsChanged} seats. Ticket limit reached.`, 'Close', { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
+         this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.SEATS_RESERVED_LIMIT', { seats: seatsChanged }), this.translate.instant('BUTTON.CLOSE'), { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
     }
     
     this.layer!.batchDraw();
@@ -3086,7 +3089,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         // If trying to unblock (selectedPid is null or same blocked ID), allow it
         // If trying to assign a real participant, block it
         if (selectedPid !== null && selectedPid !== this.BLOCKED_PARTICIPANT_ID) {
-          this.snackBar.open('Seat is blocked. Unblock it first.', 'Close', { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
+          this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.SEAT_BLOCKED'), this.translate.instant('BUTTON.CLOSE'), { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
           return;
         }
       }
@@ -3129,7 +3132,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         const reserved = participant ? this.getReservedSeatsForParticipant(participant) : 0;
         if (selectedPid !== this.BLOCKED_PARTICIPANT_ID && tickets > 0 && reserved >= tickets) {
           // Participant has no remaining tickets — do not allow allocation
-          this.snackBar.open('Participant has reached their ticket limit.', 'Close', { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
+          this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.LIMIT_REACHED_GENERIC'), this.translate.instant('BUTTON.CLOSE'), { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
           return;
         }
 
@@ -3677,7 +3680,15 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     console.log('deleteSector called, selectedSectors:', selectedSectors);
     if (selectedSectors.length === 0) return;
 
-    this.confirmationDialog.confirmDelete(selectedSectors.length === 1 ? selectedSectors[0].name ?? 'this sector' : `${selectedSectors.length} sectors`, 'sector')
+    const paramName = selectedSectors.length === 1 ? (selectedSectors[0].name ?? this.translate.instant('VENUES.MAP.SECTORS')) : `${selectedSectors.length} ${this.translate.instant('VENUES.MAP.SECTORS')}`;
+    this.confirmationDialog.confirm({
+      title: this.translate.instant('VENUES.MAP.DIALOG.DELETE_SECTOR_TITLE'),
+      message: this.translate.instant('VENUES.MAP.DIALOG.DELETE_SECTOR_MSG', { name: paramName }),
+      confirmButtonText: this.translate.instant('VENUES.MAP.DELETE_SECTOR'),
+      cancelButtonText: this.translate.instant('VENUES.MAP.CANCEL'),
+      confirmButtonColor: 'warn',
+      icon: 'delete_forever'
+    })
       .subscribe(async confirmed => {
         console.log('Confirmation dialog result:', confirmed);
         if (confirmed) {
@@ -3708,9 +3719,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
           this.renderSectors(); // Force canvas update after deletion
           console.log('Sector(s) deleted:', selectedIds);
           if (errorOccurred) {
-            this.snackBar.open('Some sectors could not be deleted from the server.', 'Close', { duration: 4000, horizontalPosition: 'center', verticalPosition: 'top' });
+            this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.SECTORS_DELETE_PARTIAL'), this.translate.instant('BUTTON.CLOSE'), { duration: 4000, horizontalPosition: 'center', verticalPosition: 'top' });
           } else {
-            this.snackBar.open('Sector(s) deleted successfully.', 'Close', { duration: 2000, horizontalPosition: 'center', verticalPosition: 'top' });
+            this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.SECTORS_DELETED'), this.translate.instant('BUTTON.CLOSE'), { duration: 2000, horizontalPosition: 'center', verticalPosition: 'top' });
           }
         }
       });
@@ -3725,7 +3736,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     // Unsaved sectors use sectorId === -1 (created locally) or may have no id.
     const unsaved = selectedSectors.filter(s => s.sectorId == null || s.sectorId === -1);
     if (unsaved.length > 0) {
-      this.snackBar.open('Cannot duplicate unsaved sector(s). Please save the sector first.', 'Close', { duration: 4000, horizontalPosition: 'center', verticalPosition: 'top' });
+      this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.DUPLICATE_UNSAVED'), this.translate.instant('BUTTON.CLOSE'), { duration: 4000, horizontalPosition: 'center', verticalPosition: 'top' });
       return;
     }
 
@@ -3779,7 +3790,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     console.log('allocateAll called');
     const eventId = this.eventData?.eventId ?? this.eventId();
     if (!eventId) {
-      this.snackBar.open('No event context available to allocate seats.', 'Close', { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
+      this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.NO_EVENT_CONTEXT'), this.translate.instant('BUTTON.CLOSE'), { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
       return;
     }
 
@@ -3824,7 +3835,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     }
 
     if (flatSeats.length === 0) {
-      this.snackBar.open('No suitable seats found to allocate.', 'Close', { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
+      this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.NO_SEATS_ALLOC'), this.translate.instant('BUTTON.CLOSE'), { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
       return;
     }
 
@@ -3885,7 +3896,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       this.layer.batchDraw();
       this.hasReservationChanges.set(true);
       this.pendingCountSignal.set(this.pendingReservationChanges.length);
-      this.snackBar.open(`Allocated ${totalAllocated} seat(s) (pending).`, 'Close', { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
+      this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.ALLOCATED_PENDING', { count: totalAllocated }), this.translate.instant('BUTTON.CLOSE'), { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
       try { this.createAllocationOverlays(); } catch (e) { /* ignore */ }
     } else {
       this.snackBar.open('No suitable seats found to allocate.', 'Close', { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
@@ -3898,16 +3909,16 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
     const eventId = this.eventData?.eventId ?? this.eventId();
     if (!eventId) {
-      this.snackBar.open('No event context available to clear allocations.', 'Close', { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
+      this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.NO_EVENT_CONTEXT_CLEAR'), this.translate.instant('BUTTON.CLOSE'), { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
       return;
     }
 
     // Confirm destructive action with the user
     const confirmed = await firstValueFrom(this.confirmationDialog.confirm({
-      title: 'Clear All Allocations',
-      message: 'Are you sure you want to clear all allocations? This will unassign all seats for this event (you can save or cancel afterwards).',
-      confirmButtonText: 'Yes, Clear',
-      cancelButtonText: 'Keep Allocations'
+      title: this.translate.instant('VENUES.MAP.DIALOG.CLEAR_ALL_TITLE'),
+      message: this.translate.instant('VENUES.MAP.DIALOG.CLEAR_ALL_MSG'),
+      confirmButtonText: this.translate.instant('VENUES.MAP.CLEAR_ALL'),
+      cancelButtonText: this.translate.instant('VENUES.MAP.CANCEL')
     }));
 
     if (!confirmed) return;
@@ -3957,13 +3968,13 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       this.layer.batchDraw();
       this.hasReservationChanges.set(true);
       this.pendingCountSignal.set(this.pendingReservationChanges.length);
-      this.snackBar.open('All allocations cleared (pending changes).', 'Close', { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
+      this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.ALL_CLEARED_PENDING'), this.translate.instant('BUTTON.CLOSE'), { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
       // Refresh overlays immediately when seats are hidden (zoomed out)
       try {
         this.createAllocationOverlays();
       } catch (e) { /* ignore overlay refresh errors */ }
     } else {
-      this.snackBar.open('No allocations to clear.', 'Close', { duration: 2000, horizontalPosition: 'center', verticalPosition: 'top' });
+      this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.NO_ALLOCATIONS_CLEAR'), this.translate.instant('BUTTON.CLOSE'), { duration: 2000, horizontalPosition: 'center', verticalPosition: 'top' });
     }
   }
 
@@ -3973,7 +3984,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
     const eventId = this.eventData?.eventId ?? this.eventId();
     if (!eventId) {
-      this.snackBar.open('No event context available to allocate seats.', 'Close', { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
+      this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.NO_EVENT_CONTEXT'), this.translate.instant('BUTTON.CLOSE'), { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
       return;
     }
 
@@ -3987,7 +3998,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
     // If nothing selected, inform the user
     if ((!selectedSectors || selectedSectors.length === 0) && (selectedParticipantId == null)) {
-      this.snackBar.open('Please select sector(s), participant or both to allocate.', 'Close', { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
+      this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.SELECT_PARTICIPANT_OR_SECTOR'), this.translate.instant('BUTTON.CLOSE'), { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
       return;
     }
 
@@ -4176,7 +4187,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       this.layer.batchDraw();
       this.hasReservationChanges.set(true);
       this.pendingCountSignal.set(this.pendingReservationChanges.length);
-      this.snackBar.open(`Allocated ${totalAllocated} seat(s) (pending).`, 'Close', { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
+      this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.ALLOCATED_PENDING', { count: totalAllocated }), this.translate.instant('BUTTON.CLOSE'), { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
     } else {
       this.snackBar.open('No suitable seats found to allocate.', 'Close', { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
     }
@@ -4192,7 +4203,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
     const eventId = this.eventData?.eventId ?? this.eventId();
     if (!eventId) {
-      this.snackBar.open('No event context available to clear allocations.', 'Close', { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
+      this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.NO_EVENT_CONTEXT_CLEAR'), this.translate.instant('BUTTON.CLOSE'), { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
       return;
     }
 
@@ -4276,9 +4287,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
     if (!seatsToClear || seatsToClear.length === 0) {
       if (selectedParticipantId != null) {
-        this.snackBar.open('No allocations to clear for the selected participant in the chosen scope.', 'Close', { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
+        this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.NO_ALLOCATIONS_CLEAR_PARTICIPANT'), this.translate.instant('BUTTON.CLOSE'), { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
       } else {
-        this.snackBar.open('No allocations to clear in selected sectors.', 'Close', { duration: 2000, horizontalPosition: 'center', verticalPosition: 'top' });
+        this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.NO_ALLOCATIONS_CLEAR_SCOPE'), this.translate.instant('BUTTON.CLOSE'), { duration: 2000, horizontalPosition: 'center', verticalPosition: 'top' });
       }
       return;
     }
@@ -4320,7 +4331,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       // Refresh overlays to reflect cleared allocations when seats are hidden
       try { this.createAllocationOverlays(); } catch (e) { /* ignore */ }
     } else {
-      this.snackBar.open('No allocations were changed.', 'Close', { duration: 2000, horizontalPosition: 'center', verticalPosition: 'top' });
+      this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.NO_ALLOCATIONS_CHANGED'), this.translate.instant('BUTTON.CLOSE'), { duration: 2000, horizontalPosition: 'center', verticalPosition: 'top' });
     }
   }
 

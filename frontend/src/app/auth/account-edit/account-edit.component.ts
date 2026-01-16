@@ -12,6 +12,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TextFieldModule } from '@angular/cdk/text-field';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { KeycloakAuthService } from '../keycloak/keycloak.service';
 import { UserService } from '../../shared/services/user.service';
 import { UserDetailsDto } from '../../api/model/user-details-dto';
@@ -32,7 +33,8 @@ import { UserDetailsDto } from '../../api/model/user-details-dto';
     MatSnackBarModule,
     MatDividerModule,
     MatTooltipModule,
-    TextFieldModule
+    TextFieldModule,
+    TranslateModule
   ],
   templateUrl: './account-edit.component.html',
   styleUrls: ['./account-edit.component.scss'],
@@ -44,6 +46,7 @@ export class AccountEditComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly translate = inject(TranslateService);
 
   public loading = signal(false);
   public saving = signal(false);
@@ -151,17 +154,17 @@ export class AccountEditComponent implements OnInit {
       next: (updatedUser: UserDetailsDto) => {
         this.userDetails.set(updatedUser);
         this.saving.set(false);
-        this.snackBar.open('Account updated successfully', 'Close', {
+        this.snackBar.open(this.translate.instant('AUTH.EDIT.UPDATE_SUCCESS'), this.translate.instant('BUTTON.CLOSE'), {
           duration: 3000,
           panelClass: ['success-snackbar']
         });
         this.router.navigate(['/my-account']);
       },
       error: (error: any) => {
-        this.error.set('Failed to update account');
+        this.error.set(this.translate.instant('AUTH.EDIT.UPDATE_ERROR'));
         this.saving.set(false);
         console.error('Error updating user:', error);
-        this.snackBar.open('Failed to update account', 'Close', {
+        this.snackBar.open(this.translate.instant('AUTH.EDIT.UPDATE_ERROR'), this.translate.instant('BUTTON.CLOSE'), {
           duration: 3000,
           panelClass: ['error-snackbar']
         });
@@ -184,10 +187,10 @@ export class AccountEditComponent implements OnInit {
     const field = this.accountForm.get(fieldName);
     if (field?.errors && field.touched) {
       if (field.errors['required']) {
-        return `${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)} is required`;
+        return this.translate.instant('AUTH.EDIT.FIELD_REQUIRED', { fieldName: fieldName.charAt(0).toUpperCase() + fieldName.slice(1) });
       }
       if (field.errors['email']) {
-        return 'Please enter a valid email address';
+        return this.translate.instant('AUTH.EDIT.INVALID_EMAIL');
       }
     }
     return null;
@@ -224,7 +227,7 @@ export class AccountEditComponent implements OnInit {
       if (file.type.startsWith('image/')) {
         this.processProfilePicture(file);
       } else {
-        this.snackBar.open('Please select a valid image file', 'Close', {
+        this.snackBar.open(this.translate.instant('AUTH.EDIT.INVALID_FILE'), this.translate.instant('BUTTON.CLOSE'), {
           duration: 3000,
           panelClass: ['error-snackbar']
         });
@@ -236,7 +239,7 @@ export class AccountEditComponent implements OnInit {
     // Validate file size (e.g., max 5MB)
     const maxSize = 5 * 1024 * 1024; // 5MB in bytes
     if (file.size > maxSize) {
-      this.snackBar.open('Image file is too large. Please select a file smaller than 5MB.', 'Close', {
+      this.snackBar.open(this.translate.instant('AUTH.EDIT.FILE_TOO_LARGE'), this.translate.instant('BUTTON.CLOSE'), {
         duration: 3000,
         panelClass: ['error-snackbar']
       });
@@ -246,7 +249,7 @@ export class AccountEditComponent implements OnInit {
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
-      this.snackBar.open('Invalid file type. Please select a JPEG, PNG, or WebP image.', 'Close', {
+      this.snackBar.open(this.translate.instant('AUTH.EDIT.INVALID_FILE_TYPE'), this.translate.instant('BUTTON.CLOSE'), {
         duration: 3000,
         panelClass: ['error-snackbar']
       });
@@ -268,7 +271,7 @@ export class AccountEditComponent implements OnInit {
     };
     reader.readAsDataURL(file);
 
-    this.snackBar.open('Profile picture selected successfully!', 'Close', {
+    this.snackBar.open(this.translate.instant('AUTH.EDIT.PICTURE_SELECTED'), this.translate.instant('BUTTON.CLOSE'), {
       duration: 3000,
       panelClass: ['success-snackbar']
     });
@@ -285,7 +288,7 @@ export class AccountEditComponent implements OnInit {
       fileInput.value = '';
     }
     
-    this.snackBar.open('Profile picture cleared', 'Close', {
+    this.snackBar.open(this.translate.instant('AUTH.EDIT.PICTURE_CLEARED'), this.translate.instant('BUTTON.CLOSE'), {
       duration: 2000,
       panelClass: ['success-snackbar']
     });

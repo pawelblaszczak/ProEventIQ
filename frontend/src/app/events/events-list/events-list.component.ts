@@ -4,6 +4,7 @@ import { MaterialModule } from '../../material.module';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ProEventIQService } from '../../api/api/pro-event-iq.service';
 import { Event as ApiEvent } from '../../api/model/event';
 import { ShowOption } from '../../api/model/show-option';
@@ -17,7 +18,7 @@ import { EventService } from '../event.service';
 @Component({
   selector: 'app-events-list',
   standalone: true,
-  imports: [CommonModule, MaterialModule, FormsModule, ReactiveFormsModule, RouterModule, MatProgressSpinnerModule, OrderByNamePipe, ErrorDisplayComponent],
+  imports: [CommonModule, MaterialModule, FormsModule, ReactiveFormsModule, RouterModule, MatProgressSpinnerModule, OrderByNamePipe, ErrorDisplayComponent, TranslateModule],
   templateUrl: './events-list.component.html',
   styleUrl: './events-list.component.scss'
 })
@@ -25,6 +26,7 @@ export class EventsListComponent implements OnInit {
   private readonly apiService = inject(ProEventIQService);
   private readonly router = inject(Router);
   private readonly eventService = inject(EventService);
+  private readonly translate = inject(TranslateService);
   
   events = signal<ApiEvent[]>([]);
   filteredEvents = signal<ApiEvent[]>([]);
@@ -220,7 +222,8 @@ export class EventsListComponent implements OnInit {
   formatDateTime(dateTime: string | undefined): string {
     if (!dateTime) return 'TBD';
     const date = new Date(dateTime);
-    return date.toLocaleDateString('en-US', {
+    const locale = this.translate?.currentLang || 'en';
+    return date.toLocaleDateString(locale, {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -233,7 +236,8 @@ export class EventsListComponent implements OnInit {
   formatDate(dateTime: string | undefined): string {
     if (!dateTime) return 'TBD';
     const date = new Date(dateTime);
-    return date.toLocaleDateString('en-US', {
+    const locale = this.translate?.currentLang || 'en';
+    return date.toLocaleDateString(locale, {
       weekday: 'short',
       month: 'short',
       day: 'numeric'
@@ -243,7 +247,8 @@ export class EventsListComponent implements OnInit {
   formatDateOnly(dateTime: string | undefined): string {
     if (!dateTime) return 'TBD';
     const date = new Date(dateTime);
-    return date.toLocaleDateString('en-US', {
+    const locale = this.translate?.currentLang || 'en';
+    return date.toLocaleDateString(locale, {
       month: 'short',
       day: 'numeric'
     });
@@ -258,7 +263,8 @@ export class EventsListComponent implements OnInit {
   formatTime(dateTime: string | undefined): string {
     if (!dateTime) return 'TBD';
     const date = new Date(dateTime);
-    return date.toLocaleTimeString('en-US', {
+    const locale = this.translate?.currentLang || 'en';
+    return date.toLocaleTimeString(locale, {
       hour: '2-digit',
       minute: '2-digit'
     });

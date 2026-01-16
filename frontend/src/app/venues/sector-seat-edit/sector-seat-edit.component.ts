@@ -30,6 +30,7 @@ import { Seat } from '../../api/model/seat';
 import { Subject, takeUntil, finalize, firstValueFrom } from 'rxjs';
 import Konva from 'konva';
 import { ConfirmationDialogService } from '../../shared/components/confirmation-dialog/confirmation-dialog.service';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 interface EditableSeat extends Seat {
   selected?: boolean;
@@ -64,7 +65,8 @@ interface EditableSector extends Sector {
     MatCheckboxModule,
     FormsModule,
     ReactiveFormsModule,
-    RouterModule
+    RouterModule,
+    TranslateModule
   ],
   templateUrl: './sector-seat-edit.component.html',
   styleUrls: ['./sector-seat-edit.component.scss']
@@ -79,6 +81,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
   private readonly fb = inject(FormBuilder);
   private readonly dialog = inject(MatDialog);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly translate = inject(TranslateService);
   private readonly destroy$ = new Subject<void>();
 
   // State signals
@@ -284,7 +287,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
         setTimeout(checkAndInit, 100);
       } else if (attempts >= maxAttempts) {
         console.error('Failed to initialize Konva after maximum attempts');
-        this.snackBar.open('Failed to initialize canvas editor', 'Retry', { 
+        this.snackBar.open(this.translate.instant('VENUES.SECTOR_EDIT.SNACKBAR.INIT_ERROR'), this.translate.instant('VENUES.SECTOR_EDIT.RETRY'), { 
           duration: 0
         }).onAction().subscribe(() => {
           this.retryKonvaInitialization();
@@ -445,7 +448,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
       }
     } catch (error) {
       console.error('Error initializing Konva:', error);
-      this.snackBar.open('Error initializing canvas', 'Close', { duration: 5000 });
+      this.snackBar.open(this.translate.instant('VENUES.SECTOR_EDIT.SNACKBAR.CANVAS_ERROR'), this.translate.instant('BUTTON.CLOSE'), { duration: 5000 });
     }
   }
 
@@ -1223,9 +1226,9 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
       this.hasChanges.set(true);
       
       const message = result.rowCount === 1 
-        ? `1 row added with ${result.seatCount} seats` 
-        : `${result.rowCount} rows added with ${result.seatCount} seats each`;
-      this.snackBar.open(message, 'Close', { duration: 3000 });
+        ? this.translate.instant('VENUES.SECTOR_EDIT.SNACKBAR.ROWS_ADDED_SINGLE', { seats: result.seatCount })
+        : this.translate.instant('VENUES.SECTOR_EDIT.SNACKBAR.ROWS_ADDED_MULTIPLE', { rows: result.rowCount, seats: result.seatCount });
+      this.snackBar.open(message, this.translate.instant('BUTTON.CLOSE'), { duration: 3000 });
     }
   }
 
@@ -1250,7 +1253,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     this.renderSector();
     this.hasChanges.set(true);
     
-    this.snackBar.open(`Seat ${newSeat.orderNumber} added to ${row.name}`, 'Close', { duration: 2000 });
+    this.snackBar.open(this.translate.instant('VENUES.SECTOR_EDIT.SNACKBAR.SEAT_ADDED', { seat: newSeat.orderNumber, row: row.name }), this.translate.instant('BUTTON.CLOSE'), { duration: 2000 });
   }
 
   addSeatsToRow(rowId: number, seatCount: number) {
@@ -1305,9 +1308,9 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     
     const rowName = targetRow.name || `Row ${targetRow.orderNumber}`;
     const message = seatCount === 1 
-      ? `1 seat added to ${rowName}` 
-      : `${seatCount} seats added to ${rowName}`;
-    this.snackBar.open(message, 'Close', { duration: 2000 });
+      ? this.translate.instant('VENUES.SECTOR_EDIT.SNACKBAR.SEATS_ADDED_SINGLE', { row: rowName })
+      : this.translate.instant('VENUES.SECTOR_EDIT.SNACKBAR.SEATS_ADDED_MULTIPLE', { count: seatCount, row: rowName });
+    this.snackBar.open(message, this.translate.instant('BUTTON.CLOSE'), { duration: 2000 });
   }
 
   deleteSelectedSeats() {
@@ -1351,9 +1354,9 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     this.hasChanges.set(true);
     
     if (rowsBeforeDelete !== rowsAfterDelete) {
-      this.snackBar.open(`${rowsBeforeDelete - rowsAfterDelete} empty rows deleted`, 'Close', { duration: 2000 });
+      this.snackBar.open(this.translate.instant('VENUES.SECTOR_EDIT.SNACKBAR.ROWS_DELETED', { count: rowsBeforeDelete - rowsAfterDelete }), this.translate.instant('BUTTON.CLOSE'), { duration: 2000 });
     } else {
-      this.snackBar.open('No empty rows to delete', 'Close', { duration: 2000 });
+      this.snackBar.open(this.translate.instant('VENUES.SECTOR_EDIT.SNACKBAR.NO_EMPTY_ROWS'), this.translate.instant('BUTTON.CLOSE'), { duration: 2000 });
     }
   }
 
@@ -1385,7 +1388,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
         this.renderSector();
         this.hasChanges.set(true);
         
-        this.snackBar.open(`Row "${rowName}" deleted`, 'Close', { duration: 2000 });
+        this.snackBar.open(this.translate.instant('VENUES.SECTOR_EDIT.SNACKBAR.ROW_DELETED', { name: rowName }), this.translate.instant('BUTTON.CLOSE'), { duration: 2000 });
       }
     });
   }
@@ -1410,13 +1413,13 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
   addSeatInToolbarMode() {
     const sector = this.sector();
     if (!sector) {
-      this.snackBar.open('No sector available', 'Close', { duration: 2000 });
+      this.snackBar.open(this.translate.instant('VENUES.SECTOR_EDIT.SNACKBAR.NO_SECTOR'), this.translate.instant('BUTTON.CLOSE'), { duration: 2000 });
       return;
     }
     
     // Check if there are any rows available
     if (!sector.rows || sector.rows.length === 0) {
-      this.snackBar.open('Please add rows first before adding seats', 'Close', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('VENUES.SECTOR_EDIT.SNACKBAR.ADD_ROWS_FIRST'), this.translate.instant('BUTTON.CLOSE'), { duration: 3000 });
       return;
     }
     
@@ -1477,7 +1480,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
   // Import sector rows/seats layout from JSON
   onImportSectorLayoutJson() {
     if (!this.importJsonText) {
-      this.snackBar.open('Please paste sector layout JSON first', 'Close', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('VENUES.SECTOR_EDIT.SNACKBAR.PASTE_JSON'), this.translate.instant('BUTTON.CLOSE'), { duration: 3000 });
       return;
     }
 
@@ -1486,7 +1489,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
       parsed = JSON.parse(this.importJsonText);
     } catch (err) {
       console.error('Invalid JSON for sector layout import:', err);
-      this.snackBar.open('Invalid JSON format. Please check your input.', 'Close', { duration: 4000 });
+      this.snackBar.open(this.translate.instant('VENUES.SECTOR_EDIT.SNACKBAR.INVALID_JSON'), this.translate.instant('BUTTON.CLOSE'), { duration: 4000 });
       return;
     }
 
@@ -1501,13 +1504,13 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     }
 
     if (!rows || rows.length === 0) {
-      this.snackBar.open('JSON must contain rows with seats to import.', 'Close', { duration: 4000 });
+      this.snackBar.open(this.translate.instant('VENUES.SECTOR_EDIT.SNACKBAR.JSON_NO_ROWS'), this.translate.instant('BUTTON.CLOSE'), { duration: 4000 });
       return;
     }
 
     const sector = this.sector();
     if (!sector) {
-      this.snackBar.open('No sector loaded to apply imported layout.', 'Close', { duration: 4000 });
+      this.snackBar.open(this.translate.instant('VENUES.SECTOR_EDIT.SNACKBAR.NO_SECTOR_LOADED'), this.translate.instant('BUTTON.CLOSE'), { duration: 4000 });
       return;
     }
 
@@ -1544,7 +1547,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     this.hasChanges.set(true);
     this.importJsonText = '';
 
-    this.snackBar.open('Sector seat layout imported. Remember to save changes.', 'Close', { duration: 4000 });
+    this.snackBar.open(this.translate.instant('VENUES.SECTOR_EDIT.SNACKBAR.IMPORT_SUCCESS'), this.translate.instant('BUTTON.CLOSE'), { duration: 4000 });
   }
 
   // Save changes
@@ -1562,14 +1565,14 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
       await this.updateSectorSeats(sector);
       
       this.hasChanges.set(false);
-      this.snackBar.open('Changes saved successfully', 'Close', { duration: 2000 });
+      this.snackBar.open(this.translate.instant('VENUES.SECTOR_EDIT.SNACKBAR.SAVE_SUCCESS'), this.translate.instant('BUTTON.CLOSE'), { duration: 2000 });
       
       // Reload to get fresh data from server
       this.loadVenueAndSector();
       
     } catch (error) {
       console.error('Error saving changes:', error);
-      this.snackBar.open('Error saving changes: ' + (error instanceof Error ? error.message : 'Unknown error'), 'Close', { duration: 5000 });
+      this.snackBar.open(this.translate.instant('VENUES.SECTOR_EDIT.SNACKBAR.SAVE_ERROR', { error: error instanceof Error ? error.message : 'Unknown error' }), this.translate.instant('BUTTON.CLOSE'), { duration: 5000 });
     } finally {
       this.saving.set(false);
     }
@@ -1698,7 +1701,11 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
       row.name = result.rowName;
       this.renderSector();
       this.hasChanges.set(true);
-      this.snackBar.open(`Row name updated to "${result.rowName}"`, 'Close', { duration: 2000 });
+      this.snackBar.open(
+        this.translate.instant('VENUES.SECTOR_EDIT.SNACKBAR.ROW_NAME_UPDATED', { rowName: result.rowName }),
+        this.translate.instant('BUTTON.CLOSE'),
+        { duration: 2000 }
+      );
     }
   }
 
@@ -1711,12 +1718,12 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
 
   getRowNameForSeat(seat: EditableSeat): string {
     const sector = this.sector();
-    if (!sector) return 'Unknown';
+    if (!sector) return this.translate.instant('VENUES.SECTOR_EDIT.INFO.UNKNOWN_ROW');
     
     const row = sector.rows.find(r => 
       r.seats.some(s => s.seatId === seat.seatId)
     );
-    return row?.name || 'Unknown';
+    return row?.name || this.translate.instant('VENUES.SECTOR_EDIT.INFO.UNKNOWN_ROW');
   }
 
   private normalizeSeatOrderNumbers() {
@@ -1748,12 +1755,15 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
 
   getSelectedSeatInfo(): string {
     const selected = this.selectedSeats();
-    if (selected.length === 0) return 'No seats selected';
+    if (selected.length === 0) return this.translate.instant('VENUES.SECTOR_EDIT.INFO.NO_SEATS_SELECTED');
     if (selected.length === 1) {
       const seat = selected[0];
-      return `Seat ${seat.orderNumber} in ${this.getRowNameForSeat(seat)}`;
+      return this.translate.instant('VENUES.SECTOR_EDIT.INFO.SINGLE_SEAT_SELECTED', {
+        seatNumber: seat.orderNumber,
+        rowName: this.getRowNameForSeat(seat)
+      });
     }
-    return `${selected.length} seats selected`;
+    return this.translate.instant('VENUES.SECTOR_EDIT.INFO.MULTIPLE_SEATS_SELECTED', { count: selected.length });
   }
 
   // Add a method to manually retry Konva initialization

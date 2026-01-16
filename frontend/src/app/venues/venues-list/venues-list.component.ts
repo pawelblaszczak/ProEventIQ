@@ -4,6 +4,7 @@ import { MaterialModule } from '../../material.module';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
+import { TranslateModule } from '@ngx-translate/core';
 import { ProEventIQService } from '../../api/api/pro-event-iq.service';
 import { Venue } from '../../api/model/venue';
 import { Subject } from 'rxjs';
@@ -13,7 +14,7 @@ import { ErrorDisplayComponent } from '../../shared/components/error-display';
 @Component({
   selector: 'app-venues-list',
   standalone: true,
-  imports: [CommonModule, MaterialModule, FormsModule, ReactiveFormsModule, RouterModule, MatProgressSpinnerModule, ErrorDisplayComponent],
+  imports: [CommonModule, MaterialModule, FormsModule, ReactiveFormsModule, RouterModule, MatProgressSpinnerModule, ErrorDisplayComponent, TranslateModule],
   templateUrl: './venues-list.component.html',
   styleUrl: './venues-list.component.scss'
 })

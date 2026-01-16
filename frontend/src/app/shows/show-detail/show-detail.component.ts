@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { MaterialModule } from '../../material.module';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
+import { TranslateModule } from '@ngx-translate/core';
 import { ProEventIQService } from '../../api/api/pro-event-iq.service';
 import { Show } from '../../api/model/show';
 import { ConfirmationDialogService } from '../../shared';
@@ -10,7 +11,7 @@ import { ConfirmationDialogService } from '../../shared';
 @Component({
   selector: 'app-show-detail',
   standalone: true,
-  imports: [CommonModule, MaterialModule, MatProgressSpinnerModule, RouterModule],
+  imports: [CommonModule, MaterialModule, MatProgressSpinnerModule, RouterModule, TranslateModule],
   templateUrl: './show-detail.component.html',
   styleUrl: './show-detail.component.scss'
 })

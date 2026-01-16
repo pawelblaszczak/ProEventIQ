@@ -2,13 +2,13 @@
   <div class="loading-icon-wrapper">
     <mat-progress-spinner color="primary" mode="indeterminate" diameter="50"></mat-progress-spinner>
   </div>
-  <p class="loading-text">{{ mode === 'preview' ? 'Loading venue map...' : 'Loading venue for editing...' }}</p>
+  <p class="loading-text">{{ mode === 'preview' ? ('VENUES.MAP.LOADING_MAP' | translate) : ('VENUES.MAP.LOADING_EDIT' | translate) }}</p>
 </div>
 
 <app-error-display 
   *ngIf="error()" 
   [error]="error()!" 
-  title="Error Loading Venue">
+  [title]="'VENUES.MAP.ERROR_TITLE' | translate">
 </app-error-display>
 
 <div *ngIf="venue()" class="venue-map-editor animate-fade-in" 
@@ -20,9 +20,9 @@
       <h1 class="venue-name">
         <mat-icon>{{ mode === 'edit' ? 'edit' : 'event_seat' }}</mat-icon>
         @if (mode === 'edit') {
-          Editing: {{ venue()?.name }}
+          {{ 'VENUES.MAP.EDITING' | translate }}: {{ venue()?.name }}
         } @else {
-          Reservations: {{ eventData?.showName || venue()?.name }}
+          {{ 'VENUES.MAP.RESERVATIONS' | translate }}: {{ eventData?.showName || venue()?.name }}
           <span *ngIf="eventData?.dateTime" class="event-date">{{ eventData?.dateTime | date:'mediumDate' }}</span>
         }
       </h1>
@@ -45,7 +45,7 @@
                 (click)="cancelReservationChangesPublic()" 
                 [disabled]="((mode === 'reservation') ? !hasReservationChanges() : !hasAnyChanges()) || saving()">
           <mat-icon>cancel</mat-icon>
-          Cancel
+          {{ 'VENUES.MAP.CANCEL' | translate }}
         </button>
         <button mat-raised-button 
                 color="primary" 
@@ -54,15 +54,15 @@
           <mat-icon>save</mat-icon>
           @if (saving()) {
             <mat-progress-spinner diameter="20" mode="indeterminate"></mat-progress-spinner>
-            Saving...
+            {{ 'VENUES.MAP.SAVING' | translate }}
           } @else {
-            Save Changes
+            {{ 'VENUES.MAP.SAVE_CHANGES' | translate }}
           }
         </button>
       }
       <button mat-stroked-button (click)="goBack()">
         <mat-icon>arrow_back</mat-icon>
-        Back
+        {{ 'VENUES.MAP.BACK' | translate }}
       </button>
     </div>
   </div>
@@ -75,17 +75,17 @@
           <div class="tool-group" *ngIf="mode === 'reservation'">
             <h3 class="tool-group-title">
               <mat-icon>done_all</mat-icon>
-              Allocate all
+              {{ 'VENUES.MAP.ALLOCATE_ALL' | translate }}
             </h3>
             <div class="tool-buttons">
               <button mat-icon-button
                       (click)="allocateAll()"
-                      matTooltip="Allocate all">
+                      [matTooltip]="'VENUES.MAP.ALLOCATE_ALL' | translate">
                 <mat-icon>done_all</mat-icon>
               </button>
               <button mat-icon-button
                       (click)="clearAllAllocations()"
-                      matTooltip="Clear all"
+                      [matTooltip]="'VENUES.MAP.CLEAR_ALL' | translate"
                       color="warn">
                 <mat-icon>clear_all</mat-icon>
               </button>
@@ -96,22 +96,22 @@
           <div class="tool-group" *ngIf="mode === 'reservation'">
             <h3 class="tool-group-title">
               <mat-icon>done_outline</mat-icon>
-              Allocate selected
+              {{ 'VENUES.MAP.ALLOCATE_SELECTED' | translate }}
             </h3>
             <div class="tool-buttons">
               <button mat-icon-button
                       (click)="allocateSelected(false)"
-                      matTooltip="Allocate selected (forward)">
+                      [matTooltip]="'VENUES.MAP.ALLOCATE_FORWARD' | translate">
                 <mat-icon>arrow_upward</mat-icon>
               </button>
               <button mat-icon-button
                       (click)="allocateSelected(true)"
-                      matTooltip="Allocate selected (reverse rows)">
+                      [matTooltip]="'VENUES.MAP.ALLOCATE_REVERSE' | translate">
                 <mat-icon>arrow_downward</mat-icon>
               </button>
               <button mat-icon-button
                       (click)="clearSelectedAllocations()"
-                      matTooltip="Clear selected"
+                      [matTooltip]="'VENUES.MAP.CLEAR_SELECTED' | translate"
                       color="warn">
                 <mat-icon color="warn">remove</mat-icon>
               </button>
@@ -122,31 +122,31 @@
         <div class="tool-group" *ngIf="mode === 'edit'">
           <h3 class="tool-group-title">
             <mat-icon>grid_view</mat-icon>
-            Sectors
+            {{ 'VENUES.MAP.SECTORS' | translate }}
           </h3>
           <div class="tool-buttons">
             <button mat-icon-button 
                     (click)="addNewSector()"
-                    matTooltip="Add New Sector">
+                    [matTooltip]="'VENUES.MAP.ADD_SECTOR' | translate">
               <mat-icon>add</mat-icon>
             </button>
       <button mat-icon-button 
         (click)="duplicateSector()"
         [disabled]="!canDuplicateSelectedSectors()"
-        matTooltip="Duplicate Sector">
+        [matTooltip]="'VENUES.MAP.DUPLICATE_SECTOR' | translate">
               <mat-icon>content_copy</mat-icon>
             </button>
             <button mat-icon-button 
                     (click)="editSectorSeats()"
                     [disabled]="selectedSectors().length !== 1"
-                    matTooltip="Edit Sector Seats">
+                    [matTooltip]="'VENUES.MAP.EDIT_SEATS' | translate">
               <mat-icon>event_seat</mat-icon>
             </button>
             <!-- Change Name button removed per request -->
             <button mat-icon-button 
                     (click)="deleteSector()"
                     [disabled]="selectedSectors().length === 0"
-                    matTooltip="Delete Sector"
+                    [matTooltip]="'VENUES.MAP.DELETE_SECTOR' | translate"
                     color="warn">
               <mat-icon>delete</mat-icon>
             </button>
@@ -158,17 +158,17 @@
         <div class="tool-group" *ngIf="mode === 'edit' && selectedSectors().length > 0">
           <h3 class="tool-group-title">
             <mat-icon>rotate_right</mat-icon>
-            Rotate
+            {{ 'VENUES.MAP.ROTATE' | translate }}
           </h3>
           <div class="tool-buttons">
             <button mat-icon-button 
                     (click)="rotateSector(false)"
-                    matTooltip="Rotate Left">
+                    [matTooltip]="'VENUES.MAP.ROTATE_LEFT' | translate">
               <mat-icon>rotate_left</mat-icon>
             </button>
             <button mat-icon-button 
                     (click)="rotateSector(true)"
-                    matTooltip="Rotate Right">
+                    [matTooltip]="'VENUES.MAP.ROTATE_RIGHT' | translate">
               <mat-icon>rotate_right</mat-icon>
             </button>
           </div>
@@ -180,14 +180,14 @@
         <div class="tool-group">
           <h3 class="tool-group-title">
             <mat-icon>zoom_in</mat-icon>
-            Zoom
+            {{ 'VENUES.MAP.ZOOM' | translate }}
           </h3>
           <div class="zoom-controls">
             <button mat-mini-fab 
                     color="primary" 
                     (click)="zoomOut()" 
                     [disabled]="getCurrentZoom() <= minZoomValue"
-                    matTooltip="Zoom Out">
+                    [matTooltip]="'VENUES.MAP.ZOOM_OUT' | translate">
               <mat-icon>zoom_out</mat-icon>
             </button>
             <div class="zoom-display">{{ (getCurrentZoom() * 100) | number:'1.0-0' }}%</div>
@@ -195,13 +195,13 @@
                     color="primary" 
                     (click)="zoomIn()" 
                     [disabled]="getCurrentZoom() >= maxZoomValue"
-                    matTooltip="Zoom In">
+                    [matTooltip]="'VENUES.MAP.ZOOM_IN' | translate">
               <mat-icon>zoom_in</mat-icon>
             </button>
             <button mat-icon-button 
                     (click)="resetZoom()"
                     [disabled]="getCurrentZoom() === 1"
-                    matTooltip="Reset Zoom">
+                    [matTooltip]="'VENUES.MAP.RESET_ZOOM' | translate">
               <mat-icon>settings_backup_restore</mat-icon>
             </button>
             <div class="vertical-divider"></div>
@@ -211,15 +211,15 @@
         <div class="tool-group" *ngIf="mode === 'edit'">
           <h3 class="tool-group-title">
             <mat-icon>aspect_ratio</mat-icon>
-            Canvas
+            {{ 'VENUES.MAP.CANVAS' | translate }}
           </h3>
           <div class="tool-buttons">
             <mat-form-field appearance="outline" subscriptSizing="dynamic" class="dimension-input">
-                <mat-label>Width</mat-label>
+                <mat-label>{{ 'VENUES.MAP.WIDTH' | translate }}</mat-label>
                 <input matInput type="number" [ngModel]="baseCanvasWidth()" (ngModelChange)="updateCanvasDimensions($event, baseCanvasHeight())" [disabled]="mode !== 'edit'">
             </mat-form-field>
             <mat-form-field appearance="outline" subscriptSizing="dynamic" class="dimension-input">
-                <mat-label>Height</mat-label>
+                <mat-label>{{ 'VENUES.MAP.HEIGHT' | translate }}</mat-label>
                 <input matInput type="number" [ngModel]="baseCanvasHeight()" (ngModelChange)="updateCanvasDimensions(baseCanvasWidth(), $event)" [disabled]="mode !== 'edit'">
             </mat-form-field>
             <div class="vertical-divider"></div>
@@ -230,37 +230,37 @@
         <div class="tool-group">
           <h3 class="tool-group-title">
             <mat-icon>visibility</mat-icon>
-            View
+            {{ 'VENUES.MAP.VIEW' | translate }}
           </h3>
           <div class="tool-buttons">
             <mat-form-field appearance="outline" subscriptSizing="dynamic" class="view-select">
-              <mat-label>Labels</mat-label>
+              <mat-label>{{ 'VENUES.MAP.LABELS' | translate }}</mat-label>
               <mat-select [value]="sectorLabelMode()" (selectionChange)="setSectorLabelMode($event.value)" panelClass="labels-select-panel">
-                <mat-option value="auto">Auto</mat-option>
-                <mat-option value="name">Name</mat-option>
-                <mat-option value="name_seats">Name & Seats</mat-option>
-                <mat-option value="none">None</mat-option>
+                <mat-option value="auto">{{ 'VENUES.MAP.LABEL_AUTO' | translate }}</mat-option>
+                <mat-option value="name">{{ 'VENUES.MAP.LABEL_NAME' | translate }}</mat-option>
+                <mat-option value="name_seats">{{ 'VENUES.MAP.LABEL_NAME_SEATS' | translate }}</mat-option>
+                <mat-option value="none">{{ 'VENUES.MAP.LABEL_NONE' | translate }}</mat-option>
               </mat-select>
             </mat-form-field>            
             <button mat-icon-button 
                     class="view-toggle-btn"
                     [color]="showSeats() ? 'primary' : ''"
                     (click)="toggleSeats()"
-                    [matTooltip]="'Toggle Seats (' + (showSeats() ? 'ON' : 'OFF') + ')'">
+                    [matTooltip]="'VENUES.MAP.TOGGLE_SEATS' | translate">
               <mat-icon>event_seat</mat-icon>
             </button>
             <button mat-icon-button 
                     class="view-toggle-btn"
                     [color]="showOrders() ? 'primary' : ''"
                     (click)="toggleOrders()"
-                    [matTooltip]="'Toggle Sector Orders (' + (showOrders() ? 'ON' : 'OFF') + ')'">
+                    [matTooltip]="'VENUES.MAP.TOGGLE_ORDERS' | translate">
               <mat-icon>format_list_numbered</mat-icon>
             </button>
             <button mat-icon-button 
                     class="view-toggle-btn"
                     [color]="showGrid() ? 'primary' : ''"
                     (click)="toggleGridDebug()"
-                    [matTooltip]="'Toggle Grid (' + (showGrid() ? 'ON' : 'OFF') + ')'">
+                    [matTooltip]="'VENUES.MAP.TOGGLE_GRID' | translate">
               <mat-icon>grid_on</mat-icon>
             </button>
           </div>
@@ -277,7 +277,7 @@
           <!-- Canvas -->
           <div class="venue-canvas-container custom-scroll-canvas" 
                role="application"
-               aria-label="Venue map editor canvas">
+               [attr.aria-label]="'VENUES.MAP.ARIA_CANVAS' | translate">
             <div #canvasContainer 
                  class="konva-canvas">
             </div>
@@ -290,23 +290,23 @@
           <div class="instruction-card">
             <mat-icon>info</mat-icon>
             <div class="instruction-content">
-              <h4>How to Edit</h4>
-              <p>Click sectors to select them. Hold <strong>Ctrl</strong> to select multiple sectors. Drag to move selected sectors together. Use rotation controls to rotate all selected sectors. Click on empty canvas to deselect all.</p>
-              <p><strong>Zoom & Pan:</strong> Hold <strong>Ctrl + scroll</strong> to zoom in/out. Use <strong>scroll wheel</strong> to pan or <strong>Alt + drag</strong> to move around the canvas.</p>
+              <h4>{{ 'VENUES.MAP.HOW_TO_EDIT' | translate }}</h4>
+              <p [innerHTML]="'VENUES.MAP.INSTRUCTIONS_EDIT' | translate"></p>
+              <p [innerHTML]="'VENUES.MAP.INSTRUCTIONS_ZOOM' | translate"></p>
             </div>
           </div>
 
           @if (isCtrlPressed()) {
             <div class="ctrl-indicator">
               <mat-icon color="primary">keyboard</mat-icon>
-              <span>Multi-select mode active</span>
+              <span>{{ 'VENUES.MAP.MULTI_SELECT_ACTIVE' | translate }}</span>
             </div>
           }
 
           @if (hasAnyChanges()) {
             <div class="changes-indicator">
               <mat-icon color="warn">warning</mat-icon>
-              <span>You have unsaved changes</span>
+              <span>{{ 'VENUES.MAP.UNSAVED_CHANGES' | translate }}</span>
             </div>
           }
         </div>
@@ -319,14 +319,14 @@
           <mat-card-header>
             <mat-card-title style="display:flex;align-items:center;gap:.5rem;">
               <mat-icon>group</mat-icon>
-              Participants
+              {{ 'VENUES.MAP.PARTICIPANTS' | translate }}
             </mat-card-title>
           </mat-card-header>
         <mat-card-content class="reservation-panel-content">
           @if (participantsLoading()) {
             <div class="side-loading">
               <mat-progress-spinner diameter="40" mode="indeterminate"></mat-progress-spinner>
-              <p>Loading participants...</p>
+              <p>{{ 'VENUES.MAP.LOADING_PARTICIPANTS' | translate }}</p>
             </div>
           } @else if (participantsError()) {
             <div class="side-error">
@@ -338,7 +338,7 @@
               @if (!participants().length) {
                 <div class="side-empty" style="padding: 20px; display: flex; flex-direction: column; align-items: center; color: #666;">
                   <mat-icon style="margin-bottom: 8px; opacity: 0.7;">info</mat-icon>
-                  <p style="margin: 0;">No participants yet.</p>
+                  <p style="margin: 0;">{{ 'VENUES.MAP.NO_PARTICIPANTS' | translate }}</p>
                 </div>
               }
               <div 
@@ -364,7 +364,7 @@
 
               <div 
                 class="participant-row blocked-row" 
-                matTooltip="Blocked Seats"
+                [matTooltip]="'VENUES.MAP.BLOCKED_SEATS' | translate"
                 role="listitem"
                 tabindex="0"
                 (click)="onBlockedClick()"
@@ -374,7 +374,7 @@
                 [attr.aria-selected]="isBlockedSelected()"
               >
                  <div class="color blocked-color" style="background: #333;"></div>
-                 <div class="name one-line">Blocked</div>
+                 <div class="name one-line">{{ 'VENUES.MAP.BLOCKED' | translate }}</div>
                  <div class="seats-info" style="font-size: 0.95em; color: #666; margin-left: 0.5rem;">
                   {{ getBlockedSeatsCount() }}
                 </div>
@@ -392,9 +392,9 @@
             <div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
               <mat-card-title class="selection-card-title" style="display:flex;align-items:center;gap:.5rem;">
                 <mat-icon class="selection-card-icon">info</mat-icon>
-                Selected
+                {{ 'VENUES.MAP.SELECTED' | translate }}
               </mat-card-title>
-              <button mat-icon-button color="primary" aria-label="Deselect" (click)="deselectAll()" class="selection-deselect-btn">
+              <button mat-icon-button color="primary" [attr.aria-label]="'VENUES.MAP.DESELECT' | translate" (click)="deselectAll()" class="selection-deselect-btn">
                 <mat-icon>close</mat-icon>
               </button>
             </div>
@@ -404,7 +404,7 @@
               @if (selectedSectors().length === 1) {
                 <div class="sector-details">
                   <div class="detail-item">
-                    <span class="detail-label">Name:</span>
+                    <span class="detail-label">{{ 'VENUES.MAP.NAME' | translate }}:</span>
                     <!-- When editing, place the input on a full-width row below the label -->
                     <ng-container *ngIf="editingSectorId() === selectedSectors()[0].sectorId; else nameView">
                       <div class="inline-edit-row">
@@ -413,13 +413,13 @@
                                (input)="editingSectorName.set($any($event.target).value)"
                                (keydown.enter)="commitInlineEdit()"
                                (keydown.escape)="cancelInlineEdit()"
-                               aria-label="Edit sector name" />
+                               [attr.aria-label]="'VENUES.MAP.EDIT_NAME' | translate" />
                       </div>
                       <div class="inline-edit-actions below">
-                        <button mat-icon-button color="primary" aria-label="Accept name change" (click)="commitInlineEdit()" matTooltip="Accept">
+                        <button mat-icon-button color="primary" [attr.aria-label]="'VENUES.MAP.ACCEPT_CHANGE' | translate" (click)="commitInlineEdit()" [matTooltip]="'VENUES.MAP.ACCEPT' | translate">
                           <mat-icon>done</mat-icon>
                         </button>
-                        <button mat-icon-button color="warn" aria-label="Reject name change" (click)="cancelInlineEdit()" matTooltip="Reject">
+                        <button mat-icon-button color="warn" [attr.aria-label]="'VENUES.MAP.REJECT_CHANGE' | translate" (click)="cancelInlineEdit()" [matTooltip]="'VENUES.MAP.REJECT' | translate">
                           <mat-icon>close</mat-icon>
                         </button>
                       </div>
@@ -427,14 +427,14 @@
                     <ng-template #nameView>
                       <span class="detail-value">
                         <span class="name-text">{{ selectedSectors()[0].name }}</span>
-                        <button mat-icon-button color="primary" class="inline-edit-btn" aria-label="Edit name" (click)="startInlineEdit(selectedSectors()[0])" matTooltip="Edit name">
+                        <button mat-icon-button color="primary" class="inline-edit-btn" [attr.aria-label]="'VENUES.MAP.EDIT_NAME' | translate" (click)="startInlineEdit(selectedSectors()[0])" [matTooltip]="'VENUES.MAP.EDIT_NAME' | translate">
                           <mat-icon>edit</mat-icon>
                         </button>
                       </span>
                     </ng-template>
                   </div>
                   <div class="detail-item">
-                    <span class="detail-label">Order:</span>
+                    <span class="detail-label">{{ 'VENUES.MAP.ORDER' | translate }}:</span>
                     <!-- Inline edit for order number -->
                     <ng-container *ngIf="editingOrderSectorId() === selectedSectors()[0].sectorId; else orderView">
                       <div class="inline-edit-row">
@@ -445,13 +445,13 @@
                                (input)="onOrderInput($any($event.target).value)"
                                (keydown.enter)="commitInlineOrderEdit()"
                                (keydown.escape)="cancelInlineOrderEdit()"
-                               aria-label="Edit sector order" />
+                               [attr.aria-label]="'VENUES.MAP.EDIT_ORDER' | translate" />
                       </div>
                       <div class="inline-edit-actions below">
-                        <button mat-icon-button color="primary" aria-label="Accept order change" (click)="commitInlineOrderEdit()" matTooltip="Accept">
+                        <button mat-icon-button color="primary" [attr.aria-label]="'VENUES.MAP.ACCEPT_CHANGE' | translate" (click)="commitInlineOrderEdit()" [matTooltip]="'VENUES.MAP.ACCEPT' | translate">
                           <mat-icon>done</mat-icon>
                         </button>
-                        <button mat-icon-button color="warn" aria-label="Reject order change" (click)="cancelInlineOrderEdit()" matTooltip="Reject">
+                        <button mat-icon-button color="warn" [attr.aria-label]="'VENUES.MAP.REJECT_CHANGE' | translate" (click)="cancelInlineOrderEdit()" [matTooltip]="'VENUES.MAP.REJECT' | translate">
                           <mat-icon>close</mat-icon>
                         </button>
                       </div>
@@ -459,29 +459,29 @@
                     <ng-template #orderView>
                       <span class="detail-value">
                         <span class="name-text">{{ selectedSectors()[0].orderNumber ?? '-' }}</span>
-                        <button mat-icon-button color="primary" class="inline-edit-btn" aria-label="Edit order" (click)="startInlineOrderEdit(selectedSectors()[0])" matTooltip="Edit order">
+                        <button mat-icon-button color="primary" class="inline-edit-btn" [attr.aria-label]="'VENUES.MAP.EDIT_ORDER' | translate" (click)="startInlineOrderEdit(selectedSectors()[0])" [matTooltip]="'VENUES.MAP.EDIT_ORDER' | translate">
                           <mat-icon>edit</mat-icon>
                         </button>
                       </span>
                     </ng-template>
                   </div>
                   <div class="detail-item">
-                    <span class="detail-label">Position:</span>
+                    <span class="detail-label">{{ 'VENUES.MAP.POSITION' | translate }}:</span>
                     <span class="detail-value">                  
                       X: {{ selectedSectors()[0].position?.x ?? 0 }}, 
                       Y: {{ selectedSectors()[0].position?.y ?? 0 }}
                     </span>
                   </div>
                   <div class="detail-item">
-                    <span class="detail-label">Rotation:</span>
+                    <span class="detail-label">{{ 'VENUES.MAP.ROTATION' | translate }}:</span>
                     <span class="detail-value">{{ selectedSectors()[0].rotation }}°</span>
                   </div>
                   <div class="detail-item">
-                    <span class="detail-label">Seats:</span>
+                    <span class="detail-label">{{ 'VENUES.MAP.SEATS' | translate }}:</span>
                     <span class="detail-value">{{ selectedSectors()[0].numberOfSeats ?? 0 }}</span>
                   </div>
                   <div class="detail-item">
-                    <span class="detail-label">Status:</span>
+                    <span class="detail-label">{{ 'VENUES.MAP.STATUS' | translate }}:</span>
                     <span class="detail-value status" 
                           [class.active]="selectedSectors()[0].status === 'active'"
                           [class.inactive]="selectedSectors()[0].status === 'inactive'">
@@ -490,16 +490,16 @@
                   </div>
                 </div>
               } @else {
-                <h4 class="selection-subtitle">Multiple Selected ({{ selectedSectors().length }})</h4>
+                <h4 class="selection-subtitle">{{ 'VENUES.MAP.MULTIPLE_SELECTED' | translate }} ({{ selectedSectors().length }})</h4>
                 <div class="sector-details">
                   <div class="detail-item">
-                    <span class="detail-label">Sectors:</span>
+                    <span class="detail-label">{{ 'VENUES.MAP.SECTORS' | translate }}:</span>
                     <span class="detail-value">
                       {{ getSelectedSectorNames() }}
                     </span>
                   </div>
                   <div class="detail-item">
-                    <span class="detail-label">Total Seats:</span>
+                    <span class="detail-label">{{ 'VENUES.MAP.TOTAL_SEATS' | translate }}:</span>
                     <span class="detail-value">
                       {{ getTotalSelectedSeats() }}
                     </span>
@@ -520,7 +520,7 @@
       <mat-card-title>
         <h3 class="tool-group-title" style="display:flex;align-items:center;gap:.25rem;">
           <mat-icon>file_upload</mat-icon>
-          IMPORT LAYOUT
+          {{ 'VENUES.MAP.IMPORT_LAYOUT' | translate }}
         </h3>
       </mat-card-title>
     </mat-card-header>
@@ -529,7 +529,7 @@
         <textarea
           class="import-textarea"
           rows="4"
-          placeholder="Paste exported venue JSON here (must contain venueId and sectors...)"
+          [placeholder]="'VENUES.MAP.PASTE_JSON' | translate"
           [(ngModel)]="importJsonText">
         </textarea>
         <div class="import-actions">
@@ -539,9 +539,9 @@
             class="import-primary-button"
             (click)="onImportVenueJson()"
             [disabled]="!importJsonText || saving()"
-            matTooltip="Import sectors layout for this venue from JSON">
+            [matTooltip]="'VENUES.MAP.IMPORT_TOOLTIP' | translate">
             <mat-icon>download</mat-icon>
-            Import
+            {{ 'VENUES.MAP.IMPORT' | translate }}
           </button>
         </div>
       </div>

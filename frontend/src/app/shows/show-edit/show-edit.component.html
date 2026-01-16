@@ -5,9 +5,9 @@
     </div>
     <p class="loading-text">
       @if (isAddMode()) {
-        Preparing show form...
+        {{ 'SHOWS.EDIT.LOADING_PREPARE' | translate }}
       } @else {
-        Loading show data...
+        {{ 'SHOWS.EDIT.LOADING_DATA' | translate }}
       }
     </p>
     <div class="loading-progress-dots">
@@ -26,17 +26,17 @@
           <h1 class="banner-title">
             @if (isAddMode()) {
               <mat-icon>add</mat-icon>
-              Add New Show
+              {{ 'SHOWS.EDIT.ADD_TITLE' | translate }}
             } @else {
               <mat-icon>edit</mat-icon>
-              Edit Show
+              {{ 'SHOWS.EDIT.EDIT_TITLE' | translate }}
             }
           </h1>
           <p class="banner-subtitle">
             @if (isAddMode()) {
-              Create a new show with detailed information
+              {{ 'SHOWS.EDIT.ADD_SUBTITLE' | translate }}
             } @else {
-              Update show information and settings
+              {{ 'SHOWS.EDIT.EDIT_SUBTITLE' | translate }}
             }
           </p>
         </div>
@@ -51,33 +51,33 @@
         <form [formGroup]="form" (ngSubmit)="onSubmit()" class="show-form">
           <h3 class="section-title">
             <mat-icon>info</mat-icon>
-            Basic Information
+            {{ 'SHOWS.EDIT.SECTION_BASIC' | translate }}
           </h3>
           
           <div class="form-grid">
             <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Show Name</mat-label>
-              <input matInput formControlName="name" required placeholder="Enter show name" />
+              <mat-label>{{ 'SHOWS.EDIT.FIELD_NAME' | translate }}</mat-label>
+              <input matInput formControlName="name" required [placeholder]="'SHOWS.EDIT.PLACEHOLDER_NAME' | translate" />
               <mat-icon matSuffix>theater_comedy</mat-icon>
             </mat-form-field>
             
             <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Description</mat-label>
+              <mat-label>{{ 'SHOWS.EDIT.FIELD_DESCRIPTION' | translate }}</mat-label>
               <textarea matInput formControlName="description" 
-                       placeholder="Enter show description (optional)"
+                       [placeholder]="'SHOWS.EDIT.PLACEHOLDER_DESCRIPTION' | translate"
                        rows="4"></textarea>
               <mat-icon matSuffix>description</mat-icon>
             </mat-form-field>
             
             <div class="age-row">
               <mat-form-field appearance="outline" class="half-width">
-                <mat-label>Minimum Age</mat-label>
+                <mat-label>{{ 'SHOWS.EDIT.FIELD_AGE_FROM' | translate }}</mat-label>
                 <input matInput formControlName="ageFrom" type="number" min="0" max="120" placeholder="0" />
                 <mat-icon matSuffix>child_care</mat-icon>
               </mat-form-field>
               
               <mat-form-field appearance="outline" class="half-width">
-                <mat-label>Maximum Age</mat-label>
+                <mat-label>{{ 'SHOWS.EDIT.FIELD_AGE_TO' | translate }}</mat-label>
                 <input matInput formControlName="ageTo" type="number" min="0" max="120" placeholder="99" />
                 <mat-icon matSuffix>elderly</mat-icon>
               </mat-form-field>
@@ -88,7 +88,7 @@
           
           <h3 class="section-title">
             <mat-icon>image</mat-icon>
-            Show Image
+            {{ 'SHOWS.EDIT.SECTION_IMAGE' | translate }}
           </h3>
           
           <div class="thumbnail-section" style="display: flex; gap: 16px;">
@@ -103,8 +103,8 @@
                     <div class="upload-icon">
                       <mat-icon>cloud_upload</mat-icon>
                     </div>
-                    <h4>Upload Show Thumbnail</h4>
-                    <p>Choose an image file to represent this show</p>
+                    <h4>{{ 'SHOWS.EDIT.UPLOAD_TITLE' | translate }}</h4>
+                    <p>{{ 'SHOWS.EDIT.UPLOAD_SUBTITLE' | translate }}</p>
                     <input type="file" 
                            id="thumbnail-input" 
                            (change)="onThumbnailChange($event)" 
@@ -112,13 +112,13 @@
                            class="file-input" />
                     <label for="thumbnail-input" class="upload-button">
                       <mat-icon>add_photo_alternate</mat-icon>
-                      Choose Image
+                      {{ 'SHOWS.EDIT.CHOOSE_IMAGE' | translate }}
                     </label>
                   </div>
                   <!-- Drag overlay is always present but only visible when dragging -->
                   <div class="drag-overlay" [style.display]="dragOver() ? 'flex' : 'none'">
                     <mat-icon>file_upload</mat-icon>
-                    <span>Drop image here</span>
+                    <span>{{ 'SHOWS.EDIT.DROP_HERE' | translate }}</span>
                   </div>
                 </mat-card-content>
               </mat-card>
@@ -129,7 +129,7 @@
                 <mat-card appearance="outlined" class="preview-card thumbnail-card-equal-height" style="height: 180px; display: flex;">
                   <mat-card-content style="width: 100%; display: flex; flex-direction: column; justify-content: space-between;">
                     <div class="preview-header">
-                      <h4>Preview</h4>
+                      <h4>{{ 'SHOWS.EDIT.PREVIEW' | translate }}</h4>
                       <mat-icon color="primary">visibility</mat-icon>
                     </div>
                     <div class="preview-image-container" style="flex-grow: 1; display: flex; align-items: center; justify-content: center;">
@@ -144,7 +144,7 @@
                   <mat-card-content style="width: 100%; display: flex; align-items: center; justify-content: center;">
                     <div class="no-preview-content" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%;">
                       <mat-icon style="font-size: 72px; height: 72px; width: 72px; margin-bottom: 12px; color: #bdbdbd;">image_not_supported</mat-icon>
-                      <p style="text-align: center;">No image selected</p>
+                      <p style="text-align: center;">{{ 'SHOWS.EDIT.NO_PREVIEW' | translate }}</p>
                     </div>
                   </mat-card-content>
                 </mat-card>
@@ -158,7 +158,7 @@
                 <div class="error-content">
                   <mat-icon color="warn">error_outline</mat-icon>
                   <div class="error-message">
-                    <h4>Error</h4>
+                    <h4>{{ 'SHOWS.EDIT.ERROR_HEADER' | translate }}</h4>
                     <p>{{ error() }}</p>
                   </div>
                 </div>
@@ -171,7 +171,7 @@
       <mat-card-actions class="show-actions" align="end">
         <button mat-stroked-button type="button" (click)="onCancel()" class="cancel-button">
           <mat-icon>close</mat-icon>
-          CANCEL
+          {{ 'BUTTON.CANCEL' | translate }}
         </button>
         
         <button mat-raised-button 
@@ -182,9 +182,9 @@
                 class="save-button">
           <mat-icon>save</mat-icon>
           @if (isAddMode()) {
-            CREATE SHOW
+            {{ 'SHOWS.EDIT.CREATE_BUTTON' | translate }}
           } @else {
-            SAVE CHANGES
+            {{ 'BUTTON.SAVE_CHANGES' | translate }}
           }
         </button>
       </mat-card-actions>

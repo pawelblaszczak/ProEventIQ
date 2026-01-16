@@ -1,6 +1,7 @@
 import { Component, signal, ChangeDetectionStrategy, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
+import { TranslateModule } from '@ngx-translate/core';
 import { MaterialModule } from './material.module';
 import { MAT_TOOLTIP_DEFAULT_OPTIONS, MatTooltipDefaultOptions } from '@angular/material/tooltip';
 import { KeycloakAuthService } from './auth/keycloak/keycloak.service';
@@ -18,7 +19,7 @@ export const myTooltipDefaults: MatTooltipDefaultOptions = {
 @Component({
   selector: 'app-main-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule, MaterialModule],
+  imports: [CommonModule, RouterModule, MaterialModule, TranslateModule],
   templateUrl: './main-layout.component.html',
   styleUrls: ['./main-layout.component.scss'],
   providers: [

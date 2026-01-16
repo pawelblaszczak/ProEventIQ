@@ -3,31 +3,31 @@
     <div class="dialog-icon">
       <mat-icon color="primary">view_stream</mat-icon>
     </div>
-    <h2 mat-dialog-title class="dialog-title">Add New Row</h2>
+    <h2 mat-dialog-title class="dialog-title">{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_ROW.TITLE' | translate }}</h2>
   </div>
   
   <mat-dialog-content class="dialog-content">
     <form [formGroup]="addRowForm" class="add-row-form">
       <mat-form-field appearance="outline" class="form-field">
-        <mat-label>Row Name</mat-label>
+        <mat-label>{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_ROW.NAME_LABEL' | translate }}</mat-label>
         <input matInput formControlName="rowName" maxlength="32" required autocomplete="off">
-        <mat-error *ngIf="addRowForm.get('rowName')?.hasError('required')">Row name is required</mat-error>
+        <mat-error *ngIf="addRowForm.get('rowName')?.hasError('required')">{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_ROW.NAME_REQUIRED' | translate }}</mat-error>
         <mat-hint align="end">{{ addRowForm.get('rowName')?.value?.length || 0 }}/32</mat-hint>
       </mat-form-field>
       <mat-form-field appearance="outline" class="form-field">
-        <mat-label>Number of Seats</mat-label>
+        <mat-label>{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_ROW.SEAT_COUNT_LABEL' | translate }}</mat-label>
         <input matInput type="number" formControlName="seatCount" min="1" max="50" required>
-        <mat-error *ngIf="addRowForm.get('seatCount')?.hasError('required')">Seat count is required</mat-error>
-        <mat-error *ngIf="addRowForm.get('seatCount')?.hasError('min')">Minimum 1 seat</mat-error>
-        <mat-error *ngIf="addRowForm.get('seatCount')?.hasError('max')">Maximum 50 seats</mat-error>
+        <mat-error *ngIf="addRowForm.get('seatCount')?.hasError('required')">{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_ROW.SEAT_COUNT_REQUIRED' | translate }}</mat-error>
+        <mat-error *ngIf="addRowForm.get('seatCount')?.hasError('min')">{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_ROW.MIN_SEATS' | translate }}</mat-error>
+        <mat-error *ngIf="addRowForm.get('seatCount')?.hasError('max')">{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_ROW.MAX_SEATS' | translate }}</mat-error>
       </mat-form-field>
       <mat-form-field appearance="outline" class="form-field">
-        <mat-label>Seat Direction</mat-label>
+        <mat-label>{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_ROW.DIRECTION_LABEL' | translate }}</mat-label>
         <mat-select formControlName="seatDirection" required>
-          <mat-option value="LTR">Left to Right</mat-option>
-          <mat-option value="RTL">Right to Left</mat-option>
+          <mat-option value="LTR">{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_ROW.LTR' | translate }}</mat-option>
+          <mat-option value="RTL">{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_ROW.RTL' | translate }}</mat-option>
         </mat-select>
-        <mat-error *ngIf="addRowForm.get('seatDirection')?.hasError('required')">Seat direction is required</mat-error>
+        <mat-error *ngIf="addRowForm.get('seatDirection')?.hasError('required')">{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_ROW.DIRECTION_REQUIRED' | translate }}</mat-error>
       </mat-form-field>
     </form>
   </mat-dialog-content>
@@ -38,7 +38,7 @@
             (click)="onCancel()" 
             class="cancel-button">
       <mat-icon>close</mat-icon>
-      Cancel
+      {{ 'BUTTON.CANCEL' | translate }}
     </button>
     
     <button mat-raised-button 
@@ -48,7 +48,7 @@
             [disabled]="addRowForm.invalid"
             class="confirm-button">
       <mat-icon>check</mat-icon>
-      Add Row
+      {{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_ROW.SUBMIT' | translate }}
     </button>
   </mat-dialog-actions>
 </div>

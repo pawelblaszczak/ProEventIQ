@@ -8,6 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { TranslateModule } from '@ngx-translate/core';
 import { ProEventIQService } from '../../api/api/pro-event-iq.service';
 import { Show } from '../../api/model/show';
 import { ShowInput } from '../../api/model/show-input';
@@ -24,7 +25,8 @@ import { ShowInput } from '../../api/model/show-input';
     MatInputModule,
     MatIconModule,
     MatDividerModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    TranslateModule
   ],
   templateUrl: './show-edit.component.html',
   styleUrls: ['./show-edit.component.scss'],

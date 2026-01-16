@@ -9,6 +9,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { UserService } from '../../shared/services/user.service';
 import { UserDetailsDto } from '../../api/model/user-details-dto';
 
@@ -25,7 +26,8 @@ import { UserDetailsDto } from '../../api/model/user-details-dto';
     MatProgressSpinnerModule,
     MatChipsModule,
     MatTooltipModule,
-    MatDividerModule
+    MatDividerModule,
+    TranslateModule
   ],
   templateUrl: './users-list.component.html',
   styleUrls: ['./users-list.component.scss'],
@@ -33,6 +35,7 @@ import { UserDetailsDto } from '../../api/model/user-details-dto';
 })
 export class UsersListComponent implements OnInit {
   private readonly userService = inject(UserService);
+  private readonly translate = inject(TranslateService);
 
   public loading = signal(false);
   public error = signal<string | null>(null);
@@ -54,7 +57,7 @@ export class UsersListComponent implements OnInit {
         this.loading.set(false);
       },
       error: (error: any) => {
-        this.error.set('Failed to load users');
+        this.error.set(this.translate.instant('AUTH.USERS.ERROR_LOAD'));
         this.loading.set(false);
         console.error('Error loading users:', error);
       }

@@ -3,10 +3,10 @@
     <mat-icon>menu</mat-icon>
   </button>  <div class="logo-container">
     <span class="material-icons-outlined logo-icon">event_available</span>
-    <span class="app-title">ProEventIQ</span>
+    <span class="app-title">{{ 'HEADER.APP_TITLE' | translate }}</span>
   </div>
   <span class="toolbar-spacer"></span>
-  <button mat-button *ngIf="!authenticated()" (click)="login()">Login</button>
+  <button mat-button *ngIf="!authenticated()" (click)="login()">{{ 'HEADER.LOGIN' | translate }}</button>
   <div *ngIf="authenticated()" class="user-info" [matMenuTriggerFor]="userMenu">
     <span class="user-name" aria-label="Logged in user">{{ displayName() }}</span>
     <mat-icon aria-hidden="true">account_circle</mat-icon>
@@ -14,11 +14,11 @@
   <mat-menu #userMenu="matMenu">
     <button mat-menu-item (click)="navigateToMyAccount()" class="compact-menu-item">
       <mat-icon class="compact-icon">person</mat-icon>
-      <span class="compact-text">My account</span>
+      <span class="compact-text">{{ 'HEADER.MY_ACCOUNT' | translate }}</span>
     </button>
     <button mat-menu-item (click)="logout()" class="compact-menu-item">
       <mat-icon class="compact-icon">logout</mat-icon>
-      <span class="compact-text">Logout</span>
+      <span class="compact-text">{{ 'HEADER.LOGOUT' | translate }}</span>
     </button>
   </mat-menu>
 </mat-toolbar>
@@ -26,62 +26,62 @@
 <mat-sidenav-container class="sidenav-container">
   <mat-sidenav mode="side" [opened]="authenticated()" class="sidenav" [ngClass]="{'expanded': isExpanded()}" *ngIf="authenticated()">
     <div class="menu-header" *ngIf="isExpanded()">
-      <span>NAVIGATION</span>
+      <span>{{ 'SIDENAV.TITLE' | translate }}</span>
     </div>
     
     <mat-nav-list><a mat-list-item routerLink="/home" routerLinkActive="active"
-         [matTooltip]="!isExpanded() ? 'Home' : ''" 
+         [matTooltip]="!isExpanded() ? ('SIDENAV.HOME' | translate) : ''" 
          matTooltipPosition="right"
          [matTooltipDisabled]="isExpanded()">
         <div class="menu-item-content">
           <div class="menu-icon-container">
             <mat-icon>home</mat-icon>
           </div>
-          <span class="menu-item-text" *ngIf="isExpanded()">Home</span>
+          <span class="menu-item-text" *ngIf="isExpanded()">{{ 'SIDENAV.HOME' | translate }}</span>
         </div>
       </a>
       <a mat-list-item routerLink="/venues" routerLinkActive="active"
-         [matTooltip]="!isExpanded() ? 'Venues' : ''" 
+         [matTooltip]="!isExpanded() ? ('SIDENAV.VENUES' | translate) : ''" 
          matTooltipPosition="right"
          [matTooltipDisabled]="isExpanded()">
         <div class="menu-item-content">
           <div class="menu-icon-container">
             <mat-icon>stadium</mat-icon>
           </div>
-          <span class="menu-item-text" *ngIf="isExpanded()">Venues</span>
+          <span class="menu-item-text" *ngIf="isExpanded()">{{ 'SIDENAV.VENUES' | translate }}</span>
         </div>
       </a>
       <a mat-list-item routerLink="/shows" routerLinkActive="active"
-         [matTooltip]="!isExpanded() ? 'Shows' : ''" 
+         [matTooltip]="!isExpanded() ? ('SIDENAV.SHOWS' | translate) : ''" 
          matTooltipPosition="right"
          [matTooltipDisabled]="isExpanded()">
         <div class="menu-item-content">
           <div class="menu-icon-container">
             <mat-icon>theater_comedy</mat-icon>
           </div>
-          <span class="menu-item-text" *ngIf="isExpanded()">Shows</span>
+          <span class="menu-item-text" *ngIf="isExpanded()">{{ 'SIDENAV.SHOWS' | translate }}</span>
         </div>
       </a>
       <a mat-list-item routerLink="/events" routerLinkActive="active"
-         [matTooltip]="!isExpanded() ? 'Events' : ''" 
+         [matTooltip]="!isExpanded() ? ('SIDENAV.EVENTS' | translate) : ''" 
          matTooltipPosition="right"
          [matTooltipDisabled]="isExpanded()">
         <div class="menu-item-content">
           <div class="menu-icon-container">
             <mat-icon>event</mat-icon>
           </div>
-          <span class="menu-item-text" *ngIf="isExpanded()">Events</span>
+          <span class="menu-item-text" *ngIf="isExpanded()">{{ 'SIDENAV.EVENTS' | translate }}</span>
         </div>
       </a>
       <a mat-list-item routerLink="/statistics" routerLinkActive="active"
-         [matTooltip]="!isExpanded() ? 'Statistics' : ''" 
+         [matTooltip]="!isExpanded() ? ('SIDENAV.STATISTICS' | translate) : ''" 
          matTooltipPosition="right"
          [matTooltipDisabled]="isExpanded()">
         <div class="menu-item-content">
           <div class="menu-icon-container">
             <mat-icon>bar_chart</mat-icon>
           </div>
-          <span class="menu-item-text" *ngIf="isExpanded()">Statistics</span>
+          <span class="menu-item-text" *ngIf="isExpanded()">{{ 'SIDENAV.STATISTICS' | translate }}</span>
         </div>
       </a>
       <!-- Add more menu items based on system requirements -->

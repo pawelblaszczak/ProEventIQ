@@ -21,9 +21,10 @@ import { ConfirmationDialogService, ColorService } from '../../shared';
 import { ColorPickerDialogComponent } from './color-picker-dialog';
 import { Participant } from '../../api/model/participant';
 import { Reservation } from '../../api/model/reservation';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { forkJoin } from 'rxjs';
 import { VenueMapEditComponent } from '../../venues/venue-map-edit/venue-map-edit.component';
 import { EventService } from '../event.service';
-import { forkJoin } from 'rxjs';
 
 @Component({
   selector: 'app-event-detail',
@@ -42,7 +43,8 @@ import { forkJoin } from 'rxjs';
     MatFormFieldModule,
     MatInputModule,
     FormsModule,
-    VenueMapEditComponent
+    VenueMapEditComponent,
+    TranslateModule
   ],
   templateUrl: './event-detail.component.html',
   styleUrls: ['./event-detail.component.scss'],
@@ -56,6 +58,7 @@ export class EventDetailComponent implements OnInit {
   private readonly eventService = inject(EventService);
   private readonly dialog = inject(MatDialog);
   private readonly colorService = inject(ColorService);
+  public readonly translate = inject(TranslateService);
 
   private readonly eventId = signal<number | null>(null);
   public event = signal<ApiEvent | null>(null);
@@ -94,17 +97,20 @@ export class EventDetailComponent implements OnInit {
 
   /** Returns a user-facing hint about allocation status for tooltip */
   public getAllocationHint(participant: Participant | null | undefined): string {
-    if (!participant) return 'No participant information';
+    if (!participant) return this.translate.instant('EVENTS.DETAIL.PARTICIPANTS.NO_ALLOCATION_INFO');
     const requested = participant.allTicketCount ?? 0;
     const allocated = this.getAllocatedSeats(participant.participantId ?? null);
     if (requested === 0) {
-      if (allocated === 0) return 'Participant has no tickets requested';
-      return `Participant requested no tickets but ${allocated} seat(s) are allocated`;
+      if (allocated === 0) return this.translate.instant('EVENTS.DETAIL.PARTICIPANTS.ALLOCATION_HINT_NONE');
+      return this.translate.instant('EVENTS.DETAIL.PARTICIPANTS.ALLOCATION_HINT_UNEXPECTED', { allocated });
     }
-    if (allocated === 0) return `No seats allocated (${allocated}/${requested})`;
-    if (allocated < requested) return `Only ${allocated} of ${requested} seats allocated`;
-    if (allocated > requested) return `Overallocated: ${allocated} seats assigned for ${requested} requested (over by ${allocated - requested})`;
-    return `All seats allocated (${allocated}/${requested})`;
+    if (allocated === 0) return this.translate.instant('EVENTS.DETAIL.PARTICIPANTS.NO_SEATS_ALLOCATED_WITH_REQUEST', { allocated, requested });
+    if (allocated < requested) return this.translate.instant('EVENTS.DETAIL.PARTICIPANTS.ALLOCATION_HINT_PARTIAL', { allocated, requested });
+    if (allocated > requested) {
+      const diff = allocated - requested;
+      return this.translate.instant('EVENTS.DETAIL.PARTICIPANTS.ALLOCATION_HINT_OVER', { allocated, requested, diff });
+    }
+    return this.translate.instant('EVENTS.DETAIL.PARTICIPANTS.ALLOCATION_HINT_FULL', { allocated, requested });
   }
 
   /** Returns the seat status text in format: "reserved/total (percentage%)" */
@@ -148,12 +154,14 @@ export class EventDetailComponent implements OnInit {
     const totalTickets = this.getTotalTickets();
     const totalSeats = event?.venueNumberOfSeats ?? venue?.numberOfSeats ?? 0;
     
-    if (totalSeats === 0) return `Total tickets: ${totalTickets} (venue capacity unknown)`;
+    if (totalSeats === 0) return this.translate.instant('EVENTS.DETAIL.ALLOCATION.TOTAL_UNKNOWN', { totalTickets });
+    
     const pct = Math.round((totalTickets / totalSeats) * 100);
     if (totalTickets > totalSeats) {
-      return `Total tickets ${totalTickets}/${totalSeats} (${pct}%) — over by ${totalTickets - totalSeats} ticket(s)`;
+      const diff = totalTickets - totalSeats;
+      return this.translate.instant('EVENTS.DETAIL.ALLOCATION.TOTAL_OVER', { totalTickets, totalSeats, pct, diff });
     }
-    return `Total tickets ${totalTickets}/${totalSeats} (${pct}%)`;
+    return this.translate.instant('EVENTS.DETAIL.ALLOCATION.TOTAL_OK', { totalTickets, totalSeats, pct });
   }
 
   ngOnInit() {
@@ -479,7 +487,8 @@ export class EventDetailComponent implements OnInit {
   formatDateTime(dateTime: string | undefined): string {
     if (!dateTime) return 'TBD';
     const date = new Date(dateTime);
-    return date.toLocaleDateString('en-US', {
+    const locale = this.translate?.currentLang || 'en';
+    return date.toLocaleDateString(locale, {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -492,7 +501,8 @@ export class EventDetailComponent implements OnInit {
   formatDate(dateTime: string | undefined): string {
     if (!dateTime) return 'TBD';
     const date = new Date(dateTime);
-    return date.toLocaleDateString('en-US', {
+    const locale = this.translate?.currentLang || 'en';
+    return date.toLocaleDateString(locale, {
       weekday: 'long',
       month: 'long',
       day: 'numeric',
@@ -503,7 +513,8 @@ export class EventDetailComponent implements OnInit {
   formatTime(dateTime: string | undefined): string {
     if (!dateTime) return 'TBD';
     const date = new Date(dateTime);
-    return date.toLocaleTimeString('en-US', {
+    const locale = this.translate?.currentLang || 'en';
+    return date.toLocaleTimeString(locale, {
       hour: '2-digit',
       minute: '2-digit'
     });

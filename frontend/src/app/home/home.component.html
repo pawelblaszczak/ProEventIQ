@@ -3,26 +3,26 @@
       <div class="hero-features-list">
       <div class="feature-item">
         <mat-icon>check_circle</mat-icon>
-        <span>Venue &amp; event management</span>
+        <span>{{ 'HOME.HERO.FEATURE1' | translate }}</span>
       </div>
       <div class="feature-item">
         <mat-icon>check_circle</mat-icon>
-        <span>Occupancy &amp; sales analytics</span>
+        <span>{{ 'HOME.HERO.FEATURE2' | translate }}</span>
       </div>
       <div class="feature-item">
         <mat-icon>check_circle</mat-icon>
-        <span>Reservations &amp; seating</span>
+        <span>{{ 'HOME.HERO.FEATURE3' | translate }}</span>
       </div>
     </div>
     <div class="hero-content">
       <h1 class="hero-title">
         <span class="title-primary">Pro</span><span class="title-accent">Event</span><span class="title-secondary">IQ</span>
       </h1>
-  <p class="hero-subtitle">End-to-end venue, event and reservation management</p>
+  <p class="hero-subtitle">{{ 'HOME.HERO.SUBTITLE' | translate }}</p>
       <div class="action-buttons">
         <button mat-raised-button color="primary" class="primary-cta" (click)="navigateToVenues()">
           <mat-icon>explore</mat-icon>
-          Explore Venues
+          {{ 'HOME.HERO.CTA' | translate }}
         </button>
       </div>
     </div>
@@ -36,8 +36,8 @@
   <!-- Features Section -->
   <div class="features-section">
     <div class="section-header">
-      <h2>Why Choose ProEventIQ?</h2>
-      <p class="section-subtitle">Discover the power of intelligent event management</p>
+      <h2>{{ 'HOME.FEATURES.TITLE' | translate }}</h2>
+      <p class="section-subtitle">{{ 'HOME.FEATURES.SUBTITLE' | translate }}</p>
     </div>
     
     <div class="feature-cards">
@@ -46,12 +46,12 @@
           <mat-icon>{{feature.icon}}</mat-icon>
         </div>
         <mat-card-content>
-          <h3 class="card-title">{{feature.title}}</h3>
-          <p class="card-description">{{feature.description}}</p>
+          <h3 class="card-title">{{feature.title | translate}}</h3>
+          <p class="card-description">{{feature.description | translate}}</p>
           <div class="card-benefits">
             <div class="benefit-item" *ngFor="let benefit of feature.benefits">
               <mat-icon class="benefit-icon">check_circle</mat-icon>
-              <span>{{benefit}}</span>
+              <span>{{benefit | translate}}</span>
             </div>
           </div>
         </mat-card-content>
@@ -67,8 +67,8 @@
           <mat-icon>trending_up</mat-icon>
         </div>
         <div class="stat-content">
-          <span class="stat-number">High</span>
-          <span class="stat-label">Customer Satisfaction</span>
+          <span class="stat-number">{{ 'HOME.STATS.HIGH' | translate }}</span>
+          <span class="stat-label">{{ 'HOME.STATS.SATISFACTION' | translate }}</span>
         </div>
       </div>
       <div class="stat-card">
@@ -76,8 +76,8 @@
           <mat-icon>speed</mat-icon>
         </div>
         <div class="stat-content">
-          <span class="stat-number">Improved</span>
-          <span class="stat-label">Operational Efficiency</span>
+          <span class="stat-number">{{ 'HOME.STATS.IMPROVED' | translate }}</span>
+          <span class="stat-label">{{ 'HOME.STATS.EFFICIENCY' | translate }}</span>
         </div>
       </div>
       <div class="stat-card">
@@ -85,8 +85,8 @@
           <mat-icon>savings</mat-icon>
         </div>
         <div class="stat-content">
-          <span class="stat-number">Reduced</span>
-          <span class="stat-label">Costs</span>
+          <span class="stat-number">{{ 'HOME.STATS.REDUCED' | translate }}</span>
+          <span class="stat-label">{{ 'HOME.STATS.COSTS' | translate }}</span>
         </div>
       </div>
       <div class="stat-card">
@@ -94,8 +94,8 @@
           <mat-icon>security</mat-icon>
         </div>
         <div class="stat-content">
-          <span class="stat-number">Active</span>
-          <span class="stat-label">Security Monitoring</span>
+          <span class="stat-number">{{ 'HOME.STATS.ACTIVE' | translate }}</span>
+          <span class="stat-label">{{ 'HOME.STATS.SECURITY' | translate }}</span>
         </div>
       </div>
     </div>
@@ -106,12 +106,12 @@
     <div class="cta-background"></div>
     <div class="cta-content">
       <mat-icon class="cta-icon">rocket_launch</mat-icon>
-      <h2>Ready to Elevate Your Event Management?</h2>
-  <p>Used by event teams to manage venues, shows, reservations and seat assignments</p>
+      <h2>{{ 'HOME.CTA_SECTION.TITLE' | translate }}</h2>
+      <p>{{ 'HOME.CTA_SECTION.SUBTITLE' | translate }}</p>
       <div class="cta-buttons">
         <button mat-raised-button color="accent" class="cta-primary" (click)="navigateToVenues()">
           <mat-icon>arrow_forward</mat-icon>
-          Get Started Now
+          {{ 'HOME.CTA_SECTION.BUTTON' | translate }}
         </button>
       </div>
     </div>

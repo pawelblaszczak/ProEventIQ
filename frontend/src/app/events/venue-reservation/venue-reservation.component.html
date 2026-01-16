@@ -1,7 +1,7 @@
 <div class="reservation-wrapper">
 	<div *ngIf="loading()" class="loading-container">
 		<mat-progress-spinner diameter="50" mode="indeterminate" color="primary"></mat-progress-spinner>
-		<p>Loading venue...</p>
+		<p>{{ 'EVENTS.RESERVATION.LOADING' | translate }}</p>
 	</div>
 
 	<div *ngIf="!loading() && error()" class="error-container">
@@ -9,7 +9,7 @@
 		<p>{{ error() }}</p>
 		<button mat-stroked-button (click)="goBack()">
 			<mat-icon>arrow_back</mat-icon>
-			Back
+			{{ 'BUTTON.BACK' | translate }}
 		</button>
 	</div>
 

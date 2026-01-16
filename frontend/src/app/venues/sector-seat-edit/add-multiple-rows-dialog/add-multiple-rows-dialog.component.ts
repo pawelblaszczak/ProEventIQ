@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { TranslateModule } from '@ngx-translate/core';
 
 export interface AddMultipleRowsDialogResult {
   rowCount: number;
@@ -28,7 +29,8 @@ export interface AddMultipleRowsDialogResult {
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
-    MatSelectModule
+    MatSelectModule,
+    TranslateModule
   ],
   templateUrl: './add-multiple-rows-dialog.component.html',
   styleUrls: ['./add-multiple-rows-dialog.component.scss']

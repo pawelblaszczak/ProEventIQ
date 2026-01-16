@@ -3,16 +3,16 @@
     <div class="dialog-icon">
       <mat-icon color="primary">edit</mat-icon>
     </div>
-    <h2 mat-dialog-title class="dialog-title">Edit Row Name</h2>
+    <h2 mat-dialog-title class="dialog-title">{{ 'VENUES.SECTOR_EDIT.DIALOG.EDIT_ROW.TITLE' | translate }}</h2>
   </div>
   
   <mat-dialog-content class="dialog-content">
     <form [formGroup]="editRowForm" class="edit-row-form">
       <mat-form-field appearance="outline" class="form-field">
-        <mat-label>Row Name</mat-label>
+        <mat-label>{{ 'VENUES.SECTOR_EDIT.DIALOG.EDIT_ROW.NAME_LABEL' | translate }}</mat-label>
         <input matInput formControlName="rowName" maxlength="32" required autocomplete="off">
         @if (editRowForm.get('rowName')?.hasError('required')) {
-          <mat-error>Row name is required</mat-error>
+          <mat-error>{{ 'VENUES.SECTOR_EDIT.DIALOG.EDIT_ROW.REQUIRED_ERROR' | translate }}</mat-error>
         }
         <mat-hint align="end">{{ editRowForm.get('rowName')?.value?.length || 0 }}/32</mat-hint>
       </mat-form-field>
@@ -20,7 +20,7 @@
       @if (data.orderNumber) {
         <div class="row-info">
           <mat-icon>info</mat-icon>
-          <span>Row Order: {{ data.orderNumber }}</span>
+          <span>{{ 'VENUES.SECTOR_EDIT.DIALOG.EDIT_ROW.ORDER' | translate: {orderNumber: data.orderNumber} }}</span>
         </div>
       }
     </form>
@@ -32,7 +32,7 @@
             (click)="onCancel()" 
             class="cancel-button">
       <mat-icon>close</mat-icon>
-      Cancel
+      {{ 'BUTTON.CANCEL' | translate }}
     </button>
     
     <button mat-raised-button 
@@ -42,7 +42,7 @@
             [disabled]="editRowForm.invalid"
             class="confirm-button">
       <mat-icon>check</mat-icon>
-      Update Row
+      {{ 'VENUES.SECTOR_EDIT.DIALOG.EDIT_ROW.SUBMIT' | translate }}
     </button>
   </mat-dialog-actions>
 </div>

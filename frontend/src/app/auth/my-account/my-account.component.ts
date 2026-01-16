@@ -9,6 +9,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { TranslateModule } from '@ngx-translate/core';
 import { KeycloakAuthService } from '../keycloak/keycloak.service';
 import { UserService } from '../../shared/services/user.service';
 
@@ -25,7 +26,8 @@ import { UserService } from '../../shared/services/user.service';
     MatListModule,
     MatChipsModule,
     MatTooltipModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    TranslateModule
   ],
   templateUrl: './my-account.component.html',
   styleUrls: ['./my-account.component.scss'],

@@ -10,6 +10,11 @@ export const authErrorInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
+      // Skip error handling for translation file requests
+      if (req.url.includes('/assets/i18n/')) {
+        return throwError(() => error);
+      }
+      
       if (error.status === 401) {
         if (router.url !== '/unauthorized') {
           router.navigate(['/unauthorized'], { queryParams: { from: router.url } });

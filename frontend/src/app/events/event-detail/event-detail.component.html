@@ -3,7 +3,7 @@
   <div class="loading-icon-wrapper">
     <mat-progress-spinner color="primary" mode="indeterminate" diameter="50"></mat-progress-spinner>
   </div>
-  <p class="loading-text">Loading event details...</p>
+  <p class="loading-text">{{ 'EVENTS.DETAIL.LOADING' | translate }}</p>
   <div class="loading-progress-dots">
     <span class="dot"></span>
     <span class="dot"></span>
@@ -19,7 +19,7 @@
         <mat-icon color="warn">error_outline</mat-icon>
       </div>
       <div class="error-message">
-        <h3>Error Loading Event</h3>
+        <h3>{{ 'EVENTS.DETAIL.ERROR_TITLE' | translate }}</h3>
         <p>{{ error() }}</p>
       </div>
     </mat-card-content>
@@ -59,11 +59,12 @@
       </div>
       
       <div *ngIf="showThumbnail()" class="event-image-container">
-        <img class="event-hero-image" [src]="showThumbnail()" [alt]="event()?.showName + ' thumbnail'">
+        <!-- Assuming alt text translation handled or just generic -->
+        <img class="event-hero-image" [src]="showThumbnail()" [alt]="(event()?.showName || '') + ' ' + ('SHOWS.DETAIL.THUMBNAIL' | translate)">
       </div>
       <div *ngIf="!showThumbnail()" class="event-image-placeholder">
         <mat-icon class="placeholder-icon" style="font-size: 72px; color: #bdbdbd;">image_not_supported</mat-icon>
-        <p>No image available</p>
+        <p>{{ 'EVENTS.DETAIL.NO_IMAGE' | translate }}</p>
       </div>
     </div>
     
@@ -73,33 +74,35 @@
       <div class="event-details-header-row">
         <h3 class="section-title">
           <mat-icon>info</mat-icon>
-          Event Details
+          {{ 'EVENTS.DETAIL.TITLE' | translate }}
         </h3>
-        <button mat-icon-button color="warn" (click)="onDelete()" class="delete-icon-btn" [disabled]="loading()" aria-label="Delete event">
+        <button mat-icon-button color="warn" (click)="onDelete()" class="delete-icon-btn" [disabled]="loading()" [attr.aria-label]="'EVENTS.DETAIL.DELETE_LABEL' | translate">
           <mat-icon>delete</mat-icon>
         </button>
       </div>
       
       <div class="event-info-grid">
         <div class="info-item full-width">
-          <div class="info-label">Full Date & Time</div>
+          <div class="info-label">{{ 'EVENTS.DETAIL.FULL_DATE_TIME' | translate }}</div>
           <div class="info-value">{{ formatDateTime(event()?.dateTime) }}</div>
         </div>
         <div class="info-item full-width">
-          <div class="info-label">Show</div>
+          <div class="info-label">{{ 'EVENTS.DETAIL.SHOW' | translate }}</div>
           <div class="info-value">{{ event()?.showName }}</div>
         </div>
         <div class="info-item full-width">
-          <div class="info-label">Venue</div>
+          <div class="info-label">{{ 'EVENTS.DETAIL.VENUE' | translate }}</div>
           <div class="info-value">
             {{ event()?.venueName }}<ng-container *ngIf="event()?.address">, {{ event()?.address }}</ng-container><ng-container *ngIf="event()?.city">, {{ event()?.city }}</ng-container><ng-container *ngIf="event()?.country">, {{ event()?.country }}</ng-container>
           </div>
         </div>
         <div class="info-item full-width" *ngIf="event()?.ticketDescription">
           <div class="info-label" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; user-select: none;" (click)="showTicketDescription.set(!showTicketDescription())">
-            Ticket Description
+            {{ 'EVENTS.DETAIL.TICKET_DESCRIPTION' | translate }}
             <mat-icon [style.transform]="showTicketDescription() ? 'rotate(180deg)' : 'rotate(0deg)'" style="transition: transform 0.2s;">expand_more</mat-icon>
-            <span style="font-size: 0.8em; font-weight: normal; color: #666; text-transform: none;">(Click to {{ showTicketDescription() ? 'hide' : 'show' }})</span>
+            <span style="font-size: 0.8em; font-weight: normal; color: #666; text-transform: none;">
+              {{ showTicketDescription() ? ('EVENTS.DETAIL.CLICK_TO_HIDE' | translate) : ('EVENTS.DETAIL.CLICK_TO_SHOW' | translate) }}
+            </span>
           </div>
           <div class="info-value animate-fade-in" *ngIf="showTicketDescription()" style="white-space: pre-wrap; margin-top: 0.5rem;">{{ event()?.ticketDescription }}</div>
         </div>
@@ -109,11 +112,11 @@
     <mat-card-actions class="event-actions" align="end">
       <button mat-stroked-button routerLink="/events" class="back-button">
         <mat-icon>arrow_back</mat-icon>
-        BACK TO LIST
+        {{ 'EVENTS.DETAIL.BACK_TO_LIST' | translate }}
       </button>
-      <button mat-raised-button color="primary" [routerLink]="['/events', event()?.eventId, 'edit']" aria-label="Edit event" class="edit-button">
+      <button mat-raised-button color="primary" [routerLink]="['/events', event()?.eventId, 'edit']" [attr.aria-label]="'EVENTS.DETAIL.EDIT_EVENT' | translate" class="edit-button">
         <mat-icon>edit</mat-icon>
-        EDIT EVENT
+        {{ 'EVENTS.DETAIL.EDIT_EVENT' | translate }}
       </button>
     </mat-card-actions>
   </mat-card>
@@ -126,16 +129,16 @@
       <div class="participants-header-row">
         <h3 class="section-title">
           <mat-icon>group</mat-icon>
-          Participants
+          {{ 'EVENTS.DETAIL.PARTICIPANTS.TITLE' | translate }}
         </h3>
         <div class="participants-actions">
-          <button mat-raised-button color="primary" (click)="onAddParticipant()" aria-label="Add participant" class="add-participant-btn">
+          <button mat-raised-button color="primary" (click)="onAddParticipant()" [attr.aria-label]="'EVENTS.DETAIL.PARTICIPANTS.ADD_BUTTON' | translate" class="add-participant-btn">
             <mat-icon>person_add</mat-icon>
-            ADD PARTICIPANT
+            {{ 'EVENTS.DETAIL.PARTICIPANTS.ADD_BUTTON' | translate }}
           </button>
-          <button mat-stroked-button (click)="onGenerateAllReports()" aria-label="Generate all tickets" class="reports-btn back-button" [disabled]="!participants().length">
+          <button mat-stroked-button (click)="onGenerateAllReports()" [attr.aria-label]="'EVENTS.DETAIL.PARTICIPANTS.TICKETS_BUTTON' | translate" class="reports-btn back-button" [disabled]="!participants().length">
             <mat-icon>article</mat-icon>
-            TICKETS
+            {{ 'EVENTS.DETAIL.PARTICIPANTS.TICKETS_BUTTON' | translate }}
           </button>
         </div>
       </div>
@@ -145,7 +148,7 @@
           <table mat-table [dataSource]="participants()" class="mat-elevation-z1 participants-table" style="table-layout: fixed; width: 100%;">
           <!-- Name/Address Column -->
           <ng-container matColumnDef="name">
-            <th mat-header-cell *matHeaderCellDef style="width: 40%; min-width: 200px;">Name/Address</th>
+            <th mat-header-cell *matHeaderCellDef style="width: 40%; min-width: 200px;">{{ 'EVENTS.DETAIL.PARTICIPANTS.NAME_ADDRESS_COL' | translate }}</th>
             <td mat-cell *matCellDef="let p" style="width: 40%; min-width: 200px;">
               <div *ngIf="p.participantId !== -1 && editingParticipant() !== p.participantId; else editNameAddressTemplate">
                 <div class="participant-name">{{ p.name }}</div>
@@ -153,20 +156,20 @@
               </div>
               <ng-template #editNameAddressTemplate>
                 <mat-form-field appearance="outline" class="inline-edit-field">
-                  <input matInput [(ngModel)]="p.name" placeholder="Enter name">
+                  <input matInput [(ngModel)]="p.name" [placeholder]="'EVENTS.DETAIL.PARTICIPANTS.ENTER_NAME' | translate">
                 </mat-form-field>
                 <mat-form-field appearance="outline" class="inline-edit-field">
-                  <input matInput [(ngModel)]="p.address" placeholder="Enter address">
+                  <input matInput [(ngModel)]="p.address" [placeholder]="'EVENTS.DETAIL.PARTICIPANTS.ENTER_ADDRESS' | translate">
                 </mat-form-field>
               </ng-template>
             </td>
             <td mat-footer-cell *matFooterCellDef style="width: 26%; min-width: 160px; text-align: right; font-weight: bold; background: #f5f5f5; border-top: 2px solid #ddd; padding: 12px;">
-              Total Tickets:
+              {{ 'EVENTS.DETAIL.PARTICIPANTS.TOTAL_TICKETS' | translate }}
             </td>
           </ng-container>
           <!-- Seat Color Column -->
           <ng-container matColumnDef="seatColor">
-            <th mat-header-cell *matHeaderCellDef style="width: 10%; min-width: 70px;">Seat Color</th>
+            <th mat-header-cell *matHeaderCellDef style="width: 10%; min-width: 70px;">{{ 'EVENTS.DETAIL.PARTICIPANTS.SEAT_COLOR_COL' | translate }}</th>
             <td mat-cell *matCellDef="let p" style="width: 10%; min-width: 70px;">
               <div *ngIf="p.participantId !== -1 && editingParticipant() !== p.participantId; else editSeatColorTemplate">
                 <ng-container *ngIf="p.seatColor; else noColorLabel">
@@ -176,7 +179,7 @@
                   </div>
                 </ng-container>
                 <ng-template #noColorLabel>
-                  <span style="color: #888; font-size: 0.95em;">None</span>
+                  <span style="color: #888; font-size: 0.95em;">{{ 'EVENTS.DETAIL.PARTICIPANTS.NONE' | translate }}</span>
                 </ng-template>
               </div>
               <ng-template #editSeatColorTemplate>
@@ -184,8 +187,8 @@
       <button class="seat-color-swatch seat-color-button" 
         [style.background-color]="p.seatColor || '#e0e0e0'"
         (click)="openColorPicker(p)"
-        [title]="'Click to change color: ' + (p.seatColor || 'None')"
-        [attr.aria-label]="'Change seat color for ' + p.name">
+        [title]="('EVENTS.DETAIL.PARTICIPANTS.CHANGE_COLOR_HINT' | translate) + (p.seatColor || ('EVENTS.DETAIL.PARTICIPANTS.NONE' | translate))"
+        [attr.aria-label]="('EVENTS.DETAIL.PARTICIPANTS.CHANGE_COLOR_LABEL' | translate) + p.name">
       </button>
                 </div>
               </ng-template>
@@ -195,7 +198,7 @@
           </ng-container>
           <!-- Tickets Column -->
           <ng-container matColumnDef="numberOfTickets">
-            <th mat-header-cell *matHeaderCellDef style="width: 22%; min-width: 140px;">Tickets</th>
+            <th mat-header-cell *matHeaderCellDef style="width: 22%; min-width: 140px;">{{ 'EVENTS.DETAIL.PARTICIPANTS.TICKETS_COL' | translate }}</th>
             <td mat-cell *matCellDef="let p" style="width: 22%; min-width: 140px;">
               <div *ngIf="p.participantId !== -1 && editingParticipant() !== p.participantId; else editTicketsTemplate">
                 <ng-container *ngIf="!isFullyAllocated(p)">
@@ -207,11 +210,11 @@
               <ng-template #editTicketsTemplate>
                 <div style="display: flex; gap: 12px; align-items: center;">
                   <mat-form-field appearance="outline" class="inline-edit-field" style="width: 120px;">
-                    <mat-label>Children</mat-label>
+                    <mat-label>{{ 'EVENTS.DETAIL.CHILDREN' | translate }}</mat-label>
                     <input matInput type="number" class="tickets-input" [(ngModel)]="p.childrenTicketCount" min="0">
                   </mat-form-field>
                   <mat-form-field appearance="outline" class="inline-edit-field" style="width: 120px;">
-                    <mat-label>Guardians</mat-label>
+                    <mat-label>{{ 'EVENTS.DETAIL.GUARDIANS' | translate }}</mat-label>
                     <input matInput type="number" class="tickets-input" [(ngModel)]="p.guardianTicketCount" min="0">
                   </mat-form-field>
                 </div>
@@ -223,7 +226,7 @@
                 <div style="display: flex; flex-direction: column; justify-content: center; align-items: center;">
                   <span [style.color]="getSeatStatusColor()" style="line-height: 1.2;">{{ getSeatStatusText() }}</span>
                   @if ((event()?.blockedSeats || 0) > 0) {
-                    <span [style.color]="getSeatStatusColor()" style="font-size: 0.75rem; line-height: 1.1;">{{ event()?.blockedSeats }} blocked</span>
+                    <span [style.color]="getSeatStatusColor()" style="font-size: 0.75rem; line-height: 1.1;">{{ event()?.blockedSeats }} {{ 'EVENTS.LIST.BLOCKED' | translate }}</span>
                   }
                 </div>
               </div>
@@ -231,7 +234,7 @@
           </ng-container>
           <!-- Actions Column -->
           <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef style="width: 15%; min-width: 120px; text-align: center;">Actions</th>
+            <th mat-header-cell *matHeaderCellDef style="width: 15%; min-width: 120px; text-align: center;">{{ 'EVENTS.DETAIL.PARTICIPANTS.ACTIONS_COL' | translate }}</th>
             <td mat-cell *matCellDef="let p" style="width: 15%; min-width: 120px; text-align: center;">
               <div *ngIf="p.participantId !== -1 && editingParticipant() !== p.participantId; else editActionsTemplate">
                 <button mat-icon-button color="accent" (click)="onGenerateReport(p.participantId)" aria-label="Generate ticket" title="Generate PDF Ticket">
@@ -269,7 +272,10 @@
       <ng-template #noParticipants>
         <div class="no-participants-message">
           <mat-icon>info</mat-icon>
-          No participants registered for this event.
+          {{ 'EVENTS.DETAIL.NO_PARTICIPANTS.TITLE' | translate }}
+          <span style="display:block; font-size:0.9em; margin-top:4px; color:#666;">
+            {{ 'EVENTS.DETAIL.NO_PARTICIPANTS.SUBTITLE' | translate }}
+          </span>
         </div>
       </ng-template>
     </mat-card-content>
@@ -283,13 +289,13 @@
       <h3 class="section-title" style="display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
         <span style="display: flex; align-items: center; gap: 0.5rem;">
           <mat-icon class="title-icon">event_seat</mat-icon>
-          Seat Reservation
+          {{ 'EVENTS.DETAIL.VENUE_MAP.TITLE' | translate }}
         </span>
-        <span class="banner-subtitle">Interactive venue layout for seat selection</span>
+        <span class="banner-subtitle">{{ 'EVENTS.DETAIL.VENUE_MAP.SUBTITLE' | translate }}</span>
       </h3>
-  <button mat-raised-button color="primary" class="edit-map-btn" [routerLink]="['/events', event()?.eventId, 'reservations']" aria-label="Manage seat reservations">
+  <button mat-raised-button color="primary" class="edit-map-btn" [routerLink]="['/events', event()?.eventId, 'reservations']" [attr.aria-label]="'EVENTS.DETAIL.VENUE_MAP.MANAGE_BUTTON' | translate">
         <mat-icon>settings</mat-icon>
-        Manage Reservations
+        {{ 'EVENTS.DETAIL.VENUE_MAP.MANAGE_BUTTON' | translate }}
       </button>
     </div>
     <mat-card-content class="map-preview-content">

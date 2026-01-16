@@ -5,8 +5,8 @@
         <mat-icon color="warn">warning</mat-icon>
       </div>
       <div class="error-message">
-        <h3>Not Authenticated</h3>
-        <p>Please log in to view your account information.</p>
+        <h3>{{ 'AUTH.NOT_AUTHENTICATED.TITLE' | translate }}</h3>
+        <p>{{ 'AUTH.NOT_AUTHENTICATED.DESCRIPTION' | translate }}</p>
       </div>
     </mat-card-content>
   </mat-card>
@@ -18,8 +18,8 @@
     <mat-card-content>
       <div class="loading-content">
         <mat-spinner diameter="50"></mat-spinner>
-        <h3>Loading Account Details</h3>
-        <p>Please wait while we fetch your account information...</p>
+        <h3>{{ 'AUTH.LOADING.TITLE' | translate }}</h3>
+        <p>{{ 'AUTH.LOADING.DESCRIPTION' | translate }}</p>
       </div>
     </mat-card-content>
   </mat-card>
@@ -33,11 +33,11 @@
         <mat-icon color="warn">error</mat-icon>
       </div>
       <div class="error-message">
-        <h3>Failed to Load Account Details</h3>
+        <h3>{{ 'AUTH.ERROR.TITLE' | translate }}</h3>
         <p>{{ userDetailsError() }}</p>
         <button mat-raised-button color="primary" (click)="loadUserDetails()">
           <mat-icon>refresh</mat-icon>
-          Retry
+          {{ 'BUTTON.RETRY' | translate }}
         </button>
       </div>
     </mat-card-content>
@@ -57,7 +57,7 @@
           <div class="stat-item">
             <mat-icon>calendar_today</mat-icon>
             <div class="stat-content">
-              <span class="stat-inline">Member since {{ accountCreated() }}</span>
+              <span class="stat-inline">{{ 'AUTH.ACCOUNT.MEMBER_SINCE' | translate }} {{ accountCreated() }}</span>
             </div>
           </div>
         </div>
@@ -70,7 +70,7 @@
       </div>
       <div *ngIf="!userDetails()?.thumbnail" class="user-image-placeholder">
         <mat-icon class="placeholder-icon" style="font-size: 72px; color: #bdbdbd;">account_circle</mat-icon>
-        <p>No logo available</p>
+        <p>{{ 'AUTH.ACCOUNT.NO_LOGO' | translate }}</p>
       </div>
     </div>
     
@@ -81,22 +81,22 @@
       <div class="account-details-header-row">
         <h3 class="section-title">
           <mat-icon>account_circle</mat-icon>
-          Account Information
+          {{ 'AUTH.ACCOUNT.INFO_TITLE' | translate }}
         </h3>
       </div>
       <div class="account-info-grid">
         <div class="info-item">
-          <div class="info-label">Full Name</div>
+          <div class="info-label">{{ 'AUTH.ACCOUNT.FULL_NAME' | translate }}</div>
           <div class="info-value">{{ userName() }}</div>
         </div>
         
         <div class="info-item">
-          <div class="info-label">Email Address</div>
+          <div class="info-label">{{ 'AUTH.ACCOUNT.EMAIL' | translate }}</div>
           <div class="info-value">{{ userEmail() }}</div>
         </div>
         
         <div class="info-item">
-          <div class="info-label">Address</div>
+          <div class="info-label">{{ 'AUTH.ACCOUNT.ADDRESS' | translate }}</div>
           <div class="info-value">{{ userAddress() }}</div>
         </div>
         

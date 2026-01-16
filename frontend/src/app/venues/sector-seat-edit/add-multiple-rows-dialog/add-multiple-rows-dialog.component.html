@@ -3,54 +3,54 @@
     <div class="dialog-icon">
       <mat-icon color="primary">view_headline</mat-icon>
     </div>
-    <h2 mat-dialog-title class="dialog-title">Add Multiple Rows</h2>
+    <h2 mat-dialog-title class="dialog-title">{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.TITLE' | translate }}</h2>
   </div>
   
   <mat-dialog-content class="dialog-content">
     <form [formGroup]="addRowsForm" class="add-rows-form add-row-form">
       <mat-form-field appearance="outline" class="form-field">
-        <mat-label>Number of Rows</mat-label>
+        <mat-label>{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.ROW_COUNT_LABEL' | translate }}</mat-label>
         <input matInput type="number" formControlName="rowCount" min="1" max="50" required>
-        <mat-error *ngIf="addRowsForm.get('rowCount')?.hasError('required')">Number of rows is required</mat-error>
-        <mat-error *ngIf="addRowsForm.get('rowCount')?.hasError('min')">Minimum 1 row</mat-error>
-        <mat-error *ngIf="addRowsForm.get('rowCount')?.hasError('max')">Maximum 50 rows</mat-error>
+        <mat-error *ngIf="addRowsForm.get('rowCount')?.hasError('required')">{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.ROW_COUNT_REQUIRED' | translate }}</mat-error>
+        <mat-error *ngIf="addRowsForm.get('rowCount')?.hasError('min')">{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.MIN_ROWS' | translate }}</mat-error>
+        <mat-error *ngIf="addRowsForm.get('rowCount')?.hasError('max')">{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.MAX_ROWS' | translate }}</mat-error>
       </mat-form-field>
       <mat-form-field appearance="outline" class="form-field">
-        <mat-label>Number of Seats in a Row</mat-label>
+        <mat-label>{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.SEAT_COUNT_LABEL' | translate }}</mat-label>
         <input matInput type="number" formControlName="seatCount" min="1" max="50" required>
-        <mat-error *ngIf="addRowsForm.get('seatCount')?.hasError('required')">Seat count is required</mat-error>
-        <mat-error *ngIf="addRowsForm.get('seatCount')?.hasError('min')">Minimum 1 seat</mat-error>
-        <mat-error *ngIf="addRowsForm.get('seatCount')?.hasError('max')">Maximum 50 seats</mat-error>
+        <mat-error *ngIf="addRowsForm.get('seatCount')?.hasError('required')">{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.SEAT_COUNT_REQUIRED' | translate }}</mat-error>
+        <mat-error *ngIf="addRowsForm.get('seatCount')?.hasError('min')">{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.MIN_SEATS' | translate }}</mat-error>
+        <mat-error *ngIf="addRowsForm.get('seatCount')?.hasError('max')">{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.MAX_SEATS' | translate }}</mat-error>
       </mat-form-field>
       <mat-form-field appearance="outline" class="form-field">
-        <mat-label>Seat Direction</mat-label>
+        <mat-label>{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.DIRECTION_LABEL' | translate }}</mat-label>
         <mat-select formControlName="seatDirection" required>
-          <mat-option value="LTR">Left to Right</mat-option>
-          <mat-option value="RTL">Right to Left</mat-option>
+          <mat-option value="LTR">{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.LTR' | translate }}</mat-option>
+          <mat-option value="RTL">{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.RTL' | translate }}</mat-option>
         </mat-select>
-        <mat-error *ngIf="addRowsForm.get('seatDirection')?.hasError('required')">Seat direction is required</mat-error>
+        <mat-error *ngIf="addRowsForm.get('seatDirection')?.hasError('required')">{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.DIRECTION_REQUIRED' | translate }}</mat-error>
       </mat-form-field>
       <mat-form-field appearance="outline" class="form-field">
-        <mat-label>Row Direction</mat-label>
+        <mat-label>{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.ROW_DIRECTION_LABEL' | translate }}</mat-label>
         <mat-select formControlName="rowDirection" required>
-          <mat-option value="TTB">Top to Bottom</mat-option>
-          <mat-option value="BTT">Bottom to Top</mat-option>
+          <mat-option value="TTB">{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.TTB' | translate }}</mat-option>
+          <mat-option value="BTT">{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.BTT' | translate }}</mat-option>
         </mat-select>
-        <mat-error *ngIf="addRowsForm.get('rowDirection')?.hasError('required')">Row direction is required</mat-error>
+        <mat-error *ngIf="addRowsForm.get('rowDirection')?.hasError('required')">{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.ROW_DIRECTION_REQUIRED' | translate }}</mat-error>
       </mat-form-field>
       <mat-form-field appearance="outline" class="form-field">
-        <mat-label>Row Naming</mat-label>
+        <mat-label>{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.ROW_NAMING_LABEL' | translate }}</mat-label>
         <mat-select formControlName="rowNaming" required>
-          <mat-option value="Roman">Roman Numerals (I, II, III...)</mat-option>
-          <mat-option value="Arabic">Arabic Numerals (1, 2, 3...)</mat-option>
+          <mat-option value="Roman">{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.ROMAN' | translate }}</mat-option>
+          <mat-option value="Arabic">{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.ARABIC' | translate }}</mat-option>
         </mat-select>
-        <mat-error *ngIf="addRowsForm.get('rowNaming')?.hasError('required')">Row naming is required</mat-error>
+        <mat-error *ngIf="addRowsForm.get('rowNaming')?.hasError('required')">{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.ROW_NAMING_REQUIRED' | translate }}</mat-error>
       </mat-form-field>
       <mat-form-field appearance="outline" class="form-field">
-        <mat-label>Row Spacing</mat-label>
+        <mat-label>{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.ROW_SPACING_LABEL' | translate }}</mat-label>
         <input matInput type="number" formControlName="rowSpacing" min="0" step="20" required>
-        <mat-error *ngIf="addRowsForm.get('rowSpacing')?.hasError('required')">Row spacing is required</mat-error>
-        <mat-error *ngIf="addRowsForm.get('rowSpacing')?.hasError('min')">Minimum 0</mat-error>
+        <mat-error *ngIf="addRowsForm.get('rowSpacing')?.hasError('required')">{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.ROW_SPACING_REQUIRED' | translate }}</mat-error>
+        <mat-error *ngIf="addRowsForm.get('rowSpacing')?.hasError('min')">{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.MIN_SPACING' | translate }}</mat-error>
       </mat-form-field>
     </form>
   </mat-dialog-content>
@@ -61,7 +61,7 @@
             (click)="onCancel()" 
             class="cancel-button">
       <mat-icon>close</mat-icon>
-      Cancel
+      {{ 'BUTTON.CANCEL' | translate }}
     </button>
     
     <button mat-raised-button 
@@ -71,7 +71,7 @@
             [disabled]="addRowsForm.invalid"
             class="confirm-button">
       <mat-icon>check</mat-icon>
-      Add Rows
+      {{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.SUBMIT' | translate }}
     </button>
   </mat-dialog-actions>
 </div>

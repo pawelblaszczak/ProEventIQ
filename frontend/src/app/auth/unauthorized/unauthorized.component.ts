@@ -3,12 +3,13 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, Router } from '@angular/router';
+import { TranslateModule } from '@ngx-translate/core';
 import { KeycloakAuthService } from '../keycloak/keycloak.service';
 
 @Component({
   selector: 'app-unauthorized',
   standalone: true,
-  imports: [MatCardModule, MatButtonModule, MatIconModule],
+  imports: [MatCardModule, MatButtonModule, MatIconModule, TranslateModule],
   templateUrl: './unauthorized.component.html',
   styleUrls: ['./unauthorized.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush

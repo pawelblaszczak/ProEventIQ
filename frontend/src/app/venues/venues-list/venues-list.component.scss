@@ -103,11 +103,11 @@
   &:hover {
     transform: translateY(-8px);
     box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
-    
+
     img {
       transform: scale(1.05);
     }
-    
+
     mat-card-actions {
       opacity: 1;
       transform: translateY(0);
@@ -179,16 +179,19 @@
   mat-card-actions {
     padding: 8px 16px 16px;
     display: flex;
-    justify-content: flex-end;
+    justify-content: center;
     border-top: 1px solid rgba(0, 0, 0, 0.05);
     transition: all 0.2s ease;
     opacity: 0.7;
-    
+    transform: translateY(8px);
+
     button {
       border-radius: 20px;
-      
+      width: auto;
+      justify-content: center;
+
       mat-icon {
-        margin-right: 4px;
+        margin-right: 8px;
         font-size: 18px;
         height: 18px;
         width: 18px;

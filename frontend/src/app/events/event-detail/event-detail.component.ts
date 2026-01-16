@@ -520,28 +520,51 @@ export class EventDetailComponent implements OnInit {
     });
   }
 
+  /**
+   * Returns a stable status key for the event.
+   * Possible values: 'upcoming' | 'today' | 'past' | 'unknown'
+   */
   getEventStatus(): string {
     const event = this.event();
-    if (!event?.dateTime) return 'Unknown';
-    
+    if (!event?.dateTime) return 'unknown';
+
     const eventDate = new Date(event.dateTime);
     const now = new Date();
-    
-    if (eventDate > now) {
-      return 'Upcoming';
-    } else if (eventDate.toDateString() === now.toDateString()) {
-      return 'Today';
+
+    // Normalize dates to ignore time when comparing for 'today'
+    const eventDateOnly = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+    const nowDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    if (eventDateOnly > nowDateOnly) {
+      return 'upcoming';
+    } else if (eventDateOnly.getTime() === nowDateOnly.getTime()) {
+      return 'today';
     } else {
-      return 'Past';
+      return 'past';
+    }
+  }
+
+  /** Returns a translated, user-facing label for the event status */
+  getEventStatusLabel(status?: string): string {
+    const key = status || this.getEventStatus();
+    switch (key) {
+      case 'today':
+        return this.translate.instant('EVENTS.DETAIL.STATUS.TODAY') || 'Today';
+      case 'upcoming':
+        return this.translate.instant('EVENTS.DETAIL.STATUS.UPCOMING') || 'Upcoming';
+      case 'past':
+        return this.translate.instant('EVENTS.DETAIL.STATUS.PAST') || 'Past';
+      default:
+        return this.translate.instant('EVENTS.DETAIL.STATUS.UNKNOWN') || 'Unknown';
     }
   }
 
   getStatusColor(): string {
     const status = this.getEventStatus();
     switch (status) {
-      case 'Today': return 'accent';
-      case 'Upcoming': return 'primary';
-      case 'Past': return 'warn';
+      case 'today': return 'accent';
+      case 'upcoming': return 'primary';
+      case 'past': return 'warn';
       default: return '';
     }
   }

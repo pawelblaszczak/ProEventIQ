@@ -1,8 +1,9 @@
-import { Component, signal, ChangeDetectionStrategy, inject, OnInit } from '@angular/core';
+import { Component, signal, ChangeDetectionStrategy, inject, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MaterialModule } from './material.module';
+import { Subscription } from 'rxjs';
 import { MAT_TOOLTIP_DEFAULT_OPTIONS, MatTooltipDefaultOptions } from '@angular/material/tooltip';
 import { KeycloakAuthService } from './auth/keycloak/keycloak.service';
 import { UserService } from './shared/services/user.service';
@@ -27,15 +28,31 @@ export const myTooltipDefaults: MatTooltipDefaultOptions = {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class MainLayoutComponent implements OnInit {
+export class MainLayoutComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly auth = inject(KeycloakAuthService);
   private readonly userService = inject(UserService);
+  private readonly translate = inject(TranslateService);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private langChangeSubscription?: Subscription;
   
   isExpanded = signal<boolean>(true);
+  currentLanguage = signal<string>('en');
+
+  constructor() {
+    // Effect will automatically sync when translate service changes
+    // This handles initial setup and any programmatic language changes
+  }
   
   toggleSideNav(): void {
     this.isExpanded.update(value => !value);
+  }
+
+  changeLanguage(lang: string): void {
+    this.translate.use(lang);
+    this.currentLanguage.set(lang);
+    localStorage.setItem('app-language', lang);
+    this.cdr.markForCheck();
   }
 
   authenticated(): boolean {
@@ -45,7 +62,7 @@ export class MainLayoutComponent implements OnInit {
   displayName(): string {
     // Prefer application user details full name when available
     const ud = this.userService.userDetails();
-    if (ud && ud.name) {
+    if (ud?.name) {
       return ud.name;
     }
 
@@ -74,14 +91,31 @@ export class MainLayoutComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // Set initial language signal
+    const savedLang = localStorage.getItem('app-language');
+    const currentLang = savedLang || 'en';
+    this.currentLanguage.set(currentLang);
+    
+    // Subscribe to language changes to keep signal in sync and trigger change detection
+    this.langChangeSubscription = this.translate.onLangChange.subscribe((event) => {
+      this.currentLanguage.set(event.lang);
+      this.cdr.markForCheck();
+    });
+    
     // Ensure we have application user details loaded so toolbar can show full name
-    try {
-      if (this.auth.isAuthenticated() && !this.userService.hasUserDetails()) {
-        // Subscribe once to trigger loading; errors handled in service
-        this.userService.loadCurrentUserDetails().subscribe({ next: () => {}, error: () => {} });
-      }
-    } catch (e) {
-      // no-op: defensive in case services are not ready
+    if (this.auth.isAuthenticated() && !this.userService.hasUserDetails()) {
+      // Subscribe once to trigger loading; errors handled in service
+      this.userService.loadCurrentUserDetails().subscribe({ 
+        next: () => this.cdr.markForCheck(), 
+        error: () => {} 
+      });
     }
+    
+    // Initial change detection
+    this.cdr.markForCheck();
+  }
+
+  ngOnDestroy(): void {
+    this.langChangeSubscription?.unsubscribe();
   }
 }

@@ -92,7 +92,7 @@ describe('EventDetailComponent', () => {
       dateTime: new Date(Date.now() + 86400000).toISOString() // Tomorrow
     });
     
-    expect(component.getEventStatus()).toBe('Upcoming');
+    expect(component.getEventStatus()).toBe('upcoming');
   });
 
   it('should handle delete confirmation', () => {

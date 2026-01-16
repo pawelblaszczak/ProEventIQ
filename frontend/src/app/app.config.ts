@@ -1,9 +1,10 @@
 import { ApplicationConfig, APP_INITIALIZER, importProvidersFrom } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideAnimations } from '@angular/platform-browser/animations';
-import { provideHttpClient, withInterceptors, HttpClient } from '@angular/common/http';
-import { TranslateLoader, TranslateModule } from '@ngx-translate/core';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { TranslateLoader, TranslateModule, TranslateService } from '@ngx-translate/core';
 import { TranslateHttpLoader, TRANSLATE_HTTP_LOADER_CONFIG } from '@ngx-translate/http-loader';
+import { firstValueFrom } from 'rxjs';
 
 import { routes } from './app.routes';
 import { authErrorInterceptor } from './shared/services/auth-error.interceptor';
@@ -14,6 +15,26 @@ import { keycloakTokenInterceptor } from './auth/keycloak/keycloak-token.interce
 
 export function HttpLoaderFactory() {
   return new TranslateHttpLoader();
+}
+
+export function initializeLanguage(translate: TranslateService) {
+  return async () => {
+    translate.addLangs(['en', 'pl']);
+    translate.setDefaultLang('en');
+    
+    const savedLang = localStorage.getItem('app-language');
+    const browserLang = translate.getBrowserLang();
+    
+    let initialLang = 'en';
+    if (savedLang && (savedLang === 'en' || savedLang === 'pl')) {
+      initialLang = savedLang;
+    } else if (browserLang && /^(en|pl)$/.test(browserLang)) {
+      initialLang = browserLang;
+    }
+    
+    await firstValueFrom(translate.use(initialLang));
+    localStorage.setItem('app-language', initialLang);
+  };
 }
 
 export const appConfig: ApplicationConfig = {
@@ -36,8 +57,14 @@ export const appConfig: ApplicationConfig = {
     })),
     {
       provide: APP_INITIALIZER,
-  useFactory: (auth: KeycloakAuthService) => () => auth.init(),
-  deps: [KeycloakAuthService],
+      useFactory: initializeLanguage,
+      deps: [TranslateService],
+      multi: true
+    },
+    {
+      provide: APP_INITIALIZER,
+      useFactory: (auth: KeycloakAuthService) => () => auth.init(),
+      deps: [KeycloakAuthService],
       multi: true
     },
     {

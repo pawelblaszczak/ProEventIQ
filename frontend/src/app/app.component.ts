@@ -12,25 +12,18 @@ import { KeycloakAuthService } from './auth/keycloak/keycloak.service';
 })
 export class AppComponent {
   title = 'ProEventIQ';
-  private translate = inject(TranslateService);
-  private auth = inject(KeycloakAuthService);
+  private readonly translate = inject(TranslateService);
+  private readonly auth = inject(KeycloakAuthService);
 
   constructor() {
-    this.translate.addLangs(['en', 'pl']);
-    this.translate.setDefaultLang('en');
-
-    // Set initial language based on browser or default
-    const browserLang = this.translate.getBrowserLang();
-    const defaultLang = browserLang && browserLang.match(/en|pl/) ? browserLang : 'en';
-    this.translate.use(defaultLang);
-
+    // Listen for Keycloak profile changes to update language if user has locale preference
     effect(() => {
       const profile = this.auth.profile();
       if (profile) {
-        // Keycloak profile might have 'locale' property
         const locale = (profile as any)['locale'];
         if (locale && (locale === 'en' || locale === 'pl')) {
           this.translate.use(locale);
+          localStorage.setItem('app-language', locale);
         }
       }
     });

@@ -5,7 +5,8 @@
     "LOGIN": "Zaloguj",
     "APP_TITLE": "ProEventIQ",
     "MY_ACCOUNT": "Moje konto",
-    "LOGOUT": "Wyloguj"
+    "LOGOUT": "Wyloguj",
+    "CHANGE_LANGUAGE": "Zmień język"
   },
   "SIDENAV": {
     "TITLE": "NAWIGACJA",
@@ -708,6 +709,7 @@
     "TRY_AGAIN": "Spróbuj ponownie",
     "GO_HOME": "Strona główna",
     "RETRY": "Ponów",
+    "VIEW_DETAILS": "Zobacz szczegóły",
     "BACK_TO_LIST": "WRÓĆ DO LISTY",
     "EDIT_VENUE": "EDYTUJ OBIEKT",
     "CANCEL": "Anuluj",

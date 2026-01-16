@@ -6,6 +6,19 @@
     <span class="app-title">{{ 'HEADER.APP_TITLE' | translate }}</span>
   </div>
   <span class="toolbar-spacer"></span>
+  <button mat-icon-button [matMenuTriggerFor]="languageMenu" [matTooltip]="'HEADER.CHANGE_LANGUAGE' | translate" class="language-btn" type="button" [attr.aria-label]="'HEADER.CHANGE_LANGUAGE' | translate">
+    <span class="lang-label">{{ currentLanguage() | uppercase }}</span>
+  </button>
+  <mat-menu #languageMenu="matMenu">
+    <button mat-menu-item (click)="changeLanguage('en')" [class.active-lang]="currentLanguage() === 'en'">
+      <span class="menu-lang-code">EN</span>
+      <span>English</span>
+    </button>
+    <button mat-menu-item (click)="changeLanguage('pl')" [class.active-lang]="currentLanguage() === 'pl'">
+      <span class="menu-lang-code">PL</span>
+      <span>Polski</span>
+    </button>
+  </mat-menu>
   <button mat-button *ngIf="!authenticated()" (click)="login()">{{ 'HEADER.LOGIN' | translate }}</button>
   <div *ngIf="authenticated()" class="user-info" [matMenuTriggerFor]="userMenu">
     <span class="user-name" aria-label="Logged in user">{{ displayName() }}</span>

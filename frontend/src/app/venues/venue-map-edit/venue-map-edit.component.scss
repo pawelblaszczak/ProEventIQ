@@ -605,7 +605,7 @@ $border-radius: 12px;
   .toolbar-content {
     display: flex;
     align-items: flex-start;
-    gap: 1rem;
+    gap: 0.5rem;
     padding: 1rem 1.5rem !important;
     flex-wrap: wrap;
     
@@ -1233,7 +1233,7 @@ $border-radius: 12px;
   display: inline-block;
   width: 1px;
   height: 32px;
-  margin: 0 12px;
+  margin: 0 6px;
   background: rgba(0,0,0,0.12);
   vertical-align: middle;
 }

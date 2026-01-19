@@ -288,7 +288,7 @@ $border-radius: 12px;
     position: sticky;
     top: 90px;
 
-    .reservation-panel-content { flex: 1; overflow-y: auto; padding-top: .25rem; }
+    .reservation-panel-content { flex: 1; overflow-y: auto; padding-top: 0 !important; }
     .participants-list.simple { display: flex; flex-direction: column; gap: .4rem; }
     .participants-list.simple .participant-row { display:flex; align-items:center; gap:.5rem; padding:.35rem .5rem; border:1px solid #e0e0e0; border-radius:6px; background:#fff; font-size:.75rem; cursor:pointer; position:relative; transition:background-color .2s ease, border-color .2s ease, box-shadow .2s ease; }
     .participants-list.simple .participant-row:hover { background:#f5f5f5; }
@@ -303,20 +303,19 @@ $border-radius: 12px;
     .participants-list.simple .participant-row .color { width:14px; height:14px; border-radius:4px; border:1px solid #bbb; box-shadow:0 0 0 1px #fff inset; }
     .participants-list.simple .participant-row .name { flex:1; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .side-loading, .side-error, .side-empty { text-align:center; padding:1rem .5rem; color:#555; display:flex; flex-direction:column; align-items:center; gap:.5rem; font-size:.75rem; }
-  }
 
-  // Ensure the moved selection panel contents receive the same visual treatment
-  .selection-panel-card.narrow {
-    mat-card-content.selection-panel-content, .selection-panel-card.narrow > .mat-card-content {
+    /* Ensure the moved selection panel contents receive the same visual treatment */
+    mat-card-content.selection-panel-content,
+    & > .mat-card-content {
       padding: 0; /* we'll style selection-info directly */
     }
 
     .selection-info {
-  padding: 1rem 1.25rem;
+      padding: 1rem 1.25rem;
       background-color: rgba($primary-color, 0.03);
       border-radius: 6px;
-  /* reduce top gap so header sits closer to the features panel */
-  margin: 0.25rem 0 0 0;
+      /* reduce top gap so header sits closer to the features panel */
+      margin: 0.25rem 0 0 0;
       color: rgba(0,0,0,0.9);
 
       .selection-subtitle {
@@ -338,18 +337,17 @@ $border-radius: 12px;
           margin-bottom: 0.6rem;
 
           .detail-label { display:block; font-weight:700; color: rgba(0,0,0,0.65); margin-bottom: 0.15rem; }
-          .detail-value { display:block; color: rgba(0,0,0,0.9); }
+          .detail-value {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            color: rgba(0,0,0,0.9);
+          }
         }
       }
-      /* Nudge the inline edit icon slightly lower to align visually with the sector name */
-      /* Layout: allow the detail-value to be a flexible row so input can take available width */
-      .sector-details .detail-item .detail-value {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        width: 100%;
-      }
 
+      /* Nudge the inline edit icon slightly lower to align visually with the sector name */
       .inline-edit-btn {
         transform: translateY(2px);
         flex: 0 0 32px;
@@ -371,6 +369,7 @@ $border-radius: 12px;
         box-sizing: border-box;
         margin-right: 6px;
       }
+
       .inline-edit-row {
         display: flex;
         gap: 8px;
@@ -378,6 +377,7 @@ $border-radius: 12px;
         width: 100%;
         margin-top: 6px;
       }
+
       .inline-edit-actions { flex: 0 0 auto; display: flex; gap: 6px; }
       .inline-edit-actions.below {
         display: flex;
@@ -387,24 +387,20 @@ $border-radius: 12px;
         margin-top: 10px;
       }
     }
-  /* remove extra top padding from the mat-card-content so the selection-info can sit closer */
-  .reservation-panel-content { padding-top: 0 !important; }
+
     // Compact blue header styling
     mat-card-header {
       padding: 0.5rem 1rem;
     }
 
     .mat-card-title {
-  color: $primary-color;
-  font-size: 0.75rem; /* match icon height */
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
+      color: $primary-color;
+      font-size: 0.75rem; /* match icon height */
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
     }
-
-  /* Don't force every icon to primary; header & named classes handle their own colors */
-  /* mat-icon { intentionally removed } */
 
     /* Stronger overrides to ensure Material defaults don't win */
     &.selection-panel-card, &.selection-panel-card.narrow {
@@ -440,16 +436,16 @@ $border-radius: 12px;
       color: $primary-color !important;
       margin-right: 0.25rem !important;
       vertical-align: middle !important;
-  line-height: 1 !important;
-  /* small downward nudge so icon visually lines up with the label */
-  transform: translateY(4px) !important;
+      line-height: 1 !important;
+      /* small downward nudge so icon visually lines up with the label */
+      transform: translateY(4px) !important;
     }
 
-  /* Ensure inline action icons inherit their button's themed color */
-  button.mat-icon-button.mat-primary mat-icon { color: $primary-color !important; }
-  button.mat-icon-button.mat-warn mat-icon { color: $warn-color !important; }
-  /* Allow future accent usage */
-  button.mat-icon-button.mat-accent mat-icon { color: $accent-color !important; }
+    /* Ensure inline action icons inherit their button's themed color */
+    button.mat-icon-button.mat-primary mat-icon { color: $primary-color !important; }
+    button.mat-icon-button.mat-warn mat-icon { color: $warn-color !important; }
+    /* Allow future accent usage */
+    button.mat-icon-button.mat-accent mat-icon { color: $accent-color !important; }
 
     /* Make header container align items horizontally */
     > .mat-card-header {
@@ -459,7 +455,7 @@ $border-radius: 12px;
       padding: 0.5rem 0.75rem !important;
     }
 
-  .selection-deselect-btn {
+    .selection-deselect-btn {
       width: 32px;
       height: 32px;
       min-width: 32px;
@@ -472,20 +468,7 @@ $border-radius: 12px;
       /* nudge the button down to align with the title/icon */
       transform: translateY(4px);
     }
-
-    /* Ensure inline edit buttons and action buttons use the button's color for their icons */
-    .inline-edit-btn {
-      transform: translateY(2px);
-      flex: 0 0 32px;
-      min-width: 32px;
-      height: 32px;
-      width: 32px;
-      padding: 0 !important;
-    }
-
-    /* inline edit action buttons intentionally have no color override so their mat-icon-button color applies */
   }
-}
 
 // Reservation mode layout adjustments
 .venue-map-editor.reservation-mode {
@@ -605,7 +588,7 @@ $border-radius: 12px;
   .toolbar-content {
     display: flex;
     align-items: flex-start;
-    gap: 0.5rem;
+    gap: 0.25rem;
     padding: 1rem 1.5rem !important;
     flex-wrap: wrap;
     
@@ -1233,7 +1216,7 @@ $border-radius: 12px;
   display: inline-block;
   width: 1px;
   height: 32px;
-  margin: 0 6px;
+  margin: 0 4px;
   background: rgba(0,0,0,0.12);
   vertical-align: middle;
 }
@@ -1277,4 +1260,6 @@ $border-radius: 12px;
 :host ::ng-deep .konvajs-content {
   position: relative;
   background-color: white; // Ensure consistent white background when scrolling
+}
+
 }

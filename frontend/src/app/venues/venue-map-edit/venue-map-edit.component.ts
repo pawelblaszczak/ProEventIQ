@@ -1255,6 +1255,19 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       });
     } catch { /* ignore z-order promotion failures */ }
 
+    // Fix for reservation modes: ensure internal labels stay above sector shapes
+    // After moving groups to top, we need to ensure label groups within each sector
+    // are positioned above the sector outlines/shapes
+    try {
+      this.sectorGroups.forEach(group => {
+        const labelGroup = group.findOne('.sector-label-group') as Konva.Group;
+        if (labelGroup && labelGroup.getParent() === group) {
+          // This is an internal label (not reparented to layer)
+          labelGroup.moveToTop();
+        }
+      });
+    } catch { /* ignore internal label z-order failures */ }
+
     // Ensure tooltip is always at the absolute top if it exists
     if (this.seatTooltip) this.seatTooltip.moveToTop();
   }

@@ -47,6 +47,10 @@ public class SectorService {
         entity.setRotation(input.rotation());
         entity.setPriceCategory(input.priceCategory());
         entity.setStatus(input.status());
+        entity.setLabelPositionX(input.labelPositionX());
+        entity.setLabelPositionY(input.labelPositionY());
+        entity.setLabelRotation(input.labelRotation());
+        entity.setLabelFontSize(input.labelFontSize());
         entity.setVenue(venue);
         SectorEntity saved = sectorRepository.saveAndFlush(entity);
         // If a sourceSectorId is provided, copy seat layout from source sector using stored procedure.
@@ -72,6 +76,10 @@ public class SectorService {
             entity.setRotation(input.rotation());
             entity.setPriceCategory(input.priceCategory());
             entity.setStatus(input.status());
+            entity.setLabelPositionX(input.labelPositionX());
+            entity.setLabelPositionY(input.labelPositionY());
+            entity.setLabelRotation(input.labelRotation());
+            entity.setLabelFontSize(input.labelFontSize());
             return toDTO(sectorRepository.save(entity));
         });
     }
@@ -104,6 +112,18 @@ public class SectorService {
         }
 
         sector.setRotation(entity.getRotation());
+
+        if (entity.getLabelPositionX() != null && entity.getLabelPositionY() != null) {
+            SectorInputPosition labelPosition = new SectorInputPosition();
+            labelPosition.setX(BigDecimal.valueOf(entity.getLabelPositionX()));
+            labelPosition.setY(BigDecimal.valueOf(entity.getLabelPositionY()));
+            sector.setLabelPosition(labelPosition);
+        }
+
+        sector.setLabelRotation(entity.getLabelRotation());
+
+        sector.setLabelFontSize(entity.getLabelFontSize());
+
         sector.setPriceCategory(entity.getPriceCategory());
 
         if (entity.getStatus() != null) {
@@ -186,7 +206,11 @@ public class SectorService {
                 entity.getRotation() != null ? entity.getRotation().intValue() : null,
                 entity.getPriceCategory(),
                 entity.getStatus(),
-                entity.getVenue() != null ? entity.getVenue().getVenueId() : null
+                entity.getVenue() != null ? entity.getVenue().getVenueId() : null,
+                entity.getLabelPositionX(),
+                entity.getLabelPositionY(),
+                entity.getLabelRotation(),
+                entity.getLabelFontSize()
         );
     }
 }

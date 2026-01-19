@@ -638,6 +638,16 @@ $border-radius: 12px;
         align-items: center;
         min-height: 40px;
 
+        // Active mode styling for edit mode toggle
+        button.active-mode {
+          background-color: rgba(33, 150, 243, 0.12);
+          color: $primary-color;
+          
+          mat-icon {
+            color: $primary-color;
+          }
+        }
+
         /* View toggles: match Zoom mini-fab vertical centering */
         .view-toggle-btn {
           width: 40px;
@@ -795,16 +805,57 @@ $border-radius: 12px;
         align-items: center;
         gap: 0.5rem;
         
-        .zoom-display {
-          min-width: 60px;
+        .zoom-input-group {
+          display: inline-flex;
+          align-items: center;
+          border: 1.5px solid rgba($primary-color, 0.4);
+          border-radius: 6px;
+          background: white;
+          height: 36px;
+          transition: border-color 0.2s ease;
+          
+          &:hover {
+            border-color: rgba($primary-color, 0.6);
+          }
+          
+          &:focus-within {
+            border-color: $primary-color;
+            box-shadow: 0 0 0 2px rgba($primary-color, 0.1);
+          }
+        }
+        
+        .zoom-input {
+          width: 40px;
           text-align: center;
           font-weight: 500;
-          font-size: 0.9rem;
+          font-size: 0.95rem;
           color: $primary-color;
-          padding: 0.25rem 0.5rem;
-          background-color: rgba($primary-color, 0.1);
-          border-radius: 4px;
-          border: 1px solid rgba($primary-color, 0.2);
+          padding: 0;
+          background: transparent;
+          border: none;
+          outline: none;
+          height: 100%;
+          
+          // Remove spinner arrows for Chrome, Safari, Edge
+          &::-webkit-outer-spin-button,
+          &::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+          }
+          
+          // Remove spinner arrows for Firefox
+          &[type=number] {
+            -moz-appearance: textfield;
+          }
+        }
+        
+        .zoom-label {
+          font-weight: 500;
+          font-size: 0.95rem;
+          color: $primary-color;
+          margin-left: 2px;
+          display: inline-flex;
+          align-items: center;
         }
       }
       

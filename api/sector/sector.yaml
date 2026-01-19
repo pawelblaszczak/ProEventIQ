@@ -28,6 +28,17 @@ Sector:
     status:
       type: string
       enum: [active, inactive]
+    labelPosition:
+      type: object
+      properties:
+        x:
+          type: number
+        y:
+          type: number
+    labelRotation:
+      type: integer  
+    labelFontSize:
+      type: integer
 SectorInput:
   $ref: './sector-input.yaml#/SectorInput'
 SectorSeatsInput:

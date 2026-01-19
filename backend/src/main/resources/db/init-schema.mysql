@@ -36,6 +36,10 @@ CREATE TABLE sector (
     rotation INT DEFAULT 0,
     price_category VARCHAR(50),
     status ENUM('active', 'inactive') DEFAULT 'active',
+    label_position_x FLOAT,
+    label_position_y FLOAT,
+    label_rotation INT DEFAULT 0,
+    label_font_size INT DEFAULT 16,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (venue_id) REFERENCES venue(venue_id) ON DELETE CASCADE

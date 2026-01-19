@@ -184,6 +184,19 @@ public class VenueController implements VenuesApi {
 
         String priceCategory = input.getPriceCategory();
         String status = input.getStatus() != null ? input.getStatus().getValue() : null;
+
+        Float labelPositionX = null;
+        Float labelPositionY = null;
+        
+        if (input.getLabelPosition() != null) {
+            labelPositionX = input.getLabelPosition().getX() != null ? input.getLabelPosition().getX().floatValue() : null;
+            labelPositionY = input.getLabelPosition().getY() != null ? input.getLabelPosition().getY().floatValue() : null;
+        }
+
+        Integer labelRotation = input.getLabelRotation();
+
+        Integer labelFontSize = input.getLabelFontSize();
+
         Long sourceSectorId = null;
         try {
             if (input.getSourceSectorId() != null && input.getSourceSectorId().isPresent()) {
@@ -193,7 +206,7 @@ public class VenueController implements VenuesApi {
             // ignore parsing issues; keep as null
         }
 
-        return new SectorInputDTO(name, orderNumber, positionX, positionY, rotation, priceCategory, status, sourceSectorId);
+        return new SectorInputDTO(name, orderNumber, positionX, positionY, rotation, priceCategory, status, labelPositionX, labelPositionY, labelRotation, labelFontSize, sourceSectorId);
     }
 
     private Sector toSector(SectorDTO dto) {
@@ -215,6 +228,17 @@ public class VenueController implements VenuesApi {
         if (dto.status() != null) {
             sector.setStatus(Sector.StatusEnum.fromValue(dto.status()));
         }
+
+        if (dto.labelPositionX() != null && dto.labelPositionY() != null) {
+            SectorInputPosition labelPosition = new SectorInputPosition();
+            labelPosition.setX(BigDecimal.valueOf(dto.labelPositionX()));
+            labelPosition.setY(BigDecimal.valueOf(dto.labelPositionY()));
+            sector.setLabelPosition(labelPosition);
+        }
+
+        sector.setLabelRotation(dto.labelRotation());
+
+        sector.setLabelFontSize(dto.labelFontSize());
         
         // Note: numberOfSeats and rows are not included in SectorDTO, 
         // they would need to be calculated/fetched separately if needed

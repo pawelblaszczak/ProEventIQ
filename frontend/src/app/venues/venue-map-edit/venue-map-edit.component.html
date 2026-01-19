@@ -92,6 +92,29 @@
               <div class="vertical-divider"></div>
             </div>
           </div>
+        
+        <!-- Edit Mode Toggle (only in edit mode) - moved to first position -->
+        <div class="tool-group" *ngIf="mode === 'edit'">
+          <h3 class="tool-group-title">
+            <mat-icon fontSet="material-icons-outlined">{{ editMode() === 'sectors' ? 'grid_view' : 'label' }}</mat-icon>
+            {{ 'VENUES.MAP.EDIT_MODE' | translate }}
+          </h3>
+          <div class="tool-buttons">
+            <button mat-icon-button 
+                    [class.active-mode]="editMode() === 'sectors'"
+                    (click)="onEditModeChange('sectors')"
+                    [matTooltip]="'VENUES.MAP.EDIT_SECTORS_MODE' | translate">
+              <mat-icon>grid_view</mat-icon>
+            </button>
+            <button mat-icon-button 
+                    [class.active-mode]="editMode() === 'labels'"
+                    (click)="onEditModeChange('labels')"
+                    [matTooltip]="'VENUES.MAP.EDIT_LABELS_MODE' | translate">
+              <mat-icon fontSet="material-icons-outlined">label</mat-icon>
+            </button>
+            <div class="vertical-divider"></div>
+          </div>
+        </div>
 
           <div class="tool-group" *ngIf="mode === 'reservation'">
             <h3 class="tool-group-title">
@@ -118,8 +141,8 @@
               <div class="vertical-divider"></div>
             </div>
           </div>
-        <!-- Sector Actions (only in edit mode) -->
-        <div class="tool-group" *ngIf="mode === 'edit'">
+        <!-- Sector Actions (only in edit mode and when editing sectors, not labels) -->
+        <div class="tool-group" *ngIf="mode === 'edit' && editMode() === 'sectors'">
           <h3 class="tool-group-title">
             <mat-icon>grid_view</mat-icon>
             {{ 'VENUES.MAP.SECTORS' | translate }}
@@ -154,22 +177,49 @@
           </div>
         </div>
 
-        <!-- Rotation Controls (only in edit mode) -->
-        <div class="tool-group" *ngIf="mode === 'edit' && selectedSectors().length > 0">
+        
+
+        <!-- Rotation Controls (show in edit mode; disable when nothing selected) -->
+        <div class="tool-group" *ngIf="mode === 'edit'">
           <h3 class="tool-group-title">
             <mat-icon>rotate_right</mat-icon>
-            {{ 'VENUES.MAP.ROTATE' | translate }}
+            Rotate
           </h3>
           <div class="tool-buttons">
             <button mat-icon-button 
-                    (click)="rotateSector(false)"
+                    (click)="editMode() === 'sectors' ? rotateSector(false) : rotateLabel(false)"
+                    [disabled]="selectedSectors().length === 0"
                     [matTooltip]="'VENUES.MAP.ROTATE_LEFT' | translate">
               <mat-icon>rotate_left</mat-icon>
             </button>
             <button mat-icon-button 
-                    (click)="rotateSector(true)"
+                    (click)="editMode() === 'sectors' ? rotateSector(true) : rotateLabel(true)"
+                    [disabled]="selectedSectors().length === 0"
                     [matTooltip]="'VENUES.MAP.ROTATE_RIGHT' | translate">
               <mat-icon>rotate_right</mat-icon>
+            </button>
+            <div class="vertical-divider"></div>
+          </div>
+        </div>
+
+        <!-- Font Size Controls (only when in label edit mode) -->
+        <div class="tool-group" *ngIf="mode === 'edit' && editMode() === 'labels'">
+          <h3 class="tool-group-title">
+            <mat-icon>format_size</mat-icon>
+            {{ 'VENUES.MAP.FONT_SIZE' | translate }}
+          </h3>
+          <div class="tool-buttons">
+            <button mat-icon-button 
+                    (click)="changeLabelFontSize(false)"
+                    [disabled]="selectedSectors().length === 0"
+                    [matTooltip]="'VENUES.MAP.DECREASE_FONT_SIZE' | translate">
+              <mat-icon>text_decrease</mat-icon>
+            </button>
+            <button mat-icon-button 
+                    (click)="changeLabelFontSize(true)"
+                    [disabled]="selectedSectors().length === 0"
+                    [matTooltip]="'VENUES.MAP.INCREASE_FONT_SIZE' | translate">
+              <mat-icon>text_increase</mat-icon>
             </button>
           </div>
         </div>
@@ -190,19 +240,22 @@
                     [matTooltip]="'VENUES.MAP.ZOOM_OUT' | translate">
               <mat-icon>zoom_out</mat-icon>
             </button>
-            <div class="zoom-display">{{ (getCurrentZoom() * 100) | number:'1.0-0' }}%</div>
+            <span class="zoom-input-group">
+              <input type="number" 
+                     class="zoom-input"
+                     [value]="(getCurrentZoom() * 100) | number:'1.0-0'" 
+                     (input)="setZoomFromInput($any($event.target).value)"
+                     [min]="minZoomValue * 100"
+                     [max]="maxZoomValue * 100"
+                     step="10">
+            </span>
+            <span class="zoom-label">%</span>
             <button mat-mini-fab 
                     color="primary" 
                     (click)="zoomIn()" 
                     [disabled]="getCurrentZoom() >= maxZoomValue"
                     [matTooltip]="'VENUES.MAP.ZOOM_IN' | translate">
               <mat-icon>zoom_in</mat-icon>
-            </button>
-            <button mat-icon-button 
-                    (click)="resetZoom()"
-                    [disabled]="getCurrentZoom() === 1"
-                    [matTooltip]="'VENUES.MAP.RESET_ZOOM' | translate">
-              <mat-icon>settings_backup_restore</mat-icon>
             </button>
             <div class="vertical-divider"></div>
           </div>

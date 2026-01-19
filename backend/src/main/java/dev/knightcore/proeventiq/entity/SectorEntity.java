@@ -31,6 +31,18 @@ public class SectorEntity {
     @Column(name = "price_category")
     private String priceCategory;
 
+    @Column(name = "label_position_x")
+    private Float labelPositionX;
+
+    @Column(name = "label_position_y")
+    private Float labelPositionY;
+
+    @Column(name = "label_rotation")
+    private Integer labelRotation;
+
+    @Column(name = "label_font_size")
+    private Integer labelFontSize;
+
     // Getters and setters
     public Long getSectorId() { return sectorId; }
     public void setSectorId(Long sectorId) { this.sectorId = sectorId; }
@@ -52,4 +64,12 @@ public class SectorEntity {
     public void setRotation(Integer rotation) { this.rotation = rotation; }
     public String getPriceCategory() { return priceCategory; }
     public void setPriceCategory(String priceCategory) { this.priceCategory = priceCategory; }
+    public Float getLabelPositionX() { return labelPositionX; }
+    public void setLabelPositionX(Float labelPositionX) { this.labelPositionX = labelPositionX; }
+    public Float getLabelPositionY() { return labelPositionY; }
+    public void setLabelPositionY(Float labelPositionY) { this.labelPositionY = labelPositionY; }
+    public Integer getLabelRotation() { return labelRotation; }
+    public void setLabelRotation(Integer labelRotation) { this.labelRotation = labelRotation; }
+    public Integer getLabelFontSize() { return labelFontSize; }
+    public void setLabelFontSize(Integer labelFontSize) { this.labelFontSize = labelFontSize; }
 }

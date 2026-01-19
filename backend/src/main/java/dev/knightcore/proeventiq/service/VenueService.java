@@ -346,6 +346,7 @@ public class VenueService {
         sectorDto.setPriceCategory(sectorEntity.getPriceCategory());
         
         mapSectorPosition(sectorEntity, sectorDto);
+        mapSectorLabelPosition(sectorEntity, sectorDto);
         mapSectorStatus(sectorEntity, sectorDto);
         mapSectorRows(sectorEntity, sectorDto);
         
@@ -366,6 +367,19 @@ public class VenueService {
                 position.getX(), 
                 position.getY());
         }
+    }
+
+    private void mapSectorLabelPosition(dev.knightcore.proeventiq.entity.SectorEntity sectorEntity, Sector sectorDto) {
+        if (sectorEntity.getLabelPositionX() != null && sectorEntity.getLabelPositionY() != null) {
+            SectorInputPosition labelPosition = new SectorInputPosition();
+            labelPosition.setX(java.math.BigDecimal.valueOf(sectorEntity.getLabelPositionX()));
+            labelPosition.setY(java.math.BigDecimal.valueOf(sectorEntity.getLabelPositionY()));
+            sectorDto.setLabelPosition(labelPosition);
+        }
+        
+        sectorDto.setLabelRotation(sectorEntity.getLabelRotation());
+
+        sectorDto.setLabelFontSize(sectorEntity.getLabelFontSize());
     }
 
     private void mapSectorStatus(dev.knightcore.proeventiq.entity.SectorEntity sectorEntity, Sector sectorDto) {

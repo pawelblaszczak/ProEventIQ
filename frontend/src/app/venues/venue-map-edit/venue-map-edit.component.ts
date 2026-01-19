@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject, signal, computed, ViewChild, ElementRef, AfterViewInit, OnDestroy, OnInit, OnChanges, SimpleChanges, Input, Output, EventEmitter, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, effect, inject, signal, computed, ViewChild, ElementRef, AfterViewInit, OnDestroy, OnInit, OnChanges, SimpleChanges, Input, Output, EventEmitter, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -16,6 +16,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import Konva from 'konva';
 import { Venue } from '../../api/model/venue';
 import { VenueInput } from '../../api/model/venue-input';
@@ -78,6 +79,7 @@ interface EditableSector extends Sector {
     MatInputModule,
     MatFormFieldModule,
     MatSelectModule,
+    MatButtonToggleModule,
     FormsModule,
     RouterModule,
     ErrorDisplayComponent,
@@ -361,6 +363,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   // Inline editing state for sector order number
   editingOrderSectorId = signal<number | null>(null);
   editingSectorOrder = signal<number>(1);
+  // Edit mode: 'sectors' or 'labels'
+  editMode = signal<'sectors' | 'labels'>('sectors');
   hasChanges = signal(false);  // Grid settings
   private settingsLoaded = false; // Track if view settings have been loaded from storage
   hasReservationChanges = signal(false);  // Track reservation changes in reservation mode
@@ -393,6 +397,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   private isHtmlPanning = false;
   private htmlPanStart = { x: 0, y: 0 };
   private htmlScrollStart = { left: 0, top: 0 };
+  private cdr = inject(ChangeDetectorRef);
   constructor() {
     // Resize canvas initially and on window resize
     this.resizeCanvas();
@@ -1599,8 +1604,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     });
 
     // Enable dragging only while LMB is pressed (mousedown), disable on mouseup/dragend
+    // In label mode, disable sector dragging
     group.on('mousedown', (e) => {
-      if (this.mode === 'edit' && e.evt.button === 0) {
+      if (this.mode === 'edit' && e.evt.button === 0 && this.editMode() === 'sectors') {
         group.draggable(true);
       }
     });
@@ -1749,7 +1755,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     }
 
     // Add selection indicators if selected
-  if (sector.isSelected) this.addSelectionIndicators(group);
+  // In label mode, don't show selection indicators on sectors
+  if (sector.isSelected && this.editMode() !== 'labels') this.addSelectionIndicators(group);
 
     // Calculate bounding box width for label centering - ensure labels are visible even at smaller scale
   let labelWidth = 140; // Increased from 120 for better visibility
@@ -1876,38 +1883,91 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     const displayName = showOrder
       ? `${sector.orderNumber}. ${sector.name ?? 'Unnamed Sector'}`
       : (sector.name ?? 'Unnamed Sector');
+    
+    // Apply label position offset if defined (relative to centroid)
+    const labelOffsetX = (sector.labelPosition?.x ?? 0);
+    const labelOffsetY = (sector.labelPosition?.y ?? 0);
+    const labelRotation = sector.labelRotation ?? 0;
+    const labelFontSize = sector.labelFontSize ?? 16;
+    
+    // Create a label group to rotate both labels together
+    const labelGroup = new Konva.Group({
+      x: centroidX + labelOffsetX,
+      y: centroidY + labelOffsetY,
+      rotation: labelRotation,
+      name: 'sector-label-group',
+      draggable: this.editMode() === 'labels'
+    });
+    
     const nameText = new Konva.Text({
       text: displayName,
-      x: centroidX - (labelWidth / 2), // Center label horizontally
-      y: centroidY - 20, // Slightly above center
+      x: -(labelWidth / 2), // Relative to label group center
+      y: -20, // Slightly above center
       width: labelWidth,
       align: 'center',
-  fontSize: 16, // Increased from 14 for better visibility at smaller scale
-  fill: 'rgba(0,0,0,0.85)', // darker text for higher contrast
-  shadowColor: undefined,
-  shadowBlur: 0,
-  shadowOffsetX: 0,
-  shadowOffsetY: 0,
-  shadowOpacity: 0,
+      fontSize: labelFontSize,
+      fill: (sector.isSelected && this.editMode() === 'labels') ? 'rgba(33,150,243,1)' : 'rgba(0,0,0,0.85)',
+      shadowColor: undefined,
+      shadowBlur: 0,
+      shadowOffsetX: 0,
+      shadowOffsetY: 0,
+      shadowOpacity: 0,
       fontStyle: 'bold',
-      listening: true // Enable clicking on labels
+      listening: true,
+      name: 'sector-name-label'
     });
 
-    // Add click handler to name label
-    nameText.on('click', (e) => {
+    // Add click handler to label group
+    labelGroup.on('click', (e) => {
       e.cancelBubble = true;
-      this.onSectorRectClick(sector, e);
-    });
-    nameText.on('mouseenter', () => {
-      if (this.mode === 'edit') {
-        this.stage!.container().style.cursor = 'grab';
+      if (this.editMode() === 'labels') {
+        this.selectSectorForLabelEdit(sector, e);
+      } else {
+        this.onSectorRectClick(sector, e);
       }
     });
-    nameText.on('mouseleave', () => {
+    
+    labelGroup.on('mouseenter', () => {
+      if (this.mode === 'edit') {
+        this.stage!.container().style.cursor = this.editMode() === 'labels' ? 'move' : 'grab';
+      }
+    });
+    
+    labelGroup.on('mouseleave', () => {
       this.stage!.container().style.cursor = 'default';
     });
+    
+    // Store original position for calculating offset
+    labelGroup.setAttr('originalX', centroidX);
+    labelGroup.setAttr('originalY', centroidY);
+    labelGroup.setAttr('centroidX', centroidX);
+    labelGroup.setAttr('centroidY', centroidY);
+    
+    if (this.editMode() === 'labels') {
+      labelGroup.on('dragmove', () => {
+        const originalX = labelGroup.getAttr('originalX') ?? centroidX;
+        const originalY = labelGroup.getAttr('originalY') ?? centroidY;
+        const offsetX = labelGroup.x() - originalX;
+        const offsetY = labelGroup.y() - originalY;
+        
+        // Update sector's labelPosition
+        const sectors = this.editableSectors();
+        const updatedSectors = sectors.map(s => {
+          if (s.sectorId === sector.sectorId) {
+            return { ...s, labelPosition: { x: offsetX, y: offsetY } };
+          }
+          return s;
+        });
+        this.editableSectors.set(updatedSectors);
+      });
+      
+      labelGroup.on('dragend', () => {
+        this.hasChanges.set(true);
+        this.cdr.detectChanges();
+      });
+    }
 
-    group.add(nameText);
+    labelGroup.add(nameText);
 
     // Compute total seat IDs for this sector when possible
     let sectorSeatIds: number[] = [];
@@ -1935,41 +1995,28 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
     const seatsText = new Konva.Text({
       text: seatsLabelText,
-      x: centroidX - (labelWidth / 2),
-      y: centroidY + 4, // Slightly below center
+      x: -(labelWidth / 2), // Relative to label group center
+      y: 4, // Below name text
       width: labelWidth,
       align: 'center',
-  fontSize: 14, // Increased from 12 for better visibility
-  fill: 'rgba(0,0,0,0.7)', // slightly lighter than name but still legible
-  shadowColor: undefined,
-  shadowBlur: 0,
-  shadowOffsetX: 0,
-  shadowOffsetY: 0,
-  shadowOpacity: 0,
-  opacity: 0.95,
-      listening: true // Enable clicking on labels
+      fontSize: 14,
+      fill: (sector.isSelected && this.editMode() === 'labels') ? 'rgba(33,150,243,0.9)' : 'rgba(0,0,0,0.7)',
+      shadowColor: undefined,
+      shadowBlur: 0,
+      shadowOffsetX: 0,
+      shadowOffsetY: 0,
+      shadowOpacity: 0,
+      opacity: 0.95,
+      listening: true,
+      name: 'sector-seats-label'
     });
 
-    // Add click handler to seats label
-    seatsText.on('click', (e) => {
-      e.cancelBubble = true;
-      this.onSectorRectClick(sector, e);
-    });
-    seatsText.on('mouseenter', () => {
-      if (this.mode === 'edit') {
-        this.stage!.container().style.cursor = 'grab';
-      }
-    });
-    seatsText.on('mouseleave', () => {
-      this.stage!.container().style.cursor = 'default';
-    });
-
-    group.add(seatsText);
+    labelGroup.add(seatsText);
 
     const blockedText = new Konva.Text({
       text: blockedLabelText,
-      x: centroidX - (labelWidth / 2),
-      y: centroidY + 20, // Below seats label
+      x: -(labelWidth / 2), // Relative to label group center
+      y: 20, // Below seats label
       width: labelWidth,
       align: 'center',
       fontSize: 11,
@@ -1977,7 +2024,11 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       listening: false,
       visible: blockedLabelText !== ''
     });
-    group.add(blockedText);
+    
+    labelGroup.add(blockedText);
+    
+    // Add the label group to the sector group
+    group.add(labelGroup);
     let bgRect: Konva.Rect | undefined;
     // If the sector is very small, hide labels by default to avoid overlap/noise.
     // Reveal labels on hover or when the sector is selected so they remain accessible.
@@ -2460,13 +2511,26 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
     // Update text labels (name and seats) if present
     try {
+      // Update label group rotation if it exists
+      const labelGroup = group.findOne('.sector-label-group') as Konva.Group;
+      if (labelGroup && sector.labelRotation !== undefined) {
+        labelGroup.rotation(sector.labelRotation);
+      }
+      
       const texts = group.find('Text') as Konva.Text[];
       if (texts && texts.length > 0) {
-        // First text is sector name (with order number if defined)
-        const displayName = (sector.orderNumber != null && sector.orderNumber > 0)
-          ? `${sector.orderNumber}. ${sector.name ?? 'Unnamed Sector'}`
-          : (sector.name ?? 'Unnamed Sector');
-        (texts[0] as Konva.Text).text(displayName);
+        // Find name label and update text
+        const nameLabel = group.findOne('.sector-name-label') as Konva.Text;
+        if (nameLabel) {
+          const displayName = (sector.orderNumber != null && sector.orderNumber > 0)
+            ? `${sector.orderNumber}. ${sector.name ?? 'Unnamed Sector'}`
+            : (sector.name ?? 'Unnamed Sector');
+          nameLabel.text(displayName);
+          // Update font size if changed
+          if (sector.labelFontSize !== undefined) {
+            nameLabel.fontSize(sector.labelFontSize);
+          }
+        }
       }
       if (texts && texts.length > 1) {
         try {
@@ -2483,13 +2547,22 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
               blockedText = `${stats.blocked} blocked`;
             }
           }
-          (texts[1] as Konva.Text).text(seatsText);
+          
+          // Update seats label
+          const seatsLabel = group.findOne('.sector-seats-label') as Konva.Text;
+          if (seatsLabel) {
+            seatsLabel.text(seatsText);
+          }
+          
           if (texts.length > 2) {
              (texts[2] as Konva.Text).text(blockedText);
              (texts[2] as Konva.Text).visible(blockedText !== '' && this.sectorLabelMode() === 'name_seats');
           }
         } catch (e) {
-          (texts[1] as Konva.Text).text(`Seats: ${sector.numberOfSeats ?? 0}`);
+          const seatsLabel = group.findOne('.sector-seats-label') as Konva.Text;
+          if (seatsLabel) {
+            seatsLabel.text(`Seats: ${sector.numberOfSeats ?? 0}`);
+          }
         }
       }
     } catch (e) {
@@ -3399,6 +3472,45 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     this.selectSector(sector, event.evt?.ctrlKey || event.evt?.metaKey);
   }
 
+  // Select sector for label editing - marks sector as selected but doesn't highlight the sector shape
+  selectSectorForLabelEdit(sector: EditableSector, event: any) {
+    event.cancelBubble = true;
+    event.evt?.stopPropagation();
+    
+    // Don't allow selection in preview modes
+    if (this.mode === 'preview' || this.mode === 'reservation-preview') return;
+    
+    const ctrlKey = event.evt?.ctrlKey || event.evt?.metaKey;
+    
+    // In label mode, we still track selection but won't highlight the sector shape
+    this.selectSector(sector, ctrlKey);
+    
+    // Update label colors without re-rendering entire sector
+    this.updateLabelHighlight(sector);
+  }
+
+  // Update label text colors based on selection in label mode
+  private updateLabelHighlight(sector: EditableSector) {
+    if (!this.layer) return;
+    const group = this.sectorGroups.get(sector.sectorId!);
+    if (!group) return;
+    
+    const labelGroup = group.findOne('.sector-label-group') as Konva.Group;
+    if (!labelGroup) return;
+    
+    const nameLabel = labelGroup.findOne('.sector-name-label') as Konva.Text;
+    const seatsLabel = labelGroup.findOne('.sector-seats-label') as Konva.Text;
+    
+    if (nameLabel) {
+      nameLabel.fill(sector.isSelected && this.editMode() === 'labels' ? 'rgba(33,150,243,1)' : 'rgba(0,0,0,0.85)');
+    }
+    if (seatsLabel) {
+      seatsLabel.fill(sector.isSelected && this.editMode() === 'labels' ? 'rgba(33,150,243,0.9)' : 'rgba(0,0,0,0.7)');
+    }
+    
+    this.layer.batchDraw();
+  }
+
   onSectorHover(sector: EditableSector, event: any) {
     const stage = event.target.getStage();
 
@@ -3643,7 +3755,85 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   this.hasChanges.set(true );
   // Immediately update Konva visuals for all rotated sectors
   newSelectedSectors.forEach(s => this.updateKonvaForSector(s));
-  }  // Add new sector
+  }
+
+  // Label rotation (only when in label edit mode)
+  rotateLabel(clockwise: boolean = true) {
+    const selectedSectors = this.selectedSectors();
+    if (selectedSectors.length === 0 || this.editMode() !== 'labels') return;
+
+    const sectors = this.editableSectors();
+    const rotationStep = clockwise ? 15 : -15;
+    const selectedIds = selectedSectors.map(s => s.sectorId);
+    
+    const updatedSectors = sectors.map(s => {
+      if (selectedIds.includes(s.sectorId)) {
+        const currentLabelRotation = s.labelRotation ?? 0;
+        const newLabelRotation = (currentLabelRotation + rotationStep) % 360;
+        return { ...s, labelRotation: newLabelRotation };
+      }
+      return s;
+    });
+    
+    this.editableSectors.set(updatedSectors);
+    
+    // Update the selected sectors array with the rotated labels
+    const newSelectedSectors = selectedSectors.map(selected => {
+      const updated = updatedSectors.find(s => s.sectorId === selected.sectorId);
+      return updated || selected;
+    });
+    this.selectedSectors.set(newSelectedSectors);
+    
+    // Update primary selected sector if it exists
+    if (this.selectedSector()) {
+      const updatedPrimary = updatedSectors.find(s => s.sectorId === this.selectedSector()?.sectorId);
+      this.selectedSector.set(updatedPrimary || null);
+    }
+    
+    this.hasChanges.set(true);
+    // Immediately update Konva visuals for all rotated labels
+    newSelectedSectors.forEach(s => this.updateKonvaForSector(s));
+  }
+
+  // Change label font size (only when in label edit mode)
+  changeLabelFontSize(increase: boolean = true) {
+    const selectedSectors = this.selectedSectors();
+    if (selectedSectors.length === 0 || this.editMode() !== 'labels') return;
+
+    const sectors = this.editableSectors();
+    const fontSizeStep = increase ? 2 : -2;
+    const selectedIds = selectedSectors.map(s => s.sectorId);
+    
+    const updatedSectors = sectors.map(s => {
+      if (selectedIds.includes(s.sectorId)) {
+        const currentFontSize = s.labelFontSize ?? 16;
+        const newFontSize = Math.max(8, Math.min(48, currentFontSize + fontSizeStep)); // Clamp between 8 and 48
+        return { ...s, labelFontSize: newFontSize };
+      }
+      return s;
+    });
+    
+    this.editableSectors.set(updatedSectors);
+    
+    // Update the selected sectors array with the new font sizes
+    const newSelectedSectors = selectedSectors.map(selected => {
+      const updated = updatedSectors.find(s => s.sectorId === selected.sectorId);
+      return updated || selected;
+    });
+    this.selectedSectors.set(newSelectedSectors);
+    
+    // Update primary selected sector if it exists
+    if (this.selectedSector()) {
+      const updatedPrimary = updatedSectors.find(s => s.sectorId === this.selectedSector()?.sectorId);
+      this.selectedSector.set(updatedPrimary || null);
+    }
+    
+    this.hasChanges.set(true);
+    // Immediately update Konva visuals for all sectors with changed font sizes
+    newSelectedSectors.forEach(s => this.updateKonvaForSector(s));
+  }
+
+  // Add new sector
   addNewSector() {
     console.log('Adding new sector...');
     const sectors = this.editableSectors();
@@ -4401,6 +4591,16 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         if ((s.rotation ?? 0) !== (o.rotation ?? 0)) return true;
         if ((s.priceCategory ?? '') !== (o.priceCategory ?? '')) return true;
         if ((s.status ?? '') !== (o.status ?? '')) return true;
+        // Check label position changes
+        const slx = s.labelPosition?.x ?? null;
+        const sly = s.labelPosition?.y ?? null;
+        const olx = o.labelPosition?.x ?? null;
+        const oly = o.labelPosition?.y ?? null;
+        if (slx !== olx || sly !== oly) return true;
+        // Check label rotation changes
+        if ((s.labelRotation ?? 0) !== (o.labelRotation ?? 0)) return true;
+        // Check label font size changes
+        if ((s.labelFontSize ?? 16) !== (o.labelFontSize ?? 16)) return true;
         // seats/rows deep-diff is intentionally omitted for performance; include if needed
         return false;
       };
@@ -4414,7 +4614,10 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
             position: sector.position,
             rotation: sector.rotation,
             priceCategory: sector.priceCategory,
-            status: sector.status
+            status: sector.status,
+            labelPosition: sector.labelPosition ?? undefined,
+            labelRotation: sector.labelRotation ?? 0,
+            labelFontSize: sector.labelFontSize ?? 16
           };
           // If this sector was created by duplication, let backend clone rows/seats atomically
           if ((sector as any).duplicatedFromSectorId) {
@@ -4434,7 +4637,10 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
             position: sector.position,
             rotation: sector.rotation,
             priceCategory: sector.priceCategory,
-            status: sector.status
+            status: sector.status,
+            labelPosition: sector.labelPosition ?? undefined,
+            labelRotation: sector.labelRotation ?? 0,
+            labelFontSize: sector.labelFontSize ?? 16
           };
           await firstValueFrom(this.venueApi.updateSector(venueId, sector.sectorId!, sectorInput));
         }
@@ -4663,7 +4869,12 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
   // Get sector color based on selection and status
   getSectorColor(sector: EditableSector): string {
-    // Keep selected sector accent color as before
+    // In label mode, don't highlight the sector even if selected
+    if (this.editMode() === 'labels') {
+      return '#f5f5f5'; // Light grey for all sectors
+    }
+    
+    // Keep selected sector accent color in sector mode
     if (sector && sector.isSelected) return '#2196f3';
 
     // Unselected sectors: use a slightly darker light grey for better contrast
@@ -4671,6 +4882,11 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   }
 
   getSectorStrokeColor(sector: EditableSector): string {
+    // In label mode, don't highlight the sector stroke even if selected
+    if (this.editMode() === 'labels') {
+      return '#333'; // Normal stroke for all sectors
+    }
+    
     if (sector.isSelected) return '#1976d2';
     // Removed orange stroke for dragging
     return '#333';
@@ -5065,9 +5281,27 @@ console.log("addSelectionIndicators2");
     }
   }
   
-  resetZoom() {
-    this.zoomLevel.set(1);
-    this.applyZoom();
+  private zoomInputDebounceTimer: any = null;
+  private lastZoomInputValue: string = '';
+
+  setZoomFromInput(value: string) {
+    this.lastZoomInputValue = value;
+    if (this.zoomInputDebounceTimer) {
+      clearTimeout(this.zoomInputDebounceTimer);
+    }
+    this.zoomInputDebounceTimer = setTimeout(() => {
+      const numValue = parseFloat(this.lastZoomInputValue);
+      if (isNaN(numValue)) return;
+
+      // Convert percentage to decimal (e.g., 100 -> 1.0)
+      let newZoom = numValue / 100;
+
+      // Clamp to min/max values
+      newZoom = Math.max(this.minZoom, Math.min(this.maxZoom, newZoom));
+
+      this.zoomLevel.set(newZoom);
+      this.applyZoom();
+    }, 1000); // 1000ms debounce
   }
 
   public updateCanvasDimensions(width: number | null, height: number | null): void {
@@ -5098,6 +5332,26 @@ console.log("addSelectionIndicators2");
   public toggleOrders(): void {
     this.showOrders.update(v => !v);
     this.forceReRender();
+  }
+
+  public toggleEditMode(): void {
+    const newMode = this.editMode() === 'sectors' ? 'labels' : 'sectors';
+    this.editMode.set(newMode);
+    // Clear selection when switching modes
+    this.deselectAll();
+    // Force re-render to update drag/rotation handlers
+    this.needsFullRender = true;
+    this.renderSectors();
+  }
+
+  public onEditModeChange(mode: 'sectors' | 'labels'): void {
+    if (this.editMode() === mode) return;
+    this.editMode.set(mode);
+    // Clear selection when switching modes
+    this.deselectAll();
+    // Force re-render to update drag/rotation handlers
+    this.needsFullRender = true;
+    this.renderSectors();
   }
 
   private applyZoom(): void {

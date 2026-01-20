@@ -871,7 +871,27 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
           lbl.seats.text(text);
           if (lbl.blocked) {
             lbl.blocked.text(blockedText);
-            const isVisible = blockedText !== '' && this.sectorLabelMode() === 'name_seats';
+            
+            // Fix visibility logic:
+            // If external (bubble), blocked text should be visible if text exists.
+            // If internal, blocked text only visible in 'name_seats' mode.
+            const isExternal = lbl.blocked.getAttr('externalLabel');
+            let isVisible = false;
+            const hasText = blockedText !== '';
+            
+            if (isExternal) {
+                 // For labels in the external bubble, we generally show the blocked line if content exists
+                 // BUT we must not force it visible if the bubble is currently hidden (not hovered/Alt).
+                 // We check lbl.seats.visible() as a proxy for "bubble is visible".
+                 isVisible = hasText && lbl.seats.visible();
+                 
+                 // Special case: In 'name_seats' mode, the bubble matches internal rules? 
+                 // Actually, bubbles are 'external' implies they follow bubble rules.
+                 // However, we earlier defined that bubble shows seats+blocked in 'name' mode.
+            } else {
+                 isVisible = hasText && this.sectorLabelMode() === 'name_seats';
+            }
+
             lbl.blocked.visible(isVisible);
             
             if (lbl.bgRect) {
@@ -880,7 +900,18 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
                if (isVisible) {
                   bgHeight += lbl.blocked.height() + 2;
                }
-               lbl.bgRect.height(bgHeight);
+               // We don't just set height here; we trigger the full position update to handle width/centering too
+               const group = this.sectorGroups.get(sectorId);
+               if (group) {
+                 const updatePos = group.getAttr('_updateExternalPositions');
+                 if (typeof updatePos === 'function') {
+                    // This will recalculate bgRect size and all positions
+                    try { updatePos(); } catch { /* ignore */ }
+                 } else {
+                    // Fallback if no updater (should not happen for external labels)
+                    lbl.bgRect.height(bgHeight);
+                 }
+               }
             }
           }
         } catch (e) {
@@ -1250,9 +1281,15 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         g.find('Text').forEach(t => (t as Konva.Node).moveToTop());
       });
       // Also bring any reparented external label nodes (attr externalLabel) to top
-      this.layer?.find((n: any) => n.getAttr && n.getAttr('externalLabel')).forEach(n => {
-        try { (n as Konva.Node).moveToTop(); } catch { /* ignore */ }
-      });
+      // We sort them by type to ensure valid layering: Leader < Bg < Text
+      const externalNodes = this.layer?.find((n: any) => n.getAttr && n.getAttr('externalLabel')) ?? [];
+      const leaders = externalNodes.filter((n: any) => n.hasName('sector-label-leader'));
+      const bgs = externalNodes.filter((n: any) => n.hasName('sector-label-bg'));
+      const texts = externalNodes.filter((n: any) => n instanceof Konva.Text);
+
+      leaders.forEach(n => (n as Konva.Node).moveToTop());
+      bgs.forEach(n => (n as Konva.Node).moveToTop());
+      texts.forEach(n => (n as Konva.Node).moveToTop());
     } catch { /* ignore z-order promotion failures */ }
 
     // Fix for reservation modes: ensure internal labels stay above sector shapes
@@ -2012,7 +2049,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       y: 4, // Below name text
       width: labelWidth,
       align: 'center',
-      fontSize: 14,
+      fontSize: labelFontSize, // Use sector's font size instead of fixed 14
       fill: (sector.isSelected && this.editMode() === 'labels') ? 'rgba(33,150,243,0.9)' : 'rgba(0,0,0,0.7)',
       shadowColor: undefined,
       shadowBlur: 0,
@@ -2052,38 +2089,59 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       const SMALL_HEIGHT_PX = 60; // threshold height under which labels are hidden
       const isSmallSector = (seatPositions.length > 0) && (bboxWidth < SMALL_WIDTH_PX || bboxHeight < SMALL_HEIGHT_PX);
 
-  if (isSmallSector && this.sectorLabelMode() === 'auto') {
+  const mode = this.sectorLabelMode();
+  const showBubble = (mode === 'auto' && isSmallSector) || mode === 'none' || mode === 'name';
+
+  if (showBubble) {
         // For very small sectors place the labels outside the sector to avoid
         // overlapping the shape. Add a small leader line and a subtle background
         // rectangle behind the texts so they remain readable.
+        // Also used for 'none' mode (bubble with name+seats) and 'name' mode (bubble with seats only).
   // Base margin placing external label bubble away from sector edge.
   // Slightly increased to avoid the bubble visually touching the shape.
   const OUTER_LABEL_MARGIN = 22; // increased base gap for non-rotated small sectors
+  const includeNameInBubble = mode !== 'name';
         try {
+
           // Position labels to the right of the sector bounding box by default
           const outsideX = maxX + OUTER_LABEL_MARGIN;
           const outsideY = centroidY - 10;
+          let currentY = outsideY;
 
-          nameText.x(outsideX);
-          nameText.y(outsideY);
-          // Adjust width so the text wraps if needed but keep compact
-          nameText.width(Math.max(labelWidth, 80));
+          if (includeNameInBubble) {
+            // Reset font size to defaults for external bubble (don't use sector.labelFontSize)
+            nameText.fontSize(16);
+            nameText.x(outsideX);
+            nameText.y(currentY);
+            // Adjust width so the text wraps if needed but keep compact
+            nameText.width(Math.max(labelWidth, 80));
+            currentY += nameText.height() + 6;
+          }
+
+          seatsText.fontSize(14);
+          blockedText.fontSize(11); // Ensure consistent default for blocked text
 
           seatsText.x(outsideX);
-          seatsText.y(outsideY + (nameText.height() + 6));
+          seatsText.y(currentY);
           seatsText.width(Math.max(labelWidth, 80));
+          
+          currentY += seatsText.height();
+          if (blockedLabelText !== '') {
+             currentY += 2; // gap before blocked text
+          }
 
           blockedText.x(outsideX);
-          blockedText.y(outsideY + (nameText.height() + 6) + (seatsText.height() + 2));
+          blockedText.y(currentY);
           blockedText.width(Math.max(labelWidth, 80));
 
           // Create a small background rect to improve contrast
           const bgPadding = 6;
-          const bgWidth = Math.max(nameText.width(), seatsText.width(), blockedText.width()) + bgPadding * 2;
-          let bgHeight = nameText.height() + seatsText.height() + bgPadding * 2 + 4;
-          if (blockedLabelText !== '') {
-             bgHeight += blockedText.height() + 2;
-          }
+          let contentWidths = [seatsText.width(), blockedText.width()];
+          if (includeNameInBubble) contentWidths.push(nameText.width());
+          const bgWidth = Math.max(...contentWidths) + bgPadding * 2;
+          
+          let bgHeight = (currentY + (blockedLabelText !== '' ? blockedText.height() : 0)) - outsideY + bgPadding * 2;
+
           bgRect = new Konva.Rect({
             x: outsideX - bgPadding,
             y: outsideY - bgPadding,
@@ -2118,7 +2176,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
             if (this.layer) {
               // hoisted placeholder so event handlers below can call updatePositions()
               let updatePositions: () => void = () => {};
-              const externalNodes = [bgRect, leader, nameText, seatsText, blockedText];
+              const externalNodes = [bgRect, leader, seatsText, blockedText];
+              if (includeNameInBubble) externalNodes.push(nameText);
+              
               const originalLocals: Array<{node: Konva.Node, x: number, y: number}> = [];
               externalNodes.forEach(n => {
                 // Store local coordinates before conversion
@@ -2161,7 +2221,10 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
                 // simple transform above only for text/background/leader.
                 try {
                   const rotation = group.rotation() || 0;
-                  if (rotation !== 0) {
+                  // ALWAYS execute dynamic positioning logic (recalculating stack height)
+                  // even if not rotated. This ensures that dynamic content changes (like "blocked" text
+                  // appearing/disappearing) correctly resize the bubble.
+                  if (true) {
                     // Compute rotated bounding box corners
                     const corners = [
                       { x: minX, y: minY },
@@ -2181,31 +2244,50 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
                     const absMaxY_u = absMaxY / zoom;
                     const absCentroid_u = { x: absCentroid.x / zoom, y: absCentroid.y / zoom };
                     // Dynamic horizontal offset based on label width to avoid crowding
-                    const baseLabelWidth = Math.max(nameText.width(), seatsText.width());
+                    const baseLabelWidth = Math.max(
+                        includeNameInBubble ? nameText.width() : 0, 
+                        seatsText.width(),
+                        blockedText.text() !== '' ? blockedText.width() : 0
+                    );
                     const dynamicMargin = Math.max(22, Math.min(48, baseLabelWidth / 3));
                     const MIN_GAP = 20; // absolute minimum clear space
                     let labelX = absMaxX_u + dynamicMargin;
                     // Align vertically centered to sector
-                    const nameHeight = nameText.height();
+                    const nameHeight = includeNameInBubble ? nameText.height() : 0;
                     const seatsHeight = seatsText.height();
-                    const gap = 6;
-                    const totalLabelHeight = nameHeight + gap + seatsHeight;
+                    const blockedHeight = blockedText.text() !== '' ? blockedText.height() : 0;
+                    const gap1 = includeNameInBubble ? 6 : 0;
+                    const gap2 = blockedHeight > 0 ? 2 : 0;
+
+                    const totalLabelHeight = nameHeight + gap1 + seatsHeight + gap2 + blockedHeight;
                     const startY = (absMinY_u + absMaxY_u) / 2 - totalLabelHeight / 2;
-                    nameText.position({ x: labelX, y: startY });
-                    seatsText.position({ x: labelX, y: startY + nameHeight + gap });
+                    
+                    if (includeNameInBubble) {
+                        nameText.position({ x: labelX, y: startY });
+                    }
+                    seatsText.position({ x: labelX, y: startY + nameHeight + gap1 });
+                    if (blockedHeight > 0) {
+                        blockedText.position({ x: labelX, y: startY + nameHeight + gap1 + seatsHeight + gap2 });
+                    }
+                    
                     // Resize background to fit (bgRect may be undefined if block changed)
                     const bg = group.getStage()?.findOne((n: any) => n === bgRect) ? bgRect : bgRect; // keep ref
                     if (bgRect) {
                       const bgPad = 6;
-                      const bgW = Math.max(nameText.width(), seatsText.width()) + bgPad * 2;
+                      const bgW = Math.max(
+                          includeNameInBubble ? nameText.width() : 0, 
+                          seatsText.width(),
+                          blockedText.text() !== '' ? blockedText.width() : 0
+                      ) + bgPad * 2;
                       const bgH = totalLabelHeight + bgPad * 2 + 4;
                       let bgX = labelX - bgPad;
                       const currentGap = bgX - absMaxX_u; // space from sector bbox to bubble (unscaled)
                       if (currentGap < MIN_GAP) {
                         const shift = MIN_GAP - currentGap;
                         labelX += shift;
-                        nameText.x(labelX);
+                        if (includeNameInBubble) nameText.x(labelX);
                         seatsText.x(labelX);
+                        if (blockedHeight > 0) blockedText.x(labelX);
                         bgX += shift;
                       }
                       bgRect.position({ x: bgX, y: startY - bgPad });
@@ -2228,7 +2310,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
                 // Tag with sectorId so we can clean them up when selection state changes
                 try { n.setAttr('labelSectorId', sector.sectorId); } catch { /* ignore */ }
                 // Remove from group and add to layer if still child of group
-                if (n.getParent() === group) {
+                const parent = n.getParent();
+                if (parent === group || (parent && parent.name() === 'sector-label-group')) {
                   n.moveTo(this.layer!);
                 }
               });
@@ -2237,51 +2320,65 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
               group.on('dragend.externalLabel', () => { updatePositions(); this.layer?.batchDraw(); });
               group.on('rotationChange.externalLabel', () => { updatePositions(); this.layer?.batchDraw(); });
               // Hover visibility handlers target reparented nodes now
-              group.on('mouseenter.showLabels', () => { 
-                if (this.sectorLabelMode() !== 'auto') return;
-                // Always show labels on hover for small sectors when not selected (all modes)
+              group.on('mouseenter.showLabels mousemove.showLabels', (e: Konva.KonvaEventObject<MouseEvent>) => { 
+                const currentMode = this.sectorLabelMode();
+                const shouldShow = (currentMode === 'auto') || (currentMode === 'none') || (currentMode === 'name');
+                if (!shouldShow) return;
+                
+                // Always check Alt key state on hover (enter or move)
+                // Only show if Alt is pressed
                 if (!sector.isSelected) {
-                  try { (group.getAttr('_updateExternalPositions') as (()=>void)|undefined)?.(); } catch { /* ignore */ }
-                  externalNodes.forEach(n => n.visible(true));
-                  this.layer?.batchDraw();
+                  const isAltPressed = e.evt.altKey;
+                  const areLabelsVisible = externalNodes[0]?.visible();
+                  
+                  if (isAltPressed && !areLabelsVisible) {
+                      try { (group.getAttr('_updateExternalPositions') as (()=>void)|undefined)?.(); } catch { /* ignore */ }
+                      externalNodes.forEach(n => {
+                        // Don't show blocked text if it's empty
+                        if (n === blockedText && n.text() === '') return;
+                         // Don't show name text if mode is 'name' (already on sector, not in bubble)
+                         // Wait, includeNameInBubble logic handled which nodes are in externalNodes?
+                         // Yes, but nameText is conditionally pushed to externalNodes in constructor logic?
+                         // No, 'externalNodes' was defined as fixed array [bgRect, leader, seatsText, blockedText, nameText?] 
+                         // Check lines 2125-2127: if (includeNameInBubble) externalNodes.push(nameText);
+                         // So nameText presence in externalNodes is already correct for the mode at creation time.
+                         // However, blockedText is always in externalNodes.
+                        n.visible(true);
+                      });
+                      this.layer?.batchDraw();
+                  } else if (!isAltPressed && areLabelsVisible) {
+                      externalNodes.forEach(n => n.visible(false));
+                      this.layer?.batchDraw();
+                  }
                 }
               });
               group.on('mouseleave.showLabels', () => {
-                if (this.sectorLabelMode() !== 'auto') return;
+                const currentMode = this.sectorLabelMode();
+                const shouldShow = (currentMode === 'auto') || (currentMode === 'none') || (currentMode === 'name');
+                if (!shouldShow) return;
+                
                 // Re-hide when pointer leaves if not selected
                 if (!sector.isSelected) {
                   externalNodes.forEach(n => n.visible(false));
                   this.layer?.batchDraw();
                 }
               });
-              // Initial visibility
-              const mode = this.sectorLabelMode();
-              if (mode === 'auto') {
-                if (!sector.isSelected) {
+              
+              // Initial visibility: specific per mode
+              // If selected, show. If not selected, hide (default for external bubble).
+              if (!sector.isSelected) {
                   externalNodes.forEach(n => n.visible(false));
-                } else {
+              } else {
                   externalNodes.forEach(n => n.visible(true));
-                }
-              } else if (mode === 'none') {
-                externalNodes.forEach(n => n.visible(false));
-              } else if (mode === 'name') {
-                nameText.visible(true);
-                seatsText.visible(false);
-                bgRect.visible(true);
-                leader.visible(true);
-              } else if (mode === 'name_seats') {
-                externalNodes.forEach(n => n.visible(true));
               }
             }
           } catch { /* ignore reparent errors */ }
           // Ensure background/leader are behind texts using supported Konva calls
           try {
-            // put leader at very bottom, then bgRect above it, then ensure texts are on top
-            leader.moveToBottom();
-            bgRect.moveToBottom();
-            // move bgRect up one so it's above the leader
-            bgRect.moveUp();
-            // ensure texts are above the background and leader
+            // put leader, then bgRect above it, then ensure texts are on top.
+            // All must be moveToTop to sit above the sector shapes on the layer.
+            leader.moveToTop();
+            bgRect.moveToTop();
             nameText.moveToTop();
             seatsText.moveToTop();
           } catch (e) {
@@ -2290,36 +2387,28 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
           // Keep labels visible only when selected; otherwise remain hidden until hover
           if (sector.isSelected) {
-            nameText.visible(true);
+            if (includeNameInBubble) nameText.visible(true);
             seatsText.visible(true);
           }
 
           // Original behavior: hide by default (except if selected) and show on hover in all modes.
           group.on('mouseenter.origShowLabels', () => {
-            if (this.sectorLabelMode() !== 'auto') return;
-            if (!sector.isSelected) {
-              try { (group.getAttr('_updateExternalPositions') as (()=>void)|undefined)?.(); } catch { /* ignore */ }
-              nameText.visible(true); seatsText.visible(true); if (bgRect) bgRect.visible(true); leader.visible(true); this.layer?.batchDraw();
-            }
+             // Redundant with mouseenter.showLabels above?
+             // Original code had both. I've consolidated logic in showLabels above.
+             // But existing code structure might expect this.
+             // I'll keep it minimal or remove since I handled it above.
+             // Actually I will skip it to avoid duplication/conflicts.
           });
           group.on('mouseleave.origShowLabels', () => {
-            if (this.sectorLabelMode() !== 'auto') return;
-            if (!sector.isSelected) {
-              nameText.visible(false); seatsText.visible(false); if (bgRect) bgRect.visible(false); leader.visible(false); this.layer?.batchDraw();
-            }
+             // Skipped.
           });
 
           // When not hovering but selected, ensure label remains visible
-          if (this.sectorLabelMode() === 'auto' && !sector.isSelected) {
-            nameText.visible(false);
-            seatsText.visible(false);
-            if (bgRect) bgRect.visible(false);
-            leader.visible(false);
-          }
+          // Check initial visibility state logic above covers this.
 
         } catch (e) {
           // Fallback: keep original behavior of hiding labels
-          nameText.visible(false);
+          if (includeNameInBubble) nameText.visible(false);
           seatsText.visible(false);
         }
       }
@@ -2333,19 +2422,32 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       if (sector.sectorId != null) this.sectorLabels.set(sector.sectorId, { name: nameText, seats: seatsText, blocked: blockedText, bgRect: bgRect });
 
       // Apply visibility for non-external labels (normal sectors)
+      const visibleMode = this.sectorLabelMode();
+
       if (!nameText.getAttr('externalLabel')) {
-          const mode = this.sectorLabelMode();
-          if (mode === 'none') {
+          if (visibleMode === 'none') {
               nameText.visible(false);
-              seatsText.visible(false);
-              blockedText.visible(false);
-          } else if (mode === 'name') {
+          } else if (visibleMode === 'name') {
               nameText.visible(true);
-              seatsText.visible(false);
-              blockedText.visible(false);
-          } else if (mode === 'name_seats') {
+          } else if (visibleMode === 'name_seats' || visibleMode === 'auto') {
               nameText.visible(true);
+          }
+      }
+
+      if (!seatsText.getAttr('externalLabel')) {
+          if (visibleMode === 'none') {
+              seatsText.visible(false);
+          } else if (visibleMode === 'name') {
+              seatsText.visible(false);
+          } else if (visibleMode === 'name_seats' || visibleMode === 'auto') {
               seatsText.visible(true);
+          }
+      }
+      
+      if (!blockedText.getAttr('externalLabel')) {
+          if (visibleMode === 'none' || visibleMode === 'name') {
+              blockedText.visible(false);
+          } else if (visibleMode === 'name_seats' || visibleMode === 'auto') {
               blockedText.visible(blockedText.text() !== '');
           }
       }

@@ -150,7 +150,9 @@
   },
   "VENUES": {
     "COMMON": {
+      "SEAT": "Seat",
       "SEATS": "Seats",
+      "SECTOR": "Sector",
       "SECTORS": "Sectors"
     },
     "LIST": {
@@ -269,6 +271,8 @@
       "TOGGLE_GRID": "Toggle Grid",
       "ARIA_CANVAS": "Venue Map Canvas",
       "HOW_TO_EDIT": "How to Edit",
+      "ROW": "Row",
+      "RESERVED_BY": "Reserved by",
       "INSTRUCTIONS_EDIT": "Click & Drag to move sectors.<br>Double click to edit seats.<br>Ctrl+Click to multi-select.",
       "INSTRUCTIONS_ZOOM": "Use mouse wheel to zoom.",
       "MULTI_SELECT_ACTIVE": "Multi-select Active",
@@ -329,7 +333,18 @@
         "SELECT_PARTICIPANT_OR_SECTOR": "Please select sector(s), participant or both to allocate.",
         "NO_ALLOCATIONS_CHANGED": "No allocations were changed.",
         "NO_ALLOCATIONS_CLEAR_SCOPE": "No allocations to clear in selected sectors.", 
-        "NO_ALLOCATIONS_CLEAR_PARTICIPANT": "No allocations to clear for the selected participant in the chosen scope."
+        "NO_ALLOCATIONS_CLEAR_PARTICIPANT": "No allocations to clear for the selected participant in the chosen scope.",
+        "NO_PARTICIPANTS_ALLOCATE": "No participants to allocate.",
+        "NO_SUITABLE_SEATS": "No suitable seats found to allocate.",
+        "PARTICIPANT_NOT_FOUND": "Selected participant not found.",
+        "SELECT_TO_CLEAR": "Please select sector(s), participant or both to clear.",
+        "ALLOCATIONS_CLEARED": "Selected allocations cleared (pending changes).",
+        "CHANGES_SAVED": "Changes saved successfully!",
+        "ERROR_SAVING": "Failed to save changes. Please try again.",
+        "INVALID_JSON": "Invalid JSON – please check the content.",
+        "MISSING_VENUE_ID": "JSON must contain a valid venueId field.",
+        "LAYOUT_IMPORTED": "Venue layout imported successfully.",
+        "ERROR_IMPORTING_LAYOUT": "Failed to import venue layout."
       },
       "DIALOG": {
         "DELETE_SECTOR_TITLE": "Delete Sector(s)",

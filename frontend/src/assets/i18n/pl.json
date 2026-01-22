@@ -150,7 +150,9 @@
   },
   "VENUES": {
     "COMMON": {
+      "SEAT": "Miejsce",
       "SEATS": "Miejsca",
+      "SECTOR": "Sektor",
       "SECTORS": "Sektory"
     },
     "LIST": {
@@ -269,6 +271,8 @@
       "TOGGLE_GRID": "Pokaż/Ukryj siatkę",
       "ARIA_CANVAS": "Płótno mapy obiektu",
       "HOW_TO_EDIT": "Jak edytować",
+      "ROW": "Rząd",
+      "RESERVED_BY": "Rezerwacja",
       "INSTRUCTIONS_EDIT": "Kliknij i przeciągnij sektory.<br>Kliknij dwukrotnie, aby edytować miejsca.<br>Ctrl+Kliknięcie dla wielokrotnego wyboru.",
       "INSTRUCTIONS_ZOOM": "Użyj kółka myszy, aby powiększyć.",
       "MULTI_SELECT_ACTIVE": "Wybór wielokrotny aktywny",
@@ -329,7 +333,18 @@
         "SELECT_PARTICIPANT_OR_SECTOR": "Wybierz sektor(y), uczestnika lub oba, aby przydzielić.",
         "NO_ALLOCATIONS_CHANGED": "Żadne przydziały nie zostały zmienione.",
         "NO_ALLOCATIONS_CLEAR_SCOPE": "Brak przydziałów do wyczyszczenia w wybranych sektorach.",
-        "NO_ALLOCATIONS_CLEAR_PARTICIPANT": "Brak przydziałów do wyczyszczenia dla wybranego uczestnika w wybranym zakresie."
+        "NO_ALLOCATIONS_CLEAR_PARTICIPANT": "Brak przydziałów do wyczyszczenia dla wybranego uczestnika w wybranym zakresie.",
+        "NO_PARTICIPANTS_ALLOCATE": "Brak uczestników do przydzielenia.",
+        "NO_SUITABLE_SEATS": "Brak odpowiednich miejsc do przydzielenia.",
+        "PARTICIPANT_NOT_FOUND": "Nie znaleziono wybranego uczestnika.",
+        "SELECT_TO_CLEAR": "Wybierz sektor(y), uczestnika lub oba, aby wyczyścić.",
+        "ALLOCATIONS_CLEARED": "Wybrane przydziały zostały wyczyszczone (oczekujące zmiany).",
+        "CHANGES_SAVED": "Zmiany zostały zapisane!",
+        "ERROR_SAVING": "Nie udało się zapisać zmian. Spróbuj ponownie.",
+        "INVALID_JSON": "Nieprawidłowy JSON – sprawdź zawartość.",
+        "MISSING_VENUE_ID": "JSON musi zawierać prawidłowe pole venueId.",
+        "LAYOUT_IMPORTED": "Układ obiektu został zaimportowany.",
+        "ERROR_IMPORTING_LAYOUT": "Nie udało się zaimportować układu obiektu."
       },
       "DIALOG": {
         "DELETE_SECTOR_TITLE": "Usuń sektor(y)",

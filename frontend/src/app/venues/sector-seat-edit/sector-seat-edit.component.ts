@@ -742,9 +742,11 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     seatGroup.on('mouseover', (e) => {
       this.ensureSeatTooltip();
       if (!this.seatTooltip) return;
-      // Set tooltip text
+      // Set tooltip text (use translations)
       const rowName = this.getRowNameForSeat(seat);
-      const tooltipText = `Row: ${rowName}, Seat: ${seat.orderNumber ?? ''}`;
+      const rowLabel = this.translate.instant('VENUES.MAP.ROW');
+      const seatLabel = this.translate.instant('VENUES.COMMON.SEAT');
+      const tooltipText = `${rowLabel}: ${rowName}, ${seatLabel}: ${seat.orderNumber ?? ''}`;
       const labelText = this.seatTooltip.findOne('Text') as Konva.Text;
       labelText.text(tooltipText);
       // Position tooltip above the seat, adjusted for zoom

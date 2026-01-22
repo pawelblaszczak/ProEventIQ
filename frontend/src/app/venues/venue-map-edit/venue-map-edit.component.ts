@@ -859,13 +859,15 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
           const seats = this.sectorSeats.get(sectorId) ?? [];
           const seatIds: number[] = seats.map(s => s.getAttr('seatId')).filter((id: any) => typeof id === 'number');
           const total = seatIds.length > 0 ? seatIds.length : (this.editableSectors().find(s => s.sectorId === sectorId)?.numberOfSeats ?? 0);
-          let text = `Seats: ${total}`;
+          const seatsLabel = this.translate.instant('VENUES.COMMON.SEATS');
+          let text = `${seatsLabel}: ${total}`;
           let blockedText = '';
           if (this.isReservationLike()) {
             const stats = this.computeSeatStats(seatIds);
-            text = `Seats: ${stats.allocated - stats.blocked} / ${total - stats.blocked}`;
+            text = `${seatsLabel}: ${stats.allocated - stats.blocked} / ${total - stats.blocked}`;
             if (stats.blocked > 0) {
-              blockedText = `${stats.blocked} blocked`;
+              const blockedLabel = this.translate.instant('VENUES.MAP.BLOCKED').toLowerCase();
+              blockedText = `${stats.blocked} ${blockedLabel}`;
             }
           }
           lbl.seats.text(text);
@@ -2033,13 +2035,15 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     const totalSeatsForLabel = sectorSeatIds.length > 0 ? sectorSeatIds.length : (sector.numberOfSeats ?? 0);
 
     // For reservation-like modes show allocated/total, otherwise show total only
-    let seatsLabelText = `Seats: ${totalSeatsForLabel}`;
+    const seatsLabel = this.translate.instant('VENUES.COMMON.SEATS');
+    let seatsLabelText = `${seatsLabel}: ${totalSeatsForLabel}`;
     let blockedLabelText = '';
     if (this.isReservationLike()) {
       const stats = this.computeSeatStats(sectorSeatIds);
-      seatsLabelText = `Seats: ${stats.allocated - stats.blocked} / ${totalSeatsForLabel - stats.blocked}`;
+      seatsLabelText = `${seatsLabel}: ${stats.allocated - stats.blocked} / ${totalSeatsForLabel - stats.blocked}`;
       if (stats.blocked > 0) {
-        blockedLabelText = `${stats.blocked} blocked`;
+        const blockedLabel = this.translate.instant('VENUES.MAP.BLOCKED').toLowerCase();
+        blockedLabelText = `${stats.blocked} ${blockedLabel}`;
       }
     }
 
@@ -2327,29 +2331,20 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
                 
                 // Always check Alt key state on hover (enter or move)
                 // Only show if Alt is pressed
-                if (!sector.isSelected) {
-                  const isAltPressed = e.evt.altKey;
-                  const areLabelsVisible = externalNodes[0]?.visible();
-                  
-                  if (isAltPressed && !areLabelsVisible) {
-                      try { (group.getAttr('_updateExternalPositions') as (()=>void)|undefined)?.(); } catch { /* ignore */ }
-                      externalNodes.forEach(n => {
-                        // Don't show blocked text if it's empty
-                        if (n === blockedText && n.text() === '') return;
-                         // Don't show name text if mode is 'name' (already on sector, not in bubble)
-                         // Wait, includeNameInBubble logic handled which nodes are in externalNodes?
-                         // Yes, but nameText is conditionally pushed to externalNodes in constructor logic?
-                         // No, 'externalNodes' was defined as fixed array [bgRect, leader, seatsText, blockedText, nameText?] 
-                         // Check lines 2125-2127: if (includeNameInBubble) externalNodes.push(nameText);
-                         // So nameText presence in externalNodes is already correct for the mode at creation time.
-                         // However, blockedText is always in externalNodes.
-                        n.visible(true);
-                      });
-                      this.layer?.batchDraw();
-                  } else if (!isAltPressed && areLabelsVisible) {
-                      externalNodes.forEach(n => n.visible(false));
-                      this.layer?.batchDraw();
-                  }
+                const isAltPressed = e.evt.altKey;
+                const areLabelsVisible = externalNodes[0]?.visible();
+                
+                if (isAltPressed && !areLabelsVisible) {
+                    try { (group.getAttr('_updateExternalPositions') as (()=>void)|undefined)?.(); } catch { /* ignore */ }
+                    externalNodes.forEach(n => {
+                      // Don't show blocked text if it's empty
+                      if (n === blockedText && n.text() === '') return;
+                      n.visible(true);
+                    });
+                    this.layer?.batchDraw();
+                } else if (!isAltPressed && areLabelsVisible) {
+                    externalNodes.forEach(n => n.visible(false));
+                    this.layer?.batchDraw();
                 }
               });
               group.on('mouseleave.showLabels', () => {
@@ -2357,20 +2352,14 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
                 const shouldShow = (currentMode === 'auto') || (currentMode === 'none') || (currentMode === 'name');
                 if (!shouldShow) return;
                 
-                // Re-hide when pointer leaves if not selected
-                if (!sector.isSelected) {
-                  externalNodes.forEach(n => n.visible(false));
-                  this.layer?.batchDraw();
-                }
+                // Re-hide when pointer leaves
+                externalNodes.forEach(n => n.visible(false));
+                this.layer?.batchDraw();
               });
               
               // Initial visibility: specific per mode
-              // If selected, show. If not selected, hide (default for external bubble).
-              if (!sector.isSelected) {
-                  externalNodes.forEach(n => n.visible(false));
-              } else {
-                  externalNodes.forEach(n => n.visible(true));
-              }
+              // Always hide (default for external bubble)
+              externalNodes.forEach(n => n.visible(false));
             }
           } catch { /* ignore reparent errors */ }
           // Ensure background/leader are behind texts using supported Konva calls
@@ -2386,10 +2375,12 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
           }
 
           // Keep labels visible only when selected; otherwise remain hidden until hover
+          /* Disabled per user request: Labels only on Alt+Hover now
           if (sector.isSelected) {
             if (includeNameInBubble) nameText.visible(true);
             seatsText.visible(true);
           }
+          */
 
           // Original behavior: hide by default (except if selected) and show on hover in all modes.
           group.on('mouseenter.origShowLabels', () => {
@@ -2413,11 +2404,13 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         }
       }
 
-      // Ensure selected sectors always display labels
+      /*
+      // Ensure selected sectors always display labels -> Disabled to respect Alt+Hover rule
       if (sector.isSelected) {
         nameText.visible(true);
         seatsText.visible(true);
       }
+      */
 
       if (sector.sectorId != null) this.sectorLabels.set(sector.sectorId, { name: nameText, seats: seatsText, blocked: blockedText, bgRect: bgRect });
 
@@ -2637,7 +2630,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         // Find name label and update text
         const nameLabel = group.findOne('.sector-name-label') as Konva.Text;
         if (nameLabel) {
-          const displayName = (sector.orderNumber != null && sector.orderNumber > 0)
+          const showOrder = this.showOrders() && (sector.orderNumber != null && sector.orderNumber > 0);
+          const displayName = showOrder
             ? `${sector.orderNumber}. ${sector.name ?? 'Unnamed Sector'}`
             : (sector.name ?? 'Unnamed Sector');
           nameLabel.text(displayName);
@@ -2653,22 +2647,22 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
           const seats = this.sectorSeats.get(sector.sectorId! ) ?? [];
           const seatIds: number[] = seats.map(s => s.getAttr('seatId')).filter((id: any) => typeof id === 'number');
           const total = seatIds.length > 0 ? seatIds.length : (sector.numberOfSeats ?? 0);
-          let seatsText = `Seats: ${total}`;
+          const seatsLabelText = this.translate.instant('VENUES.COMMON.SEATS');
+          let seatsText = `${seatsLabelText}: ${total}`;
           let blockedText = '';
           if (this.isReservationLike()) {
             const stats = this.computeSeatStats(seatIds);
-            seatsText = `Seats: ${stats.allocated - stats.blocked} / ${total - stats.blocked}`;
+            seatsText = `${seatsLabelText}: ${stats.allocated - stats.blocked} / ${total - stats.blocked}`;
             if (stats.blocked > 0) {
-              blockedText = `${stats.blocked} blocked`;
+              const blockedLabel = this.translate.instant('VENUES.MAP.BLOCKED').toLowerCase();
+              blockedText = `${stats.blocked} ${blockedLabel}`;
             }
           }
-          
           // Update seats label
           const seatsLabel = group.findOne('.sector-seats-label') as Konva.Text;
           if (seatsLabel) {
             seatsLabel.text(seatsText);
           }
-          
           if (texts.length > 2) {
              (texts[2] as Konva.Text).text(blockedText);
              (texts[2] as Konva.Text).visible(blockedText !== '' && this.sectorLabelMode() === 'name_seats');
@@ -2676,7 +2670,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         } catch (e) {
           const seatsLabel = group.findOne('.sector-seats-label') as Konva.Text;
           if (seatsLabel) {
-            seatsLabel.text(`Seats: ${sector.numberOfSeats ?? 0}`);
+            seatsLabel.text(`${this.translate.instant('VENUES.COMMON.SEATS')}: ${sector.numberOfSeats ?? 0}`);
           }
         }
       }
@@ -2688,22 +2682,25 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     try {
       const cached = this.sectorLabels.get(sectorId);
       if (cached) {
-        const displayNameExternal = (sector.orderNumber != null && sector.orderNumber > 0)
-          ? `${sector.orderNumber}. ${sector.name ?? 'Unnamed Sector'}`
-          : (sector.name ?? 'Unnamed Sector');
+        const showOrder = this.showOrders() && (sector.orderNumber != null && sector.orderNumber > 0);
+        const displayNameExternal = showOrder
+            ? `${sector.orderNumber}. ${sector.name ?? 'Unnamed Sector'}`
+            : (sector.name ?? 'Unnamed Sector');
         try { cached.name.text(displayNameExternal); } catch { /* ignore */ }
 
         // Compute seat count for external label text similar to in-label logic
         const seatNodes = this.sectorSeats.get(sectorId) ?? [];
         const seatIds: number[] = seatNodes.map(s => s.getAttr('seatId')).filter((id: any) => typeof id === 'number');
         const totalSeatsForLabel = seatIds.length > 0 ? seatIds.length : (sector.numberOfSeats ?? 0);
-        let seatsLabelExternal = `Seats: ${totalSeatsForLabel}`;
+        const seatsLabel = this.translate.instant('VENUES.COMMON.SEATS');
+        let seatsLabelExternal = `${seatsLabel}: ${totalSeatsForLabel}`;
         let blockedLabelExternal = '';
         if (this.isReservationLike()) {
           const stats = this.computeSeatStats(seatIds);
-          seatsLabelExternal = `Seats: ${stats.allocated - stats.blocked} / ${totalSeatsForLabel - stats.blocked}`;
+          seatsLabelExternal = `${seatsLabel}: ${stats.allocated - stats.blocked} / ${totalSeatsForLabel - stats.blocked}`;
           if (stats.blocked > 0) {
-            blockedLabelExternal = `${stats.blocked} blocked`;
+            const blockedLabel = this.translate.instant('VENUES.MAP.BLOCKED').toLowerCase();
+            blockedLabelExternal = `${stats.blocked} ${blockedLabel}`;
           }
         }
         try { cached.seats.text(seatsLabelExternal); } catch { /* ignore */ }
@@ -2858,8 +2855,13 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
             // Get seat info (row name and seat number)
             const { rowName, seatNumber } = this.getSeatInfoFromIndex(sector, index);
             
-            // Set tooltip text with sector name, row name, and seat number
-            const tooltipText = `Sector: ${sector.name || 'Unknown'}\nRow: ${rowName}\nSeat: ${seatNumber}`;
+            // Set tooltip text with sector name, row name, and seat number (translated)
+            const sectorLabel = this.translate.instant('VENUES.COMMON.SECTOR');
+            // Try to get a translation for 'Row', fallback to 'Row' if not present
+            let rowLabel = this.translate.instant('VENUES.MAP.ROW');
+            if (rowLabel === 'VENUES.MAP.ROW') rowLabel = 'Row';
+            const seatLabel = this.translate.instant('VENUES.COMMON.SEAT');
+            const tooltipText = `${sectorLabel}: ${sector.name || 'Unknown'}\n${rowLabel}: ${rowName}\n${seatLabel}: ${seatNumber}`;
             const labelText = this.seatTooltip.findOne('Text') as Konva.Text;
             labelText.text(tooltipText);
             
@@ -3037,14 +3039,19 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
               // Get seat info (row name and seat number)
               const { rowName, seatNumber } = this.getSeatInfoFromIndex(sector, index);
               
-                // Set tooltip text with sector name, row name, seat number, and participant name if reserved
-                let tooltipText = `Sector: ${sector.name || 'Unknown'}\nRow: ${rowName}\nSeat: ${seatNumber}`;
+                // Set tooltip text with sector name, row name, seat number, and participant name if reserved (translated)
+                const sectorLabel = this.translate.instant('VENUES.COMMON.SECTOR');
+                let rowLabel = this.translate.instant('VENUES.MAP.ROW');
+                if (rowLabel === 'VENUES.MAP.ROW') rowLabel = 'Row';
+                const seatLabel = this.translate.instant('VENUES.COMMON.SEAT');
+                const reservedByLabel = this.translate.instant('VENUES.MAP.RESERVED_BY');
+                let tooltipText = `${sectorLabel}: ${sector.name || 'Unknown'}\n${rowLabel}: ${rowName}\n${seatLabel}: ${seatNumber}`;
                 if (this.mode === 'reservation' || this.mode === 'reservation-preview') {
                   const pid = seat.getAttr('participantId') as number | null | undefined;
                   if (pid) {
                     const participant = this.participants().find(p => p.participantId === pid);
                     if (participant) {
-                      tooltipText += `\nReserved by: ${participant.name}`;
+                      tooltipText += `\n${reservedByLabel}: ${participant.name}`;
                     }
                   }
                 }
@@ -4106,7 +4113,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
     const participants = this.participants() || [];
     if (!participants || participants.length === 0) {
-      this.snackBar.open('No participants to allocate.', 'Close', { duration: 2000, horizontalPosition: 'center', verticalPosition: 'top' });
+      this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.NO_PARTICIPANTS_ALLOCATE'), this.translate.instant('BUTTON.CLOSE'), { duration: 2000, horizontalPosition: 'center', verticalPosition: 'top' });
       return;
     }
 
@@ -4204,7 +4211,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.ALLOCATED_PENDING', { count: totalAllocated }), this.translate.instant('BUTTON.CLOSE'), { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
       try { this.createAllocationOverlays(); } catch (e) { /* ignore */ }
     } else {
-      this.snackBar.open('No suitable seats found to allocate.', 'Close', { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
+      this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.NO_SUITABLE_SEATS'), this.translate.instant('BUTTON.CLOSE'), { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
     }
   }
 
@@ -4323,7 +4330,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       if (selectedParticipantId != null) {
         const p = this.participants().find(x => x.participantId === selectedParticipantId);
         if (!p) {
-          this.snackBar.open('Selected participant not found.', 'Close', { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
+          this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.PARTICIPANT_NOT_FOUND'), this.translate.instant('BUTTON.CLOSE'), { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
           return;
         }
         participantsToAllocate = [p];
@@ -4332,7 +4339,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       }
 
       if (!participantsToAllocate || participantsToAllocate.length === 0) {
-        this.snackBar.open('No participants to allocate.', 'Close', { duration: 2000, horizontalPosition: 'center', verticalPosition: 'top' });
+        this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.NO_PARTICIPANTS_ALLOCATE'), this.translate.instant('BUTTON.CLOSE'), { duration: 2000, horizontalPosition: 'center', verticalPosition: 'top' });
         return;
       }
     }
@@ -4494,7 +4501,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       this.pendingCountSignal.set(this.pendingReservationChanges.length);
       this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.ALLOCATED_PENDING', { count: totalAllocated }), this.translate.instant('BUTTON.CLOSE'), { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
     } else {
-      this.snackBar.open('No suitable seats found to allocate.', 'Close', { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
+      this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.NO_SUITABLE_SEATS'), this.translate.instant('BUTTON.CLOSE'), { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top' });
     }
   }
 
@@ -4519,7 +4526,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
     // If nothing selected, inform the user per requirement
     if ((!selected || selected.length === 0) && (selectedParticipantId == null)) {
-      this.snackBar.open('Please select sector(s), participant or both to clear.', 'Close', { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
+      this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.SELECT_TO_CLEAR'), this.translate.instant('BUTTON.CLOSE'), { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
       return;
     }
 
@@ -4632,7 +4639,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       this.layer.batchDraw();
       this.hasReservationChanges.set(true);
       this.pendingCountSignal.set(this.pendingReservationChanges.length);
-      this.snackBar.open('Selected allocations cleared (pending changes).', 'Close', { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
+      this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.ALLOCATIONS_CLEARED'), this.translate.instant('BUTTON.CLOSE'), { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
       // Refresh overlays to reflect cleared allocations when seats are hidden
       try { this.createAllocationOverlays(); } catch (e) { /* ignore */ }
     } else {
@@ -4762,7 +4769,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       }
 
       this.hasChanges.set(false);
-      this.snackBar.open('Changes saved successfully!', 'Close', {
+      this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.CHANGES_SAVED'), this.translate.instant('BUTTON.CLOSE'), {
         duration: 3000,
         horizontalPosition: 'center',
         verticalPosition: 'top'
@@ -4772,7 +4779,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       
     } catch (error) {
       console.error('Error saving changes:', error);
-      this.snackBar.open('Failed to save changes. Please try again.', 'Close', {
+      this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.ERROR_SAVING'), this.translate.instant('BUTTON.CLOSE'), {
         duration: 5000,
         horizontalPosition: 'center',
         verticalPosition: 'top'
@@ -5563,12 +5570,12 @@ console.log("addSelectionIndicators2");
     try {
       parsed = JSON.parse(this.importJsonText);
     } catch (e) {
-      this.snackBar.open('Invalid JSON – please check the content.', 'Close', { duration: 4000 });
+      this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.INVALID_JSON'), this.translate.instant('BUTTON.CLOSE'), { duration: 4000 });
       return;
     }
 
     if (!parsed || typeof parsed !== 'object' || !parsed.venueId) {
-      this.snackBar.open('JSON must contain a valid venueId field.', 'Close', { duration: 4000 });
+      this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.MISSING_VENUE_ID'), this.translate.instant('BUTTON.CLOSE'), { duration: 4000 });
       return;
     }
 
@@ -5582,10 +5589,10 @@ console.log("addSelectionIndicators2");
       this.buildEditableSectorsFromSectors(this.originalSectorsSnapshot);
       this.hasChanges.set(false);
       this.importJsonText = '';
-      this.snackBar.open('Venue layout imported successfully.', 'Close', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.LAYOUT_IMPORTED'), this.translate.instant('BUTTON.CLOSE'), { duration: 3000 });
     } catch (err) {
       console.error('Error importing venue layout', err);
-      this.snackBar.open('Failed to import venue layout.', 'Close', { duration: 4000 });
+      this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.ERROR_IMPORTING_LAYOUT'), this.translate.instant('BUTTON.CLOSE'), { duration: 4000 });
     } finally {
       this.saving.set(false);
     }

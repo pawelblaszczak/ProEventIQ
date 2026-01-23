@@ -341,9 +341,7 @@
         "ALLOCATIONS_CLEARED": "Wybrane przydziały zostały wyczyszczone (oczekujące zmiany).",
         "CHANGES_SAVED": "Zmiany zostały zapisane!",
         "ERROR_SAVING": "Nie udało się zapisać zmian. Spróbuj ponownie.",
-        "INVALID_JSON": "Nieprawidłowy JSON – sprawdź zawartość.",
         "MISSING_VENUE_ID": "JSON musi zawierać prawidłowe pole venueId.",
-        "LAYOUT_IMPORTED": "Układ obiektu został zaimportowany.",
         "ERROR_IMPORTING_LAYOUT": "Nie udało się zaimportować układu obiektu."
       },
       "DIALOG": {
@@ -615,6 +613,7 @@
         "BACK_TO_LIST": "WRÓĆ DO LISTY",
         "EDIT_EVENT": "EDYTUJ WYDARZENIE",
         "PARTICIPANTS": {
+            "GENERATE_TICKET": "Generuj bilet PDF",
             "TITLE": "Uczestnicy",
             "ADD_BUTTON": "DODAJ UCZESTNIKA",
             "TICKETS_BUTTON": "BILETY",

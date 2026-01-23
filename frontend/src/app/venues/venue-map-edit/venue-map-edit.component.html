@@ -23,9 +23,13 @@
           {{ 'VENUES.MAP.EDITING' | translate }}: {{ venue()?.name }}
         } @else {
           {{ 'VENUES.MAP.RESERVATIONS' | translate }}: {{ eventData?.showName || venue()?.name }}
-          <span *ngIf="eventData?.dateTime" class="event-date">{{ eventData?.dateTime | date:'mediumDate' }}</span>
         }
       </h1>
+      @if (isReservationLike() && eventData?.dateTime) {
+        <p class="venue-location">
+          {{ formatDateTime(eventData?.dateTime) }}
+        </p>
+      }
       <p class="venue-location">
   @if (isReservationLike()) {
           {{ venue()?.name }}

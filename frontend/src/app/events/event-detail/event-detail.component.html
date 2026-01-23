@@ -237,7 +237,7 @@
             <th mat-header-cell *matHeaderCellDef style="width: 15%; min-width: 120px; text-align: center;">{{ 'EVENTS.DETAIL.PARTICIPANTS.ACTIONS_COL' | translate }}</th>
             <td mat-cell *matCellDef="let p" style="width: 15%; min-width: 120px; text-align: center;">
               <div *ngIf="p.participantId !== -1 && editingParticipant() !== p.participantId; else editActionsTemplate">
-                <button mat-icon-button color="accent" (click)="onGenerateReport(p.participantId)" aria-label="Generate ticket" title="Generate PDF Ticket">
+                <button mat-icon-button color="accent" (click)="onGenerateReport(p.participantId)" aria-label="Generate ticket" [title]="'EVENTS.DETAIL.PARTICIPANTS.GENERATE_TICKET' | translate">
                   <mat-icon style="color: #222;">article</mat-icon>
                 </button>
                 <button mat-icon-button color="primary" (click)="onEditParticipant(p.participantId)" aria-label="Edit participant">

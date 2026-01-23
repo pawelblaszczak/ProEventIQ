@@ -242,6 +242,38 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   public loading = signal(true);
   public error = signal<string | null>(null);
   public saving = signal(false);
+
+  formatDate(dateTime: string | undefined): string {
+    if (!dateTime) return '';
+    const date = new Date(dateTime);
+    const locale = this.translate?.currentLang || 'en';
+    return date.toLocaleDateString(locale, {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  }
+
+  formatDateTime(dateTime: string | undefined): string {
+    if (!dateTime) return '';
+    const date = new Date(dateTime);
+    const locale = this.translate?.currentLang || 'en';
+    // Date part
+    const dateStr = date.toLocaleDateString(locale, {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    // Time part (HH:mm)
+    const timeStr = date.toLocaleTimeString(locale, {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+    return `${dateStr}, ${timeStr}`;
+  }
   
   // Konva objects
   private stage: Konva.Stage | null = null;
@@ -314,7 +346,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   private readonly zoomLevel = signal(1);
   public readonly showSeats = signal(false);
   public readonly showOrders = signal(false);
-  public readonly sectorLabelMode = signal<'auto' | 'name' | 'name_seats' | 'none'>('auto');
+  public readonly sectorLabelMode = signal<'auto' | 'name' | 'name_seats' | 'none'>('name');
 
   setSectorLabelMode(mode: 'auto' | 'name' | 'name_seats' | 'none') {
     this.sectorLabelMode.set(mode);
@@ -624,6 +656,10 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   }
 
   ngOnInit() {
+    this.translate.onLangChange.subscribe(() => {
+      this.cdr.markForCheck();
+    });
+
     // Setup debounced canvas resize
     this.canvasResizeSubject.pipe(
       debounceTime(1000)
@@ -2255,7 +2291,15 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
                     );
                     const dynamicMargin = Math.max(22, Math.min(48, baseLabelWidth / 3));
                     const MIN_GAP = 20; // absolute minimum clear space
-                    let labelX = absMaxX_u + dynamicMargin;
+
+                    // Determine horizontal position: default right, but flip left if close to right edge
+                    const bgPad = 6;
+                    const estimatedBgW = baseLabelWidth + bgPad * 2;
+                    const canvasW = this.baseCanvasWidth();
+                    let isOnRight = (absMaxX_u + dynamicMargin + estimatedBgW) <= canvasW;
+                    
+                    let labelX = isOnRight ? (absMaxX_u + dynamicMargin) : (absMinX_u - dynamicMargin - estimatedBgW + bgPad);
+
                     // Align vertically centered to sector
                     const nameHeight = includeNameInBubble ? nameText.height() : 0;
                     const seatsHeight = seatsText.height();
@@ -2277,7 +2321,6 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
                     // Resize background to fit (bgRect may be undefined if block changed)
                     const bg = group.getStage()?.findOne((n: any) => n === bgRect) ? bgRect : bgRect; // keep ref
                     if (bgRect) {
-                      const bgPad = 6;
                       const bgW = Math.max(
                           includeNameInBubble ? nameText.width() : 0, 
                           seatsText.width(),
@@ -2285,22 +2328,37 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
                       ) + bgPad * 2;
                       const bgH = totalLabelHeight + bgPad * 2 + 4;
                       let bgX = labelX - bgPad;
-                      const currentGap = bgX - absMaxX_u; // space from sector bbox to bubble (unscaled)
-                      if (currentGap < MIN_GAP) {
-                        const shift = MIN_GAP - currentGap;
-                        labelX += shift;
-                        if (includeNameInBubble) nameText.x(labelX);
-                        seatsText.x(labelX);
-                        if (blockedHeight > 0) blockedText.x(labelX);
-                        bgX += shift;
+                      
+                      if (isOnRight) {
+                        const currentGap = bgX - absMaxX_u; // space from sector bbox to bubble (unscaled)
+                        if (currentGap < MIN_GAP) {
+                          const shift = MIN_GAP - currentGap;
+                          labelX += shift;
+                          if (includeNameInBubble) nameText.x(labelX);
+                          seatsText.x(labelX);
+                          if (blockedHeight > 0) blockedText.x(labelX);
+                          bgX += shift;
+                        }
+                      } else {
+                        // If on left, ensure we don't overlap sector left edge
+                        const currentGap = absMinX_u - (bgX + bgW);
+                        if (currentGap < MIN_GAP) {
+                           const shift = MIN_GAP - currentGap;
+                           labelX -= shift;
+                           if (includeNameInBubble) nameText.x(labelX);
+                           seatsText.x(labelX);
+                           if (blockedHeight > 0) blockedText.x(labelX);
+                           bgX -= shift;
+                        }
                       }
+
                       bgRect.position({ x: bgX, y: startY - bgPad });
                       bgRect.size({ width: bgW, height: bgH });
                     }
                     // Update leader line to connect centroid to middle of background
                     if (leader) {
                       const targetY = startY + totalLabelHeight / 2;
-                      const leaderEndX = (bgRect ? bgRect.x() : labelX) - 6;
+                      const leaderEndX = isOnRight ? ((bgRect ? bgRect.x() : labelX) - 6) : ((bgRect ? bgRect.x() + bgRect.width() : labelX + baseLabelWidth) + 6);
                       leader.points([absCentroid_u.x, absCentroid_u.y, leaderEndX, targetY]);
                     }
                   }

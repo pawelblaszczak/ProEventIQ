@@ -3218,7 +3218,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     });
   }
 
-  private handleRowSelection(seatRowId: number, sector: EditableSector) {
+  private handleRowSelection(seatRowId: number, sector: EditableSector, clickedSeatPid: number | null) {
     // Find all seats in this row
     const seatsInRow = this.sectorSeats.get(sector.sectorId!)?.filter(s => s.getAttr('seatRowId') === seatRowId) || [];
     
@@ -3248,13 +3248,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     // Check if we should assign or unassign
     let shouldAssign = false;
     if (selectedPid !== null) {
-        // If any seat in the row is NOT assigned to selectedPid, we assign.
-        // Unless it's blocked and we are not blocking.
-        const anyNotAssigned = seatsInRow.some(s => {
-            const pid = s.getAttr('participantId');
-            return pid !== selectedPid;
-        });
-        shouldAssign = anyNotAssigned;
+        // If we didn't click on a seat we already own, we want to assign to all available spots.
+        // If we clicked on a seat we ALREADY own, we want to unassign our seats in this row (toggle).
+        shouldAssign = (clickedSeatPid !== selectedPid);
     }
     
     let seatsChanged = 0;
@@ -3273,6 +3269,11 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         if (shouldAssign) {
             // Assign to selectedPid
             if (currentPid !== selectedPid) {
+                // Skip if seat is already allocated to another participant
+                if (currentPid != null) {
+                    return;
+                }
+
                 // Check limit before assigning
                 if (hasTicketLimit && remainingTickets <= 0) {
                     return; // Skip this seat, limit reached
@@ -3295,7 +3296,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
             }
         } else {
             // Unassign (set to null)
-            if (currentPid !== null) {
+            // If we have a selected participant, only unassign THEIR seats in this row.
+            // If no participant selected (selectedPid is null), unassign everything we can.
+            if (currentPid !== null && (selectedPid === null || currentPid === selectedPid)) {
                 // Logic to unassign
                 let reservationId: number | undefined;
                 if (originalPid) reservationId = this.findReservationIdForParticipantSeat(originalPid, sId);
@@ -3325,8 +3328,10 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       const seatRowId = seat.getAttr('seatRowId');
       
       if (isShiftPressed && seatRowId) {
+          // Determine the PID of the clicked seat to decide toggle behavior
+          const clickedSeatPid = seat.getAttr('participantId') as number | null | undefined;
           // Handle row selection
-          this.handleRowSelection(seatRowId, sector);
+          this.handleRowSelection(seatRowId, sector, clickedSeatPid ?? null);
           return;
       }
 

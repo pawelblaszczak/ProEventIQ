@@ -1,0 +1,71 @@
+name: CI/CD Build and Deploy
+
+on:
+  push:
+    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+  # Zmieniamy na małe litery, bo GitHub Registry tego wymaga
+  BACKEND_IMAGE: ghcr.io/pawelblaszczak/proeventiq-backend
+  FRONTEND_IMAGE: ghcr.io/pawelblaszczak/proeventiq-frontend
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & Push Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: . # Backend jest w głównym folderze
+          file: ./Dockerfile
+          push: true
+          tags: ${{ env.BACKEND_IMAGE }}:latest
+
+      - name: Build & Push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend # Frontend jest w podfolderze
+          file: ./frontend/Dockerfile
+          push: true
+          tags: ${{ env.FRONTEND_IMAGE }}:latest
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: SSH Deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ vars.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            
+            # Backend
+            cd /opt/backend
+            docker compose pull
+            docker compose up -d
+            
+            # Frontend
+            cd /opt/frontend
+            docker compose pull
+            docker compose up -d
+            
+            docker image prune -f

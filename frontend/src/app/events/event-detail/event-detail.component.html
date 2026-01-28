@@ -136,10 +136,6 @@
             <mat-icon>person_add</mat-icon>
             {{ 'EVENTS.DETAIL.PARTICIPANTS.ADD_BUTTON' | translate }}
           </button>
-          <button mat-stroked-button (click)="onGenerateAllReports()" [attr.aria-label]="'EVENTS.DETAIL.PARTICIPANTS.TICKETS_BUTTON' | translate" class="reports-btn back-button" [disabled]="!participants().length">
-            <mat-icon>article</mat-icon>
-            {{ 'EVENTS.DETAIL.PARTICIPANTS.TICKETS_BUTTON' | translate }}
-          </button>
         </div>
       </div>
       <mat-divider></mat-divider>
@@ -239,6 +235,9 @@
               <div *ngIf="p.participantId !== -1 && editingParticipant() !== p.participantId; else editActionsTemplate">
                 <button mat-icon-button color="accent" (click)="onGenerateReport(p.participantId)" aria-label="Generate ticket" [title]="'EVENTS.DETAIL.PARTICIPANTS.GENERATE_TICKET' | translate">
                   <mat-icon style="color: #222;">article</mat-icon>
+                </button>
+                <button mat-icon-button (click)="onGenerateMap(p.participantId)" aria-label="Generate map" [title]="'EVENTS.DETAIL.PARTICIPANTS.GENERATE_MAP' | translate">
+                  <mat-icon style="color: #222;">map</mat-icon>
                 </button>
                 <button mat-icon-button color="primary" (click)="onEditParticipant(p.participantId)" aria-label="Edit participant">
                   <mat-icon>edit</mat-icon>

@@ -272,4 +272,32 @@ public class EventController implements EventsApi {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
+    @Override
+    public ResponseEntity<Resource> eventsEventIdParticipantsParticipantIdMapGet(Long eventId, Long participantId) {
+        log.info("Generating participant map for participant {} in event ID: {}", participantId, eventId);
+        try {
+            return reportService.generateParticipantMap(eventId, participantId)
+                    .map(mapBytes -> {
+                        HttpHeaders headers = new HttpHeaders();
+                        headers.setContentType(MediaType.APPLICATION_PDF);
+                        // Use centralized filename generation from ReportService
+                        String filename = reportService.generateParticipantMapFilename(eventId, participantId);
+                        headers.set(HttpHeaders.CONTENT_DISPOSITION, 
+                            "attachment; filename=" + filename);
+                        
+                        org.springframework.core.io.Resource resource = new ByteArrayResource(mapBytes);
+                        return ResponseEntity.ok()
+                                .headers(headers)
+                                .body(resource);
+                    })
+                    .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+        } catch (NumberFormatException e) {
+            log.error(INVALID_EVENT_ID_FORMAT, eventId);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (Exception e) {
+            log.error("Error generating participant ticket: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 }

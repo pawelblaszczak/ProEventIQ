@@ -614,6 +614,7 @@
         "EDIT_EVENT": "EDYTUJ WYDARZENIE",
         "PARTICIPANTS": {
             "GENERATE_TICKET": "Generuj bilet PDF",
+            "GENERATE_MAP": "Generuj mapę PDF",
             "TITLE": "Uczestnicy",
             "ADD_BUTTON": "DODAJ UCZESTNIKA",
             "TICKETS_BUTTON": "BILETY",

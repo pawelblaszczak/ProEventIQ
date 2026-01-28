@@ -50,6 +50,8 @@ paths:
     $ref: './participant/participant-controller.yaml#/participantTicket'
   /events/{eventId}/participants/tickets-zip:
     $ref: './participant/participant-controller.yaml#/participantTicketsZip'
+  /events/{eventId}/participants/{participantId}/map:
+    $ref: './participant/participant-controller.yaml#/participantMap'
   /users:
     $ref: './user/user-controller.yaml#/users'
   /users/{userId}:

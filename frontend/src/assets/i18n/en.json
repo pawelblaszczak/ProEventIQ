@@ -617,6 +617,8 @@
         "BACK_TO_LIST": "BACK TO LIST",
         "EDIT_EVENT": "EDIT EVENT",
         "PARTICIPANTS": {
+            "GENERATE_TICKET": "Generate PDF ticket",
+            "GENERATE_MAP": "Generate PDF map",
             "TITLE": "Participants",
             "ADD_BUTTON": "ADD PARTICIPANT",
             "TICKETS_BUTTON": "TICKETS",

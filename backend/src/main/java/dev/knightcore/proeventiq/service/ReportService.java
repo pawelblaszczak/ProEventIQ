@@ -1,7 +1,12 @@
 package dev.knightcore.proeventiq.service;
 
+import dev.knightcore.proeventiq.api.model.Event;
 import dev.knightcore.proeventiq.entity.EventEntity;
 import dev.knightcore.proeventiq.entity.ParticipantEntity;
+import dev.knightcore.proeventiq.entity.ReservationEntity;
+import dev.knightcore.proeventiq.entity.SeatEntity;
+import dev.knightcore.proeventiq.entity.SeatRowEntity;
+import dev.knightcore.proeventiq.entity.SectorEntity;
 import dev.knightcore.proeventiq.entity.ShowEntity;
 import dev.knightcore.proeventiq.entity.UserEntity;
 import dev.knightcore.proeventiq.entity.VenueEntity;
@@ -41,6 +46,12 @@ import java.io.IOException;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -1437,5 +1448,701 @@ public class ReportService {
         yPosition -= lineHeight;
         
         return yPosition;
+    }
+
+    private static class Point {
+        final double x, y;
+        Point(double x, double y) { this.x = x; this.y = y; }
+    }
+
+    private List<Point> getConvexHull(List<Point> points) {
+        if (points.size() <= 2) return points;
+        List<Point> sortedPoints = new java.util.ArrayList<>(points);
+        sortedPoints.sort((a, b) -> a.x != b.x ? Double.compare(a.x, b.x) : Double.compare(a.y, b.y));
+        List<Point> upper = new java.util.ArrayList<>();
+        List<Point> lower = new java.util.ArrayList<>();
+        for (Point p : sortedPoints) {
+            while (upper.size() >= 2 && cross(upper.get(upper.size() - 2), upper.get(upper.size() - 1), p) <= 0) {
+                upper.remove(upper.size() - 1);
+            }
+            upper.add(p);
+        }
+        for (int i = sortedPoints.size() - 1; i >= 0; i--) {
+            Point p = sortedPoints.get(i);
+            while (lower.size() >= 2 && cross(lower.get(lower.size() - 2), lower.get(lower.size() - 1), p) <= 0) {
+                lower.remove(lower.size() - 1);
+            }
+            lower.add(p);
+        }
+        upper.remove(upper.size() - 1);
+        lower.remove(lower.size() - 1);
+        List<Point> hull = new java.util.ArrayList<>(upper);
+        hull.addAll(lower);
+        return hull;
+    }
+
+    private double cross(Point o, Point a, Point b) {
+        return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<byte[]> generateParticipantMap(Long eventId, Long participantId) {
+        log.info("Generating PDF map for participant {} in event {}", participantId, eventId);
+        
+        try {
+            // Fetch all required data
+            Optional<EventEntity> eventOpt = eventRepository.findById(eventId);
+            Optional<ParticipantEntity> participantOpt = participantRepository.findByParticipantIdAndEventId(participantId, eventId);
+            
+            if (eventOpt.isEmpty() || participantOpt.isEmpty()) {
+                log.warn("Event or participant not found - eventId: {}, participantId: {}", eventId, participantId);
+                return Optional.empty();
+            }
+            
+            EventEntity event = eventOpt.get();
+            ParticipantEntity participant = participantOpt.get();
+            
+            Optional<ShowEntity> showOpt = showRepository.findById(event.getShowId());
+            Optional<VenueEntity> venueOpt = venueRepository.findById(event.getVenueId());
+            
+            if (showOpt.isEmpty() || venueOpt.isEmpty()) {
+                log.warn("Show or venue not found for event {}", eventId);
+                return Optional.empty();
+            }
+            
+            ShowEntity show = showOpt.get();
+            VenueEntity venue = venueOpt.get();
+            
+            // Fetch current user (organizer) information from Keycloak and user_details table
+            UserEntity organizer = null;
+            Optional<String> currentUserEmail = keycloakUserService.getCurrentUserEmail();
+            if (currentUserEmail.isPresent()) {
+                Optional<UserEntity> organizerOpt = userRepository.findByEmail(currentUserEmail.get());
+                if (organizerOpt.isPresent()) {
+                    organizer = organizerOpt.get();
+                }
+            }
+
+            // Fetch all reservations for this participant in this event
+            List<ReservationEntity> reservations = reservationRepository.findByEventIdAndParticipantId(eventId, participantId);
+            java.util.Set<Long> participantSeatIds = reservations.stream()
+                .map(ReservationEntity::getSeatId)
+                .collect(java.util.stream.Collectors.toSet());
+
+            // Generate PDF
+            byte[] pdfBytes = createPdfMap(event, participant, show, venue, participantSeatIds, organizer);
+            return Optional.of(pdfBytes);
+            
+        } catch (Exception e) {
+            log.error("Error generating participant map: {}", e.getMessage(), e);
+            return Optional.empty();
+        }
+    }
+
+    private byte[] createPdfMap(EventEntity event, ParticipantEntity participant, ShowEntity show, VenueEntity venue, java.util.Set<Long> participantSeatIds, UserEntity organizer) throws IOException {
+        try (PDDocument document = new PDDocument()) {
+            // Determine orientation based on venue layout
+            double venueWidth = venue.getWidth() != null ? venue.getWidth() : 3000.0;
+            double venueHeight = venue.getHeight() != null ? venue.getHeight() : 1500.0;
+            boolean isLandscape = venueWidth > venueHeight;
+            
+            PDRectangle pageSize = isLandscape ? 
+                new PDRectangle(PDRectangle.A4.getHeight(), PDRectangle.A4.getWidth()) : 
+                PDRectangle.A4;
+            
+            PDPage page = new PDPage(pageSize);
+            document.addPage(page);
+            
+            Set<SectorEntity> participantSectors = new java.util.LinkedHashSet<>();
+            PDPageContentStream contentStream = new PDPageContentStream(document, page);
+            try {
+                // Set up fonts
+                PDFont headerFont = PDType0Font.load(document, getClass().getResourceAsStream("/fonts/arimo-bold.ttf"));
+                PDFont bodyFont = PDType0Font.load(document, getClass().getResourceAsStream("/fonts/arimo-regular.ttf"));
+                PDFont serifFont = PDType0Font.load(document, getClass().getResourceAsStream("/fonts/ptserif-regular.ttf"));
+
+                float margin = 50;
+                float pageWidth = page.getMediaBox().getWidth();
+                float pageHeight = page.getMediaBox().getHeight();
+                float yPosition = pageHeight - margin;
+
+                // --- Logo (Top Right) ---
+                if (organizer != null && organizer.getThumbnail() != null) {
+                    try {
+                        PDImageXObject logoImage = PDImageXObject.createFromByteArray(document, organizer.getThumbnail(), "organizer_logo");
+                        
+                        if (logoImage != null) {
+                            float maxLogoSize = 60; 
+                            float logoScale = Math.min(maxLogoSize / logoImage.getWidth(), maxLogoSize / logoImage.getHeight());
+                            float lWidth = logoImage.getWidth() * logoScale;
+                            float lHeight = logoImage.getHeight() * logoScale;
+                            float logoX = pageWidth - margin - lWidth;
+                            float logoY = yPosition - lHeight + 18; // Moved slightly higher to align with text top
+                            
+                            contentStream.drawImage(logoImage, logoX, logoY, lWidth, lHeight);
+                        }
+                    } catch (Exception e) {
+                        log.warn("Could not load organizer logo for map: {}", e.getMessage());
+                    }
+                }
+
+                // Title and Event Information (Top Left) in Polish
+                contentStream.setFont(headerFont, 16);
+                contentStream.beginText();
+                contentStream.newLineAtOffset(margin, yPosition);
+                safeShowText(contentStream, (show.getName() != null ? show.getName() : "N/A"));
+                contentStream.endText();
+                yPosition -= 18;
+
+                // Use serif font for details like in ticket description
+                contentStream.setFont(serifFont, 11);
+                
+                // Venue name and address
+                contentStream.beginText();
+                contentStream.newLineAtOffset(margin, yPosition);
+                String venueInfo = (venue.getName() != null ? venue.getName() : "N/A");
+                String address = formatAddress(venue);
+                if (!"N/A".equals(address)) {
+                    venueInfo += "; " + address;
+                }
+                safeShowText(contentStream, venueInfo);
+                contentStream.endText();
+                yPosition -= 14;
+
+                // Event date and time formatted in Polish style
+                contentStream.beginText();
+                contentStream.newLineAtOffset(margin, yPosition);
+                String dateStr = event.getDateTime() != null ? 
+                    event.getDateTime().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy 'r. godz.' HH:mm")) : "N/A";
+                safeShowText(contentStream, dateStr);
+                contentStream.endText();
+                yPosition -= 14;
+
+                // Participant name (no label)
+                contentStream.beginText();
+                contentStream.newLineAtOffset(margin, yPosition);
+                safeShowText(contentStream, (participant.getName() != null ? participant.getName() : "N/A"));
+                contentStream.endText();
+                yPosition -= 30;
+
+                // Map area calculation
+                float mapMaxWidth = pageWidth - 2 * margin;
+                float mapMaxHeight = yPosition - margin;
+                
+                // Scaling to fit A4
+                float scale = Math.min(mapMaxWidth / (float)venueWidth, mapMaxHeight / (float)venueHeight);
+                float offsetX = (mapMaxWidth - (float)venueWidth * scale) / 2;
+                float offsetY = (mapMaxHeight - (float)venueHeight * scale) / 2;
+
+                // Final origin for drawing (bottom-left of map area)
+                float drawX = margin + offsetX;
+                float drawY = margin + offsetY;
+
+                // Fetch sectors for map
+                List<SectorEntity> sectors = venue.getSectors();
+                if (sectors != null) {
+                    for (SectorEntity sector : sectors) {
+                        boolean sectorHasParticipantSeats = false;
+                        if (sector.getSeatRows() != null) {
+                            for (SeatRowEntity row : sector.getSeatRows()) {
+                                if (row.getSeats() != null) {
+                                    for (SeatEntity seat : row.getSeats()) {
+                                        if (participantSeatIds.contains(seat.getSeatId())) {
+                                            sectorHasParticipantSeats = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (sectorHasParticipantSeats) break;
+                            }
+                        }
+                        
+                        drawSector(contentStream, sector, scale, drawX, drawY, (float)venueHeight, participantSeatIds, bodyFont);
+                        
+                        if (sectorHasParticipantSeats) {
+                            participantSectors.add(sector);
+                        }
+                    }
+                }
+
+            } finally {
+                contentStream.close();
+            }
+
+            // Add detail pages for each sector the participant has seats in
+            PDFont sectorTitleFont = PDType0Font.load(document, getClass().getResourceAsStream("/fonts/ptserif-regular.ttf"));
+            PDFont sectorRowFont = PDType0Font.load(document, getClass().getResourceAsStream("/fonts/arimo-bold.ttf"));
+            PDFont sectorSeatFont = PDType0Font.load(document, getClass().getResourceAsStream("/fonts/arimo-regular.ttf"));
+            
+            for (SectorEntity sector : participantSectors) {
+                addSectorDetailPage(document, sector, participantSeatIds, sectorTitleFont, sectorRowFont, sectorSeatFont, organizer);
+            }
+            
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            document.save(baos);
+            return baos.toByteArray();
+        }
+    }
+
+    private void drawSector(PDPageContentStream contentStream, SectorEntity sector, float scale, float drawX, float drawY, float venueHeight, java.util.Set<Long> participantSeatIds, PDFont font) throws IOException {
+        boolean hasParticipantSeats = false;
+        List<Point> points = new java.util.ArrayList<>();
+        
+        List<SeatRowEntity> rows = sector.getSeatRows();
+        if (rows != null) {
+            for (SeatRowEntity row : rows) {
+                List<SeatEntity> seats = row.getSeats();
+                if (seats != null) {
+                    for (SeatEntity seat : seats) {
+                        if (participantSeatIds.contains(seat.getSeatId())) {
+                            hasParticipantSeats = true;
+                        }
+                        if (seat.getPositionX() != null && seat.getPositionY() != null) {
+                            points.add(new Point(seat.getPositionX() * 0.4, seat.getPositionY() * 0.4));
+                        }
+                    }
+                }
+            }
+        }
+        
+        if (points.isEmpty()) return;
+
+        // Flip Y logic to match frontend (venue-map-edit.component.ts)
+        long negativeYCount = points.stream().filter(p -> p.y < 0).count();
+        long positiveYCount = points.stream().filter(p -> p.y > 0).count();
+        if (negativeYCount > positiveYCount) {
+             double maxY = points.stream().mapToDouble(p -> p.y).max().orElse(0);
+             List<Point> flippedPoints = new java.util.ArrayList<>();
+             for (Point p : points) {
+                 flippedPoints.add(new Point(p.x, maxY - p.y));
+             }
+             points = flippedPoints;
+        }
+
+        List<Point> hull = getConvexHull(points);
+        if (hull.size() < 2) {
+            double minX = points.stream().mapToDouble(p -> p.x).min().orElse(0);
+            double maxX = points.stream().mapToDouble(p -> p.x).max().orElse(0);
+            double minY = points.stream().mapToDouble(p -> p.y).min().orElse(0);
+            double maxY = points.stream().mapToDouble(p -> p.y).max().orElse(0);
+            double padding = 8.0; // Padded for small sectors
+            hull = java.util.Arrays.asList(
+                new Point(minX - padding, minY - padding),
+                new Point(maxX + padding, minY - padding),
+                new Point(maxX + padding, maxY + padding),
+                new Point(minX - padding, maxY + padding)
+            );
+        }
+
+        double sectorX = sector.getPositionX() != null ? sector.getPositionX() : 0;
+        double sectorY = sector.getPositionY() != null ? sector.getPositionY() : 0;
+        double rotationRad = Math.toRadians(sector.getRotation() != null ? sector.getRotation() : 0);
+
+        List<Point> transformedHull = new java.util.ArrayList<>();
+        for (Point p : hull) {
+            double rx = p.x * Math.cos(rotationRad) - p.y * Math.sin(rotationRad);
+            double ry = p.x * Math.sin(rotationRad) + p.y * Math.cos(rotationRad);
+            double tx = rx + sectorX;
+            double ty = ry + sectorY;
+            
+            float pPdfX = drawX + (float)tx * scale;
+            float pPdfY = drawY + (venueHeight - (float)ty) * scale;
+            transformedHull.add(new Point(pPdfX, pPdfY));
+        }
+
+        if (hasParticipantSeats) {
+            // Blue for participant sectors
+            contentStream.setNonStrokingColor(new java.awt.Color(33, 150, 243));
+            contentStream.setStrokingColor(new java.awt.Color(25, 118, 210)); // Darker blue border
+            contentStream.setLineWidth(2.0f);
+        } else {
+            // Light grey for others, but with darker borders
+            contentStream.setNonStrokingColor(new java.awt.Color(245, 245, 245));
+            contentStream.setStrokingColor(java.awt.Color.DARK_GRAY); // Darker border
+            contentStream.setLineWidth(1.5f);
+        }
+
+        contentStream.moveTo((float)transformedHull.get(0).x, (float)transformedHull.get(0).y);
+        for (int i = 1; i < transformedHull.size(); i++) {
+            contentStream.lineTo((float)transformedHull.get(i).x, (float)transformedHull.get(i).y);
+        }
+        contentStream.closePath();
+        contentStream.fillAndStroke();
+
+        // Calculate Centroid of the original (scaled 0.4) shape to match frontend anchor
+        double centroidX, centroidY;
+        if (hull.size() > 2) {
+             double area = 0, cx = 0, cy = 0;
+             for (int i = 0; i < hull.size(); i++) {
+                 Point p0 = hull.get(i);
+                 Point p1 = hull.get((i + 1) % hull.size());
+                 double cross = p0.x * p1.y - p1.x * p0.y;
+                 area += cross;
+                 cx += (p0.x + p1.x) * cross;
+                 cy += (p0.y + p1.y) * cross;
+             }
+             area = area / 2.0;
+             if (Math.abs(area) > 1e-7) {
+                 centroidX = cx / (6 * area);
+                 centroidY = cy / (6 * area);
+             } else {
+                 centroidX = hull.stream().mapToDouble(p -> p.x).average().orElse(0);
+                 centroidY = hull.stream().mapToDouble(p -> p.y).average().orElse(0);
+             }
+        } else {
+             centroidX = points.stream().mapToDouble(p -> p.x).average().orElse(0);
+             centroidY = points.stream().mapToDouble(p -> p.y).average().orElse(0);
+        }
+
+        // Label Logic
+        float finalFontSize;
+        float textRotation = 0;
+
+        // Apply offsets from DB (additive to centroid, already in scaled units)
+        double labelOffsetX = (sector.getLabelPositionX() != null) ? sector.getLabelPositionX() : 0;
+        double labelOffsetY = (sector.getLabelPositionY() != null) ? sector.getLabelPositionY() : 0;
+        
+        double lLocalX = centroidX + labelOffsetX;
+        double lLocalY = centroidY + labelOffsetY;
+        
+        // Apply Sector Rotation
+        double rx = lLocalX * Math.cos(rotationRad) - lLocalY * Math.sin(rotationRad);
+        double ry = lLocalX * Math.sin(rotationRad) + lLocalY * Math.cos(rotationRad);
+        
+        // Translate to Venue Space
+        double tx = rx + sectorX;
+        double ty = ry + sectorY;
+        
+        // Scale to PDF
+        float labelGlobalX = drawX + (float)tx * scale;
+        float labelGlobalY = drawY + (venueHeight - (float)ty) * scale;
+        
+        if (sector.getLabelFontSize() != null) {
+            // Heuristic multiplier - reduced further to be smaller
+            finalFontSize = sector.getLabelFontSize() * scale; 
+        } else {
+            finalFontSize = Math.max(6, 12 * scale);
+        }
+             
+        if (sector.getLabelRotation() != null) {
+            // Combined rotation: Sector + Label
+            double labelRot = sector.getLabelRotation();
+            double sectorRot = (sector.getRotation() != null) ? sector.getRotation() : 0;
+            // Negate for PDF coordinate system
+            textRotation = (float)Math.toRadians(-(sectorRot + labelRot)); 
+        } else {
+            // Just sector rotation? Frontend rotates labelGroup by labelRot (def 0)
+            // inside SectorGroup (rotated by sectorRot).
+            double sectorRot = (sector.getRotation() != null) ? sector.getRotation() : 0;
+            textRotation = (float)Math.toRadians(-sectorRot);
+        }
+
+        contentStream.beginText();
+        contentStream.setFont(font, finalFontSize);
+        contentStream.setNonStrokingColor(java.awt.Color.BLACK);
+        String name = sector.getName() != null ? sector.getName() : "Sektor";
+        
+        name = name.replaceAll("[\\n\\r]", " ");
+        float textWidth = font.getStringWidth(name) / 1000 * finalFontSize;
+        
+        org.apache.pdfbox.util.Matrix matrix = org.apache.pdfbox.util.Matrix.getTranslateInstance(labelGlobalX, labelGlobalY);
+        if (textRotation != 0) {
+            matrix.rotate(textRotation);
+        }
+        
+        // Offset for alignment and frontend y=-20 shift
+        // "Up" 20 pixels in screen coords -> +20 * scale in PDF coords (rotated frame)
+        // Baseline adjustment: assuming top of text is at +20*scale.
+        float yShift = 20 * scale - finalFontSize; 
+        
+        // Center text horizontally
+        matrix.translate(-textWidth / 2, yShift);
+        
+        contentStream.setTextMatrix(matrix);
+        contentStream.showText(name);
+        contentStream.endText();
+    }
+
+    private void addSectorDetailPage(PDDocument document, SectorEntity sector, Set<Long> participantSeatIds, PDFont titleFont, PDFont rowFont, PDFont seatFont, UserEntity organizer) throws IOException {
+        
+        // --- 1. PRE-CALCULATE DIMENSIONS TO DECIDE ORIENTATION ---
+        double rotationRad = Math.toRadians(sector.getRotation() != null ? sector.getRotation() : 0);
+        List<SeatEntity> allSeats = new ArrayList<>();
+        if (sector.getSeatRows() != null) {
+            for (SeatRowEntity row : sector.getSeatRows()) {
+                if (row.getSeats() != null) {
+                    allSeats.addAll(row.getSeats());
+                }
+            }
+        }
+        
+        if (allSeats.isEmpty()) return;
+
+        // Calculate transformed coordinates (rotated just like in the map)
+        List<Point> transformedPoints = new ArrayList<>();
+        List<Point> seatCenters = new ArrayList<>(); 
+        double borderPadding = 8.0; // Reduced padding
+
+        for (SeatEntity seat : allSeats) {
+            if (seat.getPositionX() == null || seat.getPositionY() == null) continue;
+            double sx = seat.getPositionX() * 0.4;
+            double sy = seat.getPositionY() * 0.4;
+            
+            // Rotation
+            double rx = sx * Math.cos(rotationRad) - sy * Math.sin(rotationRad);
+            double ry = sx * Math.sin(rotationRad) + sy * Math.cos(rotationRad);
+            
+            Point center = new Point(rx, ry);
+            seatCenters.add(center);
+            transformedPoints.add(center);
+            // Add points around the seat to push the hull out (padding)
+            transformedPoints.add(new Point(rx - borderPadding, ry - borderPadding));
+            transformedPoints.add(new Point(rx + borderPadding, ry - borderPadding));
+            transformedPoints.add(new Point(rx + borderPadding, ry + borderPadding));
+            transformedPoints.add(new Point(rx - borderPadding, ry + borderPadding));
+        }
+
+        // Model coordinates bounding box after rotation
+        double minX = transformedPoints.stream().mapToDouble(p -> p.x).min().orElse(0);
+        double maxX = transformedPoints.stream().mapToDouble(p -> p.x).max().orElse(0);
+        double minY = transformedPoints.stream().mapToDouble(p -> p.y).min().orElse(0);
+        double maxY = transformedPoints.stream().mapToDouble(p -> p.y).max().orElse(0);
+
+        double hullPadding = 10.0; // Reduced hull padding
+        double contentWidth = maxX - minX + 2 * hullPadding;
+        double contentHeight = maxY - minY + 2 * hullPadding;
+
+        // Decide orientation: if wide, use Landscape
+        boolean landscape = contentWidth > contentHeight * 1.2; // slight bias towards portrait unless clearly wide
+        
+        PDPage page = landscape 
+            ? new PDPage(new PDRectangle(PDRectangle.A4.getHeight(), PDRectangle.A4.getWidth())) 
+            : new PDPage(PDRectangle.A4);
+        document.addPage(page);
+        
+        try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
+            // Reduced margin to use more page space (User Request: large margins issue)
+            float margin = 30;
+            float pageWidth = page.getMediaBox().getWidth();
+            float pageHeight = page.getMediaBox().getHeight();
+            float yPosition = pageHeight - margin;
+
+            // --- Logo (Top Right) ---
+            if (organizer != null && organizer.getThumbnail() != null) {
+                try {
+                    PDImageXObject logoImage = PDImageXObject.createFromByteArray(document, organizer.getThumbnail(), "organizer_logo_sector_" + sector.getSectorId());
+                    if (logoImage != null) {
+                        float maxLogoSize = 60; 
+                        float logoScale = Math.min(maxLogoSize / logoImage.getWidth(), maxLogoSize / logoImage.getHeight());
+                        float lWidth = logoImage.getWidth() * logoScale;
+                        float lHeight = logoImage.getHeight() * logoScale;
+                        float logoX = pageWidth - margin - lWidth;
+                        float logoY = yPosition - lHeight + 18; 
+                        contentStream.drawImage(logoImage, logoX, logoY, lWidth, lHeight);
+                    }
+                } catch (Exception e) {
+                    log.warn("Could not load organizer logo for sector page: {}", e.getMessage());
+                }
+            }
+
+            // Title (Sector Name) formatted like event name on first page
+            contentStream.setFont(rowFont, 16); // Arimo Bold
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin, yPosition);
+            safeShowText(contentStream, "Sektor: " + (sector.getName() != null ? sector.getName() : "N/A"));
+            contentStream.endText();
+            yPosition -= 18;
+
+            // Liczba biletów calculation and display
+            long ticketCountInSector = 0;
+            if (sector.getSeatRows() != null) {
+                for (SeatRowEntity row : sector.getSeatRows()) {
+                    if (row.getSeats() != null) {
+                        ticketCountInSector += row.getSeats().stream()
+                            .filter(s -> participantSeatIds.contains(s.getSeatId()))
+                            .count();
+                    }
+                }
+            }
+
+            contentStream.setFont(titleFont, 11); // PT Serif Regular
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin, yPosition);
+            safeShowText(contentStream, "Liczba biletów: " + ticketCountInSector);
+            contentStream.endText();
+            yPosition -= 30;
+
+            float mapMaxWidth = pageWidth - 2 * margin;
+            float mapMaxHeight = yPosition - margin;
+            
+            float scale = Math.min(mapMaxWidth / (float)contentWidth, mapMaxHeight / (float)contentHeight);
+            
+            float offsetX = (mapMaxWidth - (float)contentWidth * scale) / 2;
+            float offsetY = (mapMaxHeight - (float)contentHeight * scale) / 2;
+
+            float drawX = margin + offsetX;
+            float drawY = margin + offsetY;
+
+            // Draw Hull
+            List<Point> hull = getConvexHull(transformedPoints);
+            if (hull.size() < 2) {
+                hull = Arrays.asList(
+                    new Point(minX - 8, minY - 8),
+                    new Point(maxX + 8, minY - 8),
+                    new Point(maxX + 8, maxY + 8),
+                    new Point(minX - 8, maxY + 8)
+                );
+            }
+
+            contentStream.setStrokingColor(java.awt.Color.DARK_GRAY);
+            contentStream.setLineWidth(2.0f);
+            
+            // Draw hull (rotated)
+            float startX = drawX + (float)(hull.get(0).x - minX + hullPadding) * scale;
+            float startY = drawY + (float)(contentHeight - (hull.get(0).y - minY + hullPadding)) * scale;
+            contentStream.moveTo(startX, startY);
+            for (int i = 1; i < hull.size(); i++) {
+                float px = drawX + (float)(hull.get(i).x - minX + hullPadding) * scale;
+                float py = drawY + (float)(contentHeight - (hull.get(i).y - minY + hullPadding)) * scale;
+                contentStream.lineTo(px, py);
+            }
+            contentStream.closePath();
+            contentStream.stroke();
+
+            // Calculate dynamic radius to prevent overlap
+            double minDistanceSq = Double.MAX_VALUE;
+            if (seatCenters.size() > 1) {
+                for (int i = 0; i < seatCenters.size(); i++) {
+                     Point p1 = seatCenters.get(i);
+                     for (int j = i + 1; j < seatCenters.size(); j++) {
+                         Point p2 = seatCenters.get(j);
+                         double dSq = (p1.x - p2.x)*(p1.x - p2.x) + (p1.y - p2.y)*(p1.y - p2.y);
+                         if (dSq < minDistanceSq) {
+                             minDistanceSq = dSq;
+                         }
+                     }
+                }
+            }
+            
+            float optimalRadius = 5.5f;
+            if (minDistanceSq != Double.MAX_VALUE && minDistanceSq > 0) {
+                 float dist = (float)Math.sqrt(minDistanceSq);
+                 // Use 45% of distance for radius to ensure no overlap
+                 optimalRadius = Math.min(5.5f, dist * 0.45f);
+            }
+
+            // Draw Seats and Row Labels
+            float seatRadius = optimalRadius; 
+            // Use calculated non-overlapping radius scaled to PDF
+            float displayRadius = Math.max(1.5f, Math.min(12.0f, seatRadius * scale));
+
+            if (sector.getSeatRows() != null) {
+                for (SeatRowEntity row : sector.getSeatRows()) {
+                    List<SeatEntity> rowSeats = row.getSeats();
+                    if (rowSeats == null || rowSeats.isEmpty()) continue;
+
+                    List<Point> rowPoints = new ArrayList<>();
+                    for (SeatEntity seat : rowSeats) {
+                        if (seat.getPositionX() == null || seat.getPositionY() == null) continue;
+                        double sx = seat.getPositionX() * 0.4;
+                        double sy = seat.getPositionY() * 0.4;
+                        double rx = sx * Math.cos(rotationRad) - sy * Math.sin(rotationRad);
+                        double ry = sx * Math.sin(rotationRad) + sy * Math.cos(rotationRad);
+                        
+                        float px = drawX + (float)(rx - minX + hullPadding) * scale;
+                        float py = drawY + (float)(contentHeight - (ry - minY + hullPadding)) * scale;
+                        rowPoints.add(new Point(px, py));
+
+                        // Draw Seat
+                        if (participantSeatIds.contains(seat.getSeatId())) {
+                            contentStream.setNonStrokingColor(new java.awt.Color(33, 150, 243));
+                            contentStream.setStrokingColor(new java.awt.Color(25, 118, 210)); // Darker blue border
+                        } else {
+                            contentStream.setNonStrokingColor(new java.awt.Color(230, 230, 230));
+                            contentStream.setStrokingColor(java.awt.Color.GRAY); // Thin grey border
+                        }
+                        contentStream.setLineWidth(0.5f); // Thin border
+                        drawCircle(contentStream, px, py, displayRadius);
+
+                        // Seat number
+                        if (scale > 0.35f) {
+                            contentStream.beginText();
+                            float labelFontSize = displayRadius * 1.1f;
+                            contentStream.setFont(seatFont, labelFontSize);
+                            contentStream.setNonStrokingColor(java.awt.Color.BLACK);
+                            String label = seat.getOrderNumber() != null ? seat.getOrderNumber().toString() : "";
+                            float tw = seatFont.getStringWidth(label) / 1000 * labelFontSize;
+                            contentStream.newLineAtOffset(px - tw / 2, py - labelFontSize / 3);
+                            safeShowText(contentStream, label);
+                            contentStream.endText();
+                        }
+                    }
+
+                    // Add row label (name) at the left side of the row
+                    if (!rowPoints.isEmpty() && row.getName() != null) {
+                        // Find the leftmost point in the row to place the label
+                        Point leftmost = rowPoints.stream().min((p1, p2) -> Double.compare(p1.x, p2.x)).get();
+                        
+                        contentStream.beginText();
+                        float rowFontSize = Math.max(8, displayRadius * 1.5f);
+                        contentStream.setFont(rowFont, rowFontSize);
+                        contentStream.setNonStrokingColor(java.awt.Color.BLACK);
+                        String rowName = row.getName();
+                        float rw = rowFont.getStringWidth(rowName) / 1000 * rowFontSize;
+                        // Place it slightly to the left of the leftmost seat
+                        contentStream.newLineAtOffset((float)leftmost.x - rw - displayRadius * 2, (float)leftmost.y - rowFontSize / 3);
+                        safeShowText(contentStream, rowName);
+                        contentStream.endText();
+                    }
+                }
+            }
+        }
+    }
+
+    private void drawCircle(PDPageContentStream contentStream, float x, float y, float radius) throws IOException {
+        float k = 0.552284749831f; 
+        contentStream.moveTo(x + radius, y);
+        contentStream.curveTo(x + radius, y + radius * k, x + radius * k, y + radius, x, y + radius);
+        contentStream.curveTo(x - radius * k, y + radius, x - radius, y + radius * k, x - radius, y);
+        contentStream.curveTo(x - radius, y - radius * k, x - radius * k, y - radius, x, y - radius);
+        contentStream.curveTo(x + radius * k, y - radius, x + radius, y - radius * k, x + radius, y);
+        contentStream.fillAndStroke();
+    }
+
+    public String generateParticipantMapFilename(Long eventId, Long participantId) {
+        try {
+            // Fetch all required data for filename generation
+            Optional<EventEntity> eventOpt = eventRepository.findById(eventId);
+            Optional<ParticipantEntity> participantOpt = participantRepository.findByParticipantIdAndEventId(participantId, eventId);
+            
+            if (eventOpt.isEmpty() || participantOpt.isEmpty()) {
+                log.warn("Event or participant not found for filename generation - eventId: {}, participantId: {}", eventId, participantId);
+                return String.format("participant_map_%s_event_%d.pdf", participantId, eventId);
+            }
+            
+            EventEntity event = eventOpt.get();
+            ParticipantEntity participant = participantOpt.get();
+            
+            Optional<ShowEntity> showOpt = showRepository.findById(event.getShowId());
+            if (showOpt.isEmpty()) {
+                log.warn("Show not found for filename generation - eventId: {}", eventId);
+                return String.format("participant_map_%s_event_%d.pdf", participantId, eventId);
+            }
+            
+            ShowEntity show = showOpt.get();
+            
+            // Generate filename: participant_name_date_show_name_map.pdf
+            String participantName = sanitizeFilename(participant.getName() != null ? participant.getName() : "unknown");
+            String showName = sanitizeFilename(show.getName() != null ? show.getName() : "unknown_show");
+            String date = event.getDateTime() != null ? 
+                event.getDateTime().format(DateTimeFormatter.ofPattern("yyyy_MM_dd")) : "unknown_date";
+            
+            return String.format("%s_%s_%s_map.pdf", participantName, date, showName);
+            
+        } catch (Exception e) {
+            log.error("Error generating filename for participant map: {}", e.getMessage());
+            // Fallback to simple format
+            return String.format("participant_map_%s_event_%d.pdf", participantId, eventId);
+        }
     }
 }

@@ -332,6 +332,45 @@ export class EventDetailComponent implements OnInit {
     });
   }
 
+  public onGenerateMap(participantId: number) {
+    const eventId = this.eventId();
+    if (!eventId) return;
+
+    console.log('Generating map for participant:', participantId);
+
+    this.eventApi.eventsEventIdParticipantsParticipantIdMapGet(eventId, participantId, 'response').subscribe({
+      next: (response: any) => {
+        // Extract filename from Content-Disposition header
+        const filename = this.getFilenameFromContentDisposition(response) || `participant_map_${participantId}.pdf`;
+        
+        // Create a blob URL and trigger download
+        const blob = new Blob([response.body], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      },
+      error: (err) => {
+        console.error('Error generating participant map:', err);
+        let errorMessage = 'Failed to generate map. ';
+        if (err.status === 404) {
+          errorMessage += 'Participant, event or venue layout not found.';
+        } else if (err.status === 501) {
+          errorMessage += 'Map generation is not yet implemented on the server.';
+        } else if (err.error && typeof err.error === 'string') {
+          errorMessage += err.error;
+        } else {
+          errorMessage += 'Please try again or contact support.';
+        }
+        alert(errorMessage);
+      }
+    });
+  }
+
   public onGenerateAllReports() {
     const eventId = this.eventId();
     if (!eventId) return;

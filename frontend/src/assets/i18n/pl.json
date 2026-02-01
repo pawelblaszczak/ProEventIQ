@@ -282,6 +282,7 @@
       "NO_PARTICIPANTS": "Nie znaleziono uczestników.",
       "BLOCKED_SEATS": "Zablokowane miejsca",
       "BLOCKED": "Zablokowane",
+      "HIGHLIGHT_SELECTED": "Pokaż miejsca wybranego uczestnika na mapie",
       "SELECTED": "Wybrano",
       "DESELECT": "Odznacz",
       "NAME": "Nazwa",
@@ -634,7 +635,9 @@
             "ALLOCATION_HINT_FULL": "Wszystkie miejsca przydzielone ({{allocated}}/{{requested}})",
             "NO_ALLOCATION_INFO": "Brak informacji o uczestniku",
             "ALLOCATION_HINT_UNEXPECTED": "Uczestnik nie zamówił biletów, ale {{allocated}} miejsc jest przydzielonych",
-            "NO_SEATS_ALLOCATED_WITH_REQUEST": "Brak przydzielonych miejsc ({{allocated}}/{{requested}})"
+            "NO_SEATS_ALLOCATED_WITH_REQUEST": "Nie przydzielono miejsc ({{allocated}}/{{requested}})",
+            "UNHIGHLIGHT_SEATS": "Usuń wyróżnienie miejsc użytkownika na mapie",
+            "HIGHLIGHT_SEATS": "Wyróżnij miejsca użytkownika na mapie"
         },
         "ALLOCATION": {
             "TOTAL_UNKNOWN": "Wszystkie bilety: {{totalTickets}} (pojemność nieznana)",

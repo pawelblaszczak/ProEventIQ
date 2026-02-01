@@ -70,6 +70,7 @@ export class EventDetailComponent implements OnInit {
   public reservations = signal<Reservation[]>([]);
   public editingParticipant = signal<string | null>(null);
   public showTicketDescription = signal(false);
+  public highlightedParticipant = signal<number | null>(null);
 
   /** Returns the sum of numberOfTickets for all participants */
   public getTotalTickets(): number {
@@ -98,6 +99,7 @@ export class EventDetailComponent implements OnInit {
   /** Returns a user-facing hint about allocation status for tooltip */
   public getAllocationHint(participant: Participant | null | undefined): string {
     if (!participant) return this.translate.instant('EVENTS.DETAIL.PARTICIPANTS.NO_ALLOCATION_INFO');
+    
     const requested = participant.allTicketCount ?? 0;
     const allocated = this.getAllocatedSeats(participant.participantId ?? null);
     if (requested === 0) {
@@ -111,6 +113,11 @@ export class EventDetailComponent implements OnInit {
       return this.translate.instant('EVENTS.DETAIL.PARTICIPANTS.ALLOCATION_HINT_OVER', { allocated, requested, diff });
     }
     return this.translate.instant('EVENTS.DETAIL.PARTICIPANTS.ALLOCATION_HINT_FULL', { allocated, requested });
+  }
+
+  public toggleHighlight(participantId?: number) {
+    if (participantId == null) return;
+    this.highlightedParticipant.update(current => current === participantId ? null : participantId);
   }
 
   /** Returns the seat status text in format: "reserved/total (percentage%)" */

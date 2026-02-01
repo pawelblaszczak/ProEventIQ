@@ -205,6 +205,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   @Input() reservationData: Reservation[] = []; // Existing reservations for the event
   @Input() participantData: Participant[] = []; // Participants for the event
   @Input() pendingReservationCount: number = 0; // Number of pending reservation updates from parent
+  @Input() highlightedParticipantId: number | null = null; // Highlight a specific participant on the map
   
   // Outputs for reservation mode
   @Output() reservationChange = new EventEmitter<{
@@ -309,12 +310,23 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   }>();
   
   private getParticipantColor(participantId: number | null): string {
-    console.log('getParticipantColor called with participantId:', participantId);
+    // console.log('getParticipantColor called with participantId:', participantId);
     if (participantId === this.BLOCKED_PARTICIPANT_ID) {
       return '#ffffff'; // White color for blocked
     }
+    
+    // Check if we are highlighting a specific participant
+    if (this.highlightedParticipantId !== null) {
+      if (participantId === this.highlightedParticipantId) {
+        // Continue to find this participant's specific color
+      } else if (participantId != null) {
+        // Allocated to someone else -> show as generic grey
+        return '#aaaaaa';
+      }
+    }
+
     if (participantId == null) {
-      console.log('Returning default color for null participantId');
+      // console.log('Returning default color for null participantId');
       return this.defaultSeatColor;
     }
   // Prefer the reactive participants list; fall back to the input participantData to avoid
@@ -581,6 +593,11 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         shouldApplyReservations = true;
       }
       
+      if (changes['highlightedParticipantId']) {
+        console.log('Updated highlighted participant from input:', this.highlightedParticipantId);
+        shouldApplyReservations = true;
+      }
+
   if (shouldApplyReservations) {
         // Apply reservations to seats after the view is initialized
         setTimeout(() => {
@@ -741,18 +758,67 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
   // Select / toggle a participant in reservation mode
   selectParticipant(p: Participant) {
-  if (this.mode !== 'reservation') return;
-  const current = this.selectedParticipantId();
-  this.selectedParticipantId.set(current === p.participantId ? null : p.participantId);
-  // Future hook: emit selection change or highlight seats for this participant
+    if (this.mode !== 'reservation') return;
+    const current = this.selectedParticipantId();
+    const newId = current === p.participantId ? null : p.participantId;
+    this.selectedParticipantId.set(newId);
+    
+    // If highlight was active, update it to follow the new selection (if it's a real participant)
+    if (this.highlightedParticipantId !== null) {
+      this.highlightedParticipantId = (newId !== this.BLOCKED_PARTICIPANT_ID) ? newId : null;
+      this.updateAllSeatsAppearance();
+    }
   }
 
   isParticipantSelected(p: Participant): boolean {
     return this.selectedParticipantId() === p.participantId;
   }
 
+  // Toggle highlighting for the currently selected participant in reservation mode
+  public toggleHighlightSelected(): void {
+    const selectedId = this.selectedParticipantId();
+    // Only allow highlighting for actual participants (not null or blocked)
+    if (selectedId === null || selectedId === this.BLOCKED_PARTICIPANT_ID) {
+      if (this.highlightedParticipantId !== null) {
+        this.highlightedParticipantId = null;
+        this.updateAllSeatsAppearance();
+      }
+      return;
+    }
+
+    // Toggle: if already highlighted, turn off. Otherwise highlight selected.
+    if (this.highlightedParticipantId === selectedId) {
+      this.highlightedParticipantId = null;
+    } else {
+      this.highlightedParticipantId = selectedId;
+    }
+    
+    this.updateAllSeatsAppearance();
+  }
+
+  /**
+   * Refreshes the color and visual state of all seats across all sectors
+   * without resetting the authoritative reservation data or pending changes.
+   */
+  private updateAllSeatsAppearance(): void {
+    if (!this.layer) return;
+    
+    this.sectorSeats.forEach(seats => {
+      seats.forEach(seat => {
+        const pid = seat.getAttr('participantId');
+        this.updateSeatAppearance(seat, pid);
+      });
+    });
+    
+    this.layer.batchDraw();
+  }
+
   clearSelectedParticipant() {
     this.selectedParticipantId.set(null);
+    if (this.highlightedParticipantId !== null) {
+      this.highlightedParticipantId = null;
+      this.updateAllSeatsAppearance();
+    }
   }
 
   // Add pending reservation change (reservation mode)
@@ -5677,10 +5743,15 @@ console.log("addSelectionIndicators2");
     if (this.mode !== 'reservation') return;
     const current = this.selectedParticipantId();
     this.selectedParticipantId.set(current === this.BLOCKED_PARTICIPANT_ID ? null : this.BLOCKED_PARTICIPANT_ID);
+    
+    // Disable highlight if it was active, as blocked seats are excluded from highlight mode
+    if (this.highlightedParticipantId !== null) {
+      this.highlightedParticipantId = null;
+      this.updateAllSeatsAppearance();
+    }
   }
 
   isBlockedSelected(): boolean {
     return this.selectedParticipantId() === this.BLOCKED_PARTICIPANT_ID;
   }
-
 }

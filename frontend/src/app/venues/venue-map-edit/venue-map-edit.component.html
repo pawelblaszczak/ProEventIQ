@@ -128,19 +128,22 @@
             <div class="tool-buttons">
               <button mat-icon-button
                       (click)="allocateSelected(false)"
+                      [disabled]="selectedSectors().length === 0 && (selectedParticipantId() === null || selectedParticipantId() === BLOCKED_PARTICIPANT_ID)"
                       [matTooltip]="'VENUES.MAP.ALLOCATE_FORWARD' | translate">
                 <mat-icon>arrow_upward</mat-icon>
               </button>
               <button mat-icon-button
                       (click)="allocateSelected(true)"
+                      [disabled]="selectedSectors().length === 0 && (selectedParticipantId() === null || selectedParticipantId() === BLOCKED_PARTICIPANT_ID)"
                       [matTooltip]="'VENUES.MAP.ALLOCATE_REVERSE' | translate">
                 <mat-icon>arrow_downward</mat-icon>
               </button>
               <button mat-icon-button
                       (click)="clearSelectedAllocations()"
+                      [disabled]="selectedSectors().length === 0 && (selectedParticipantId() === null || selectedParticipantId() === BLOCKED_PARTICIPANT_ID)"
                       [matTooltip]="'VENUES.MAP.CLEAR_SELECTED' | translate"
-                      color="warn">
-                <mat-icon color="warn">remove</mat-icon>
+                      [color]="selectedSectors().length === 0 && (selectedParticipantId() === null || selectedParticipantId() === BLOCKED_PARTICIPANT_ID) ? null : 'warn'">
+                <mat-icon [color]="selectedSectors().length === 0 && (selectedParticipantId() === null || selectedParticipantId() === BLOCKED_PARTICIPANT_ID) ? null : 'warn'">remove</mat-icon>
               </button>
               <div class="vertical-divider"></div>
             </div>
@@ -167,7 +170,7 @@
                     (click)="editSectorSeats()"
                     [disabled]="selectedSectors().length !== 1"
                     [matTooltip]="'VENUES.MAP.EDIT_SEATS' | translate">
-              <mat-icon>event_seat</mat-icon>
+              <mat-icon>app_registration</mat-icon>
             </button>
             <!-- Change Name button removed per request -->
             <button mat-icon-button 
@@ -319,6 +322,15 @@
                     (click)="toggleGridDebug()"
                     [matTooltip]="'VENUES.MAP.TOGGLE_GRID' | translate">
               <mat-icon>grid_on</mat-icon>
+            </button>
+            <button mat-icon-button 
+                    *ngIf="mode === 'reservation'"
+                    class="view-toggle-btn highlight-btn"
+                    [disabled]="selectedParticipantId() === null || selectedParticipantId() === BLOCKED_PARTICIPANT_ID"
+                    [color]="highlightedParticipantId === selectedParticipantId() ? 'primary' : ''"
+                    (click)="toggleHighlightSelected()"
+                    [matTooltip]="'VENUES.MAP.HIGHLIGHT_SELECTED' | translate">
+              <mat-icon>remove_red_eye</mat-icon>
             </button>
           </div>
         </div>

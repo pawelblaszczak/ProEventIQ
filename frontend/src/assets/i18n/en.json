@@ -282,6 +282,7 @@
       "NO_PARTICIPANTS": "No participants found.",
       "BLOCKED_SEATS": "Blocked Seats",
       "BLOCKED": "Blocked",
+      "HIGHLIGHT_SELECTED": "Highlight selected participant seats",
       "SELECTED": "Selected",
       "DESELECT": "Deselect",
       "NAME": "Name",
@@ -638,7 +639,9 @@
             "ALLOCATION_HINT_FULL": "All seats allocated ({{allocated}}/{{requested}})",
             "NO_ALLOCATION_INFO": "No participant information",
             "ALLOCATION_HINT_UNEXPECTED": "Participant requested no tickets but {{allocated}} seat(s) are allocated",
-            "NO_SEATS_ALLOCATED_WITH_REQUEST": "No seats allocated ({{allocated}}/{{requested}})"
+            "NO_SEATS_ALLOCATED_WITH_REQUEST": "No seats allocated ({{allocated}}/{{requested}})",
+            "UNHIGHLIGHT_SEATS": "Remove highlight from user seats on map",
+            "HIGHLIGHT_SEATS": "Highlight user seats on map"
         },
         "ALLOCATION": {
             "TOTAL_UNKNOWN": "Total tickets: {{totalTickets}} (venue capacity unknown)",

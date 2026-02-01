@@ -28,6 +28,7 @@ import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory;
 import org.apache.pdfbox.pdmodel.graphics.state.RenderingMode;
+import org.apache.pdfbox.util.Matrix;
 import javax.imageio.ImageIO;
 import javax.imageio.spi.IIORegistry;
 import java.awt.image.BufferedImage;
@@ -45,6 +46,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Comparator;
 import java.util.Optional;
 import java.util.Set;
 import java.util.HashSet;
@@ -1994,8 +1996,9 @@ public class ReportService {
                 );
             }
 
-            contentStream.setStrokingColor(java.awt.Color.DARK_GRAY);
-            contentStream.setLineWidth(2.0f);
+            // Use a lighter grey and thinner stroke so the hull doesn't compete with labels
+            contentStream.setStrokingColor(new java.awt.Color(180, 180, 180));
+            contentStream.setLineWidth(1.0f);
             
             // Draw hull (rotated)
             float startX = drawX + (float)(hull.get(0).x - minX + hullPadding) * scale;
@@ -2038,8 +2041,11 @@ public class ReportService {
 
             if (sector.getSeatRows() != null) {
                 for (SeatRowEntity row : sector.getSeatRows()) {
-                    List<SeatEntity> rowSeats = row.getSeats();
-                    if (rowSeats == null || rowSeats.isEmpty()) continue;
+                    // Sort seats by order number to ensure stable ranking for first/last
+                    List<SeatEntity> rowSeats = new ArrayList<>(row.getSeats());
+                    rowSeats.sort(Comparator.comparing(SeatEntity::getOrderNumber, Comparator.nullsLast(Comparator.naturalOrder())));
+                    
+                    if (rowSeats.isEmpty()) continue;
 
                     List<Point> rowPoints = new ArrayList<>();
                     for (SeatEntity seat : rowSeats) {
@@ -2078,10 +2084,9 @@ public class ReportService {
                         }
                     }
 
-                    // Add row label (name) at the left side of the row
+                    // Add row label (name) taking rotation into account
                     if (!rowPoints.isEmpty() && row.getName() != null) {
-                        // Find the leftmost point in the row to place the label
-                        Point leftmost = rowPoints.stream().min((p1, p2) -> Double.compare(p1.x, p2.x)).get();
+                        Point firstPoint = rowPoints.get(0);
                         
                         contentStream.beginText();
                         float rowFontSize = Math.max(8, displayRadius * 1.5f);
@@ -2089,8 +2094,23 @@ public class ReportService {
                         contentStream.setNonStrokingColor(java.awt.Color.BLACK);
                         String rowName = row.getName();
                         float rw = rowFont.getStringWidth(rowName) / 1000 * rowFontSize;
-                        // Place it slightly to the left of the leftmost seat
-                        contentStream.newLineAtOffset((float)leftmost.x - rw - displayRadius * 2, (float)leftmost.y - rowFontSize / 3);
+                        
+                        // Use matrix for rotation to calculate the position relative to the seat
+                        float textRotation = (float) -rotationRad; 
+                        Matrix matrix = Matrix.getTranslateInstance((float)firstPoint.x, (float)firstPoint.y);
+                        if (textRotation != 0) {
+                            matrix.rotate(textRotation);
+                        }
+                        
+                        // Relative offset in rotated space: to the left of the seat (X negative)
+                        // and roughly centered vertically (Y slightly negative in PDF coords is 'down')
+                        float xOffset = -rw - displayRadius * 2;
+                        float yOffset = -rowFontSize / 3;
+                        matrix.translate(xOffset, yOffset);
+                        
+                        // Use the absolute transformed coordinates but keep text horizontal (0 rotation) for readability
+                        contentStream.setTextMatrix(Matrix.getTranslateInstance(matrix.getTranslateX(), matrix.getTranslateY()));
+                        
                         safeShowText(contentStream, rowName);
                         contentStream.endText();
                     }

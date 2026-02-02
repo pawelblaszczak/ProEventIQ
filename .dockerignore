@@ -1,22 +1,30 @@
-# Katalogi i pliki, których nie chcemy w obrazie Dockera
-
-# Frontend (niepotrzebny dla backendu)
-frontend/
-
-# Składniki builda Mavena
-backend/target/
-backend/.mvn/wrapper/maven-wrapper.jar
-
-# Git
+# --- KONTROLERZY WERSJI I IDE ---
 .git/
 .gitignore
-
-# IDE i systemowe pliki
 .idea/
 .vscode/
 *.iml
 .DS_Store
 Thumbs.db
 
-# Inne śmieci
+# --- LOGI I ŚMIECI SYSTEMOWE ---
 *.log
+npm-debug.log
+yarn-error.log
+
+# --- BACKEND (Java / Maven) ---
+# Ignorujemy skompilowane klasy i ciężki wrapper
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+
+# --- FRONTEND (Angular / Node) ---
+# To najważniejsza część: ignorujemy node_modules, ale NIE cały folder frontend
+**/node_modules/
+**/dist/
+frontend/.tmp/
+
+# --- PLIKI DOCKEROWE ---
+# Nie ma sensu kopiować skryptów budujących do środka obrazu
+**/Dockerfile
+**/docker-compose.yml
+**/.dockerignore

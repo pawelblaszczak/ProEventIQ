@@ -2088,6 +2088,16 @@ public class ReportService {
                     if (!rowPoints.isEmpty() && row.getName() != null) {
                         Point firstPoint = rowPoints.get(0);
                         
+                        // Detect if row is "right to left" in local space to decide label side
+                        boolean rightToLeft = false;
+                        if (rowSeats.size() > 1) {
+                            SeatEntity firstSeat = rowSeats.get(0);
+                            SeatEntity lastSeat = rowSeats.get(rowSeats.size() - 1);
+                            if (firstSeat.getPositionX() != null && lastSeat.getPositionX() != null) {
+                                rightToLeft = firstSeat.getPositionX() > lastSeat.getPositionX();
+                            }
+                        }
+
                         contentStream.beginText();
                         float rowFontSize = Math.max(8, displayRadius * 1.5f);
                         contentStream.setFont(rowFont, rowFontSize);
@@ -2103,8 +2113,9 @@ public class ReportService {
                         }
                         
                         // Relative offset in rotated space: to the left of the seat (X negative)
+                        // or to the right if rightToLeft (X positive)
                         // and roughly centered vertically (Y slightly negative in PDF coords is 'down')
-                        float xOffset = -rw - displayRadius * 2;
+                        float xOffset = rightToLeft ? (displayRadius * 2) : (-rw - displayRadius * 2);
                         float yOffset = -rowFontSize / 3;
                         matrix.translate(xOffset, yOffset);
                         

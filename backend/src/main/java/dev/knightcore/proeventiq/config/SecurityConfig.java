@@ -83,11 +83,8 @@ public class SecurityConfig {
                 // 2. Content Security Policy (CSP)
                 // 'unsafe-inline' i 'unsafe-eval' są potrzebne dla Angulara i Swaggera
                 .contentSecurityPolicy(csp -> csp
-                .policyDirectives("default-src 'self'; " +
-                                 "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
-                                 "style-src 'self' 'unsafe-inline'; " +
-                                 "img-src 'self' data:; " +
-                                 "connect-src 'self' https://api.proeventiq.pl https://auth.proeventiq.pl;")) // Dodane subdomeny
+                    .policyDirectives("default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.proeventiq.pl https://auth.proeventiq.pl")
+                )
                 
                 // 3. X-Frame-Options (Clickjacking)
                 .frameOptions(frame -> frame.sameOrigin())

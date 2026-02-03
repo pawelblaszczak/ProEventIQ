@@ -73,18 +73,45 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+            // KONFIGURACJA NAGŁÓWKÓW (Security Headers)
+            .headers(headers -> headers
+                // 1. HSTS (Strict-Transport-Security)
+                .httpStrictTransportSecurity(hsts -> hsts
+                    .includeSubDomains(true)
+                    .maxAgeInSeconds(31536000))
+                
+                // 2. Content Security Policy (CSP)
+                // 'unsafe-inline' i 'unsafe-eval' są potrzebne dla Angulara i Swaggera
+                .contentSecurityPolicy(csp -> csp
+                    .policyDirectives("default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';"))
+                
+                // 3. X-Frame-Options (Clickjacking)
+                .frameOptions(frame -> frame.sameOrigin())
+                
+                // 4. X-Content-Type-Options (MIME-sniffing)
+                .contentTypeOptions(Customizer.withDefaults())
+                
+                // 5. Referrer-Policy
+                .referrerPolicy(referrer -> referrer
+                    .policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                
+                // 6. Permissions-Policy (Blokada sensorów/kamery)
+                .permissionsPolicy(permissions -> permissions
+                    .policy("camera=(), microphone=(), geolocation=(), gyroscope=()"))
+            )
+            
+            // TWOJA DOTYCHCZASOWA KONFIGURACJA
             .csrf(csrf -> csrf.disable())
             .cors(Customizer.withDefaults())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                // Allow OpenAPI/Swagger and actuator health anonymously
                 .requestMatchers(
-                        "/v3/api-docs/**",
-                        "/swagger-ui/**",
-                        "/swagger-ui.html",
-                        "/actuator/health",
-            "/actuator/info",
-            "/test-ok"
+                    "/v3/api-docs/**",
+                    "/swagger-ui/**",
+                    "/swagger-ui.html",
+                    "/actuator/health",
+                    "/actuator/info",
+                    "/test-ok"
                 ).permitAll()
                 .anyRequest().authenticated()
             )

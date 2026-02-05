@@ -104,7 +104,7 @@ export class VenueReservationComponent implements OnInit {
       },
       error: err => {
         console.error('Failed to load venue', err);
-        this.error.set(this.translate.instant('EVENTS.DETAIL.RESERVATION.ERROR_LOAD_VENUE'));
+        this.error.set(this.translate.instant('EVENTS.RESERVATION.ERROR_LOAD_VENUE'));
         this.loading.set(false);
       }
     });
@@ -127,7 +127,7 @@ export class VenueReservationComponent implements OnInit {
       },
       error: err => {
         console.error('Failed to load event', err);
-        this.eventError.set(this.translate.instant('EVENTS.DETAIL.RESERVATION.ERROR_LOAD_EVENT'));
+        this.eventError.set(this.translate.instant('EVENTS.RESERVATION.ERROR_LOAD_EVENT'));
         this.eventLoading.set(false);
       }
     });
@@ -156,7 +156,7 @@ export class VenueReservationComponent implements OnInit {
       },
       error: err => {
         console.error('Failed to load reservations or blocks', err);
-        this.reservationError.set(this.translate.instant('EVENTS.DETAIL.RESERVATION.ERROR_LOAD_RESERVATIONS'));
+        this.reservationError.set(this.translate.instant('EVENTS.RESERVATION.ERROR_LOAD_RESERVATIONS'));
         this.reservationLoading.set(false);
       }
     });
@@ -208,7 +208,7 @@ export class VenueReservationComponent implements OnInit {
     if (updates.length === 0) {
       console.log('No pending reservation updates to save');
       this.snackBar.open(
-        this.translate.instant('EVENTS.DETAIL.RESERVATION.NO_CHANGES_SNACK'), 
+        this.translate.instant('EVENTS.RESERVATION.NO_CHANGES_SNACK'), 
         this.translate.instant('BUTTON.CLOSE'), 
         {
           duration: 2000,
@@ -280,7 +280,7 @@ export class VenueReservationComponent implements OnInit {
         this.loadReservations(eventId);
 
         this.reservationLoading.set(false);
-        this.translate.get('EVENTS.DETAIL.RESERVATION.SAVE_SUCCESS').pipe(take(1)).subscribe(successMsg => {
+        this.translate.get('EVENTS.RESERVATION.SAVE_SUCCESS').pipe(take(1)).subscribe(successMsg => {
           this.translate.get('BUTTON.CLOSE').pipe(take(1)).subscribe(closeMsg => {
             console.log('Translation check - SAVE_SUCCESS:', { successMsg, closeMsg });
             this.snackBar.open(successMsg, closeMsg, { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
@@ -289,10 +289,10 @@ export class VenueReservationComponent implements OnInit {
       },
       error: err => {
         console.error('Failed to save batch reservation updates', err);
-        this.translate.get('EVENTS.DETAIL.RESERVATION.SAVE_ERROR').pipe(take(1)).subscribe(errMsg => {
+        this.translate.get('EVENTS.RESERVATION.SAVE_ERROR').pipe(take(1)).subscribe(errMsg => {
           this.reservationError.set(errMsg);
           this.reservationLoading.set(false);
-          this.translate.get('EVENTS.DETAIL.RESERVATION.SAVE_ERROR_SNACK').pipe(take(1)).subscribe(snackMsg => {
+          this.translate.get('EVENTS.RESERVATION.SAVE_ERROR_SNACK').pipe(take(1)).subscribe(snackMsg => {
             this.translate.get('BUTTON.CLOSE').pipe(take(1)).subscribe(closeMsg => {
               console.log('Translation check - SAVE_ERROR:', { errMsg, snackMsg, closeMsg });
               this.snackBar.open(snackMsg, closeMsg, { duration: 5000, horizontalPosition: 'center', verticalPosition: 'top' });

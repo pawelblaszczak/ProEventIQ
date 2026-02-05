@@ -622,6 +622,7 @@
             "NAME_ADDRESS_COL": "Nazwa/Adres",
             "SEAT_COLOR_COL": "Kolor miejsca",
             "TICKETS_COL": "Bilety",
+            "DOCUMENTS_COL": "Dokumenty",
             "ACTIONS_COL": "Akcje",
             "TOTAL_TICKETS": "Wszystkie bilety:",
             "NONE": "Brak",
@@ -637,7 +638,11 @@
             "ALLOCATION_HINT_UNEXPECTED": "Uczestnik nie zamówił biletów, ale {{allocated}} miejsc jest przydzielonych",
             "NO_SEATS_ALLOCATED_WITH_REQUEST": "Nie przydzielono miejsc ({{allocated}}/{{requested}})",
             "UNHIGHLIGHT_SEATS": "Usuń wyróżnienie miejsc użytkownika na mapie",
-            "HIGHLIGHT_SEATS": "Wyróżnij miejsca użytkownika na mapie"
+            "HIGHLIGHT_SEATS": "Wyróżnij miejsca użytkownika na mapie",
+            "EDIT_PARTICIPANT": "Edytuj dane uczestnika",
+            "DELETE_PARTICIPANT": "Usuń uczestnika z wydarzenia",
+            "SAVE_PARTICIPANT": "Zapisz zmiany",
+            "CANCEL_EDIT": "Odrzuć zmiany"
         },
         "ALLOCATION": {
             "TOTAL_UNKNOWN": "Wszystkie bilety: {{totalTickets}} (pojemność nieznana)",
@@ -671,18 +676,6 @@
             "SAVE_BUTTON": "ZAPISZ ZMIANY",
             "CANCEL_BUTTON": "ANULUJ"
         },
-        "RESERVATION": {
-            "LOADING": "Wczytywanie obiektu...",
-            "ERROR": "Błąd",
-            "BACK": "Wróć",
-            "ERROR_LOAD_VENUE": "Nie udało się wczytać obiektu",
-            "ERROR_LOAD_EVENT": "Nie udało się wczytać wydarzenia",
-            "ERROR_LOAD_RESERVATIONS": "Nie udało się wczytać rezerwacji",
-            "SAVE_SUCCESS": "Rezerwacje zapisane pomyślnie",
-            "SAVE_ERROR": "Nie udało się zapisać rezerwacji",
-            "NO_CHANGES_SNACK": "Brak zmian rezerwacji do zapisania.",
-            "SAVE_ERROR_SNACK": "Nie udało się zapisać zmian. Spróbuj ponownie."
-        },
         "VENUE_MAP": {
             "TITLE": "Rezerwacja miejsc",
             "SUBTITLE": "Interaktywny plan obiektu do wyboru miejsc",
@@ -713,6 +706,18 @@
           "PICKER_TITLE": "Wybierak koloru",
           "SELECT": "Wybierz kolor"
         }
+    },
+    "RESERVATION": {
+        "LOADING": "Wczytywanie obiektu...",
+        "ERROR": "Błąd",
+        "BACK": "Wróć",
+        "ERROR_LOAD_VENUE": "Nie udało się wczytać obiektu",
+        "ERROR_LOAD_EVENT": "Nie udało się wczytać wydarzenia",
+        "ERROR_LOAD_RESERVATIONS": "Nie udało się wczytać rezerwacji",
+        "SAVE_SUCCESS": "Rezerwacje zapisane pomyślnie",
+        "SAVE_ERROR": "Nie udało się zapisać rezerwacji",
+        "NO_CHANGES_SNACK": "Brak zmian rezerwacji do zapisania.",
+        "SAVE_ERROR_SNACK": "Nie udało się zapisać zmian. Spróbuj ponownie."
     },
     "EDIT": {
         "ADD_TITLE": "Dodaj nowe wydarzenie",

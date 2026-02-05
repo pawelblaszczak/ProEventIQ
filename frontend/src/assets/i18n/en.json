@@ -626,6 +626,7 @@
             "NAME_ADDRESS_COL": "Name/Address",
             "SEAT_COLOR_COL": "Seat Color",
             "TICKETS_COL": "Tickets",
+            "DOCUMENTS_COL": "Documents",
             "ACTIONS_COL": "Actions",
             "TOTAL_TICKETS": "Total Tickets:",
             "NONE": "None",
@@ -641,24 +642,16 @@
             "ALLOCATION_HINT_UNEXPECTED": "Participant requested no tickets but {{allocated}} seat(s) are allocated",
             "NO_SEATS_ALLOCATED_WITH_REQUEST": "No seats allocated ({{allocated}}/{{requested}})",
             "UNHIGHLIGHT_SEATS": "Remove highlight from user seats on map",
-            "HIGHLIGHT_SEATS": "Highlight user seats on map"
+            "HIGHLIGHT_SEATS": "Highlight user seats on map",
+            "EDIT_PARTICIPANT": "Edit participant details",
+            "DELETE_PARTICIPANT": "Remove participant from event",
+            "SAVE_PARTICIPANT": "Save changes",
+            "CANCEL_EDIT": "Discard changes"
         },
         "ALLOCATION": {
             "TOTAL_UNKNOWN": "Total tickets: {{totalTickets}} (venue capacity unknown)",
             "TOTAL_OVER": "Total tickets {{totalTickets}}/{{totalSeats}} ({{pct}}%) — over by {{diff}} ticket(s)",
             "TOTAL_OK": "Total tickets {{totalTickets}}/{{totalSeats}} ({{pct}}%)"
-        },
-        "RESERVATION": {
-            "LOADING": "Loading venue...",
-            "ERROR": "Error",
-            "BACK": "Back",
-            "ERROR_LOAD_VENUE": "Failed to load venue",
-            "ERROR_LOAD_EVENT": "Failed to load event",
-            "ERROR_LOAD_RESERVATIONS": "Failed to load reservations",
-            "SAVE_SUCCESS": "Reservations saved successfully",
-            "SAVE_ERROR": "Failed to save reservations",
-            "NO_CHANGES_SNACK": "No reservation changes to save.",
-            "SAVE_ERROR_SNACK": "Failed to save reservation changes. Please try again."
         },
         "VENUE_MAP": {
             "TITLE": "Seat Reservation",
@@ -690,6 +683,18 @@
           "PICKER_TITLE": "Color picker",
           "SELECT": "Select Color"
         }
+    },
+    "RESERVATION": {
+        "LOADING": "Loading venue...",
+        "ERROR": "Error",
+        "BACK": "Back",
+        "ERROR_LOAD_VENUE": "Failed to load venue",
+        "ERROR_LOAD_EVENT": "Failed to load event",
+        "ERROR_LOAD_RESERVATIONS": "Failed to load reservations",
+        "SAVE_SUCCESS": "Reservations saved successfully",
+        "SAVE_ERROR": "Failed to save reservations",
+        "NO_CHANGES_SNACK": "No reservation changes to save.",
+        "SAVE_ERROR_SNACK": "Failed to save reservation changes. Please try again."
     },
     "EDIT": {
         "ADD_TITLE": "Add New Event",

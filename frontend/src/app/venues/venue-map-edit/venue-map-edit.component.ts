@@ -437,6 +437,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   showGrid = signal(true);
   gridSize = 20;
   
+  // Snap settings
+  snapStep = signal(5);
+  
   // HTML container panning state (used for both preview and edit mode Alt+drag)
   private isHtmlPanning = false;
   private htmlPanStart = { x: 0, y: 0 };
@@ -530,6 +533,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       const s = this.showSeats();
       const o = this.showOrders();
       const g = this.showGrid();
+      const snap = this.snapStep();
       
       if (v && v.venueId && this.settingsLoaded) {
         untracked(() => this.saveViewSettings(v.venueId!));
@@ -640,6 +644,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         if (typeof settings.showGrid === 'boolean') {
           this.showGrid.set(settings.showGrid);
         }
+        if (typeof settings.snapStep === 'number') {
+          this.snapStep.set(settings.snapStep);
+        }
         
         // Apply loaded settings
         // Note: applyZoom might be skipped if stage not ready, but initializeKonva will call it later
@@ -664,7 +671,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         sectorLabelMode: this.sectorLabelMode(),
         showSeats: this.showSeats(),
         showOrders: this.showOrders(),
-        showGrid: this.showGrid()
+        showGrid: this.showGrid(),
+        snapStep: this.snapStep()
       };
       localStorage.setItem(key, JSON.stringify(settings));
     } catch (e) {
@@ -1749,7 +1757,16 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       y: sector.position?.y ?? 100,
       rotation: sector.rotation || 0,
       draggable: false, // Only enable dragging when LMB is held
-      dragBoundFunc: (pos) => pos,
+      dragBoundFunc: (pos) => {
+        const step = this.snapStep();
+        if (step > 0) {
+          return {
+            x: Math.round(pos.x / step) * step,
+            y: Math.round(pos.y / step) * step
+          };
+        }
+        return pos;
+      },
       // Store the sector data including selection state for comparison later
       sector: {
         sectorId: sector.sectorId,
@@ -3890,9 +3907,19 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       const sectorGroup = this.sectorGroups.get(selectedSector.sectorId!);
       const sectorInitialPos = this.initialDragPositions.get(selectedSector.sectorId!);
       if (sectorGroup && sectorInitialPos) {
+        let groupX = sectorInitialPos.x + deltaX;
+        let groupY = sectorInitialPos.y + deltaY;
+        
+        // When snapping is enabled, ensure secondary dragged groups also align to grid
+        const step = this.snapStep();
+        if (step > 0) {
+          groupX = Math.round(groupX / step) * step;
+          groupY = Math.round(groupY / step) * step;
+        }
+
         sectorGroup.position({
-          x: sectorInitialPos.x + deltaX,
-          y: sectorInitialPos.y + deltaY
+          x: groupX,
+          y: groupY
         });
         sectorGroup.moveToTop();
         const rect = sectorGroup.findOne('.sector-rect') as Konva.Rect;
@@ -3922,10 +3949,24 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         const group = this.sectorGroups.get(s.sectorId!);
         if (group) {
           const pos = group.position();
+          
+          let finalX = pos.x;
+          let finalY = pos.y;
+          
+          const step = this.snapStep();
+          if (step > 0) {
+            finalX = Math.round(finalX / step) * step;
+            finalY = Math.round(finalY / step) * step;
+          } else {
+            finalX = Math.round(finalX);
+            finalY = Math.round(finalY);
+          }
+
           return {
             ...s,
             isDragging: false,
-            position: { x: Math.round(pos.x), y: Math.round(pos.y) }
+            // Ensure final saved position is clean
+            position: { x: finalX, y: finalY }
           };
         }
       }

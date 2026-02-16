@@ -269,6 +269,8 @@
       "TOGGLE_SEATS": "Toggle Seats",
       "TOGGLE_ORDERS": "Toggle Orders",
       "TOGGLE_GRID": "Toggle Grid",
+      "SNAP_STEP": "Snap Step",
+      "SNAP_STEP_TOOLTIP": "Grid snap step size (pixels)",
       "ARIA_CANVAS": "Venue Map Canvas",
       "HOW_TO_EDIT": "How to Edit",
       "ROW": "Row",

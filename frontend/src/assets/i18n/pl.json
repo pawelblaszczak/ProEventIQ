@@ -269,6 +269,8 @@
       "TOGGLE_SEATS": "Pokaż/Ukryj miejsca",
       "TOGGLE_ORDERS": "Pokaż/Ukryj kolejność",
       "TOGGLE_GRID": "Pokaż/Ukryj siatkę",
+      "SNAP_STEP": "Krok przyciągania",
+      "SNAP_STEP_TOOLTIP": "Rozmiar kroku siatki przyciągania (piksele)",
       "ARIA_CANVAS": "Płótno mapy obiektu",
       "HOW_TO_EDIT": "Jak edytować",
       "ROW": "Rząd",

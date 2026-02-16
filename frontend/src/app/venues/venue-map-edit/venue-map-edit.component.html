@@ -323,6 +323,20 @@
                     [matTooltip]="'VENUES.MAP.TOGGLE_GRID' | translate">
               <mat-icon>grid_on</mat-icon>
             </button>
+            
+            <!-- Snap Controls (Edit Mode only) -->
+            <ng-container *ngIf="mode === 'edit'">
+                <!-- Snap step control only, no toggle needed (step=1 is effectively off) -->
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="dimension-input" style="width: 80px; margin-left: 4px;">
+                    <mat-label>{{ 'VENUES.MAP.SNAP_STEP' | translate }}</mat-label>
+                    <input matInput type="number" 
+                           [ngModel]="snapStep()" 
+                           (ngModelChange)="snapStep.set($event)" 
+                           min="1" 
+                           [matTooltip]="'VENUES.MAP.SNAP_STEP_TOOLTIP' | translate">
+                </mat-form-field>
+            </ng-container>
+
             <button mat-icon-button 
                     *ngIf="mode === 'reservation'"
                     class="view-toggle-btn highlight-btn"

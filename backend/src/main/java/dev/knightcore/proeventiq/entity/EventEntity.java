@@ -2,6 +2,7 @@ package dev.knightcore.proeventiq.entity;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.Formula;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -24,6 +25,9 @@ public class EventEntity {
     
     @Column(name = "ticket_description", columnDefinition = "TEXT")
     private String ticketDescription;
+
+    @Column(name = "price", precision = 10, scale = 2)
+    private BigDecimal price;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "show_id", insertable = false, updatable = false)
@@ -113,6 +117,14 @@ public class EventEntity {
 
     public void setTicketDescription(String ticketDescription) {
         this.ticketDescription = ticketDescription;
+    }
+
+    public BigDecimal getPrice() {
+        return price;
+    }
+
+    public void setPrice(BigDecimal price) {
+        this.price = price;
     }
 
     public ShowEntity getShow() {

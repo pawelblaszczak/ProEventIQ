@@ -63,7 +63,8 @@ export class EventEditComponent {
       showId: ['', Validators.required],
       venueId: ['', Validators.required],
       dateTime: ['', Validators.required],
-      ticketDescription: ['']
+      ticketDescription: [''],
+      price: [null]
     });
     this.route.paramMap.subscribe(params => {
       const idParam = params.get('id');
@@ -111,7 +112,8 @@ export class EventEditComponent {
           showId: event.showId,
           venueId: event.venueId,
           dateTime: this.formatDateTimeForForm(event.dateTime!),
-          ticketDescription: event.ticketDescription
+          ticketDescription: event.ticketDescription,
+          price: event.price ?? null
         });
         // Set display values for autocomplete fields
         const show = this.shows().find(s => s.showId === event.showId);

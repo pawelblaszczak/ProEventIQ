@@ -106,6 +106,10 @@
           </div>
           <div class="info-value animate-fade-in" *ngIf="showTicketDescription()" style="white-space: pre-wrap; margin-top: 0.5rem;">{{ event()?.ticketDescription }}</div>
         </div>
+        <div class="info-item full-width">
+          <div class="info-label">{{ 'EVENTS.DETAIL.PRICE' | translate }}</div>
+          <div class="info-value">{{ event()?.price != null ? (event()?.price | number:'1.0-0') + ' zł' : '-' }}</div>
+        </div>
       </div>
     </mat-card-content>
     

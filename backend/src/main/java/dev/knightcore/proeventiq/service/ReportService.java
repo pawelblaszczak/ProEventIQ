@@ -518,7 +518,7 @@ public class ReportService {
                     startY - 2 * lineHeight, valueBoxX, valueBoxWidth, valueBoxHeight, labelColor);
                 
                 drawField(contentStream, serifFont, bodyFont, "Cena 1 biletu:", 
-                    "", 
+                    event.getPrice() != null ? String.format("%d zł", event.getPrice().longValue()) : "", 
                     startY - 3 * lineHeight, valueBoxX, valueBoxWidth, valueBoxHeight, labelColor);
                 
 

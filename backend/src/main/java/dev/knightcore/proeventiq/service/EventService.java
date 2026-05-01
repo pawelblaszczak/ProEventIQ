@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -230,6 +231,7 @@ public class EventService {
         dto.setVenueId(entity.getVenueId());
         dto.setDateTime(entity.getDateTime().atOffset(ZoneOffset.UTC));
         dto.setTicketDescription(entity.getTicketDescription());
+        dto.setPrice(entity.getPrice() != null ? entity.getPrice().doubleValue() : null);
         // Set show and venue names from the loaded entities
         if (entity.getShow() != null) {
             dto.setShowName(entity.getShow().getName());
@@ -270,6 +272,7 @@ public class EventService {
         entity.setVenueId(input.getVenueId());
         entity.setDateTime(input.getDateTime().toLocalDateTime());
         entity.setTicketDescription(input.getTicketDescription());
+        entity.setPrice(input.getPrice() != null ? BigDecimal.valueOf(input.getPrice()) : null);
     }
     
     private dev.knightcore.proeventiq.api.model.Show convertShowEntityToDto(dev.knightcore.proeventiq.entity.ShowEntity entity) {

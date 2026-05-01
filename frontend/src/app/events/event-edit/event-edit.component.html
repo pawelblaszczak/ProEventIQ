@@ -70,6 +70,13 @@
             <mat-icon matSuffix>description</mat-icon>
             <mat-hint>{{ 'EVENTS.EDIT.TICKET_DESC_HINT' | translate }}</mat-hint>
           </mat-form-field>
+
+          <!-- Price -->
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>{{ 'EVENTS.EDIT.PRICE_LABEL' | translate }}</mat-label>
+            <input matInput formControlName="price" type="number" min="0" step="0.01" [placeholder]="'EVENTS.EDIT.PRICE_PLACEHOLDER' | translate">
+            <mat-icon matSuffix>payments</mat-icon>
+          </mat-form-field>
         </div>
 
         @if (loading()) {

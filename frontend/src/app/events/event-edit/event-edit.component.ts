@@ -187,7 +187,7 @@ export class EventEditComponent {
     } else if (this.eventId) {
       this.eventApi.updateEvent(this.eventId, input).subscribe({
         next: () => {
-          this.router.navigate(['/events']);
+          this.router.navigate(['/events', this.eventId]);
         },
         error: (error) => {
           console.error('Update event error:', error);
@@ -199,7 +199,11 @@ export class EventEditComponent {
   }
 
   cancel() {
-    this.router.navigate(['/events']);
+    if (this.eventId) {
+      this.router.navigate(['/events', this.eventId]);
+    } else {
+      this.router.navigate(['/events']);
+    }
   }
 
   filterShowInput(event: Event) {

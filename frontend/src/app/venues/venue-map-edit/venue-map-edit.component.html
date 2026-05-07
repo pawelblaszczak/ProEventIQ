@@ -13,7 +13,8 @@
 
 <div *ngIf="venue()" class="venue-map-editor animate-fade-in" 
   [class.reservation-mode]="mode==='reservation' || mode==='reservation-preview'"
-  [class.preview-mode]="mode==='preview'">
+  [class.preview-mode]="mode==='preview'"
+  [class.print-map-mode]="mode==='print-map'">
   <!-- Header with venue info and actions (edit & interactive reservation modes only) -->
   <div class="editor-header" *ngIf="mode === 'edit' || mode === 'reservation'">
     <div class="venue-info">

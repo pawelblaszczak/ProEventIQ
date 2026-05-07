@@ -1,0 +1,127 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+.print-map-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.print-map-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 1rem 1.5rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+
+  .venue-info {
+    .venue-name {
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: #1976d2;
+      font-size: 1.5rem;
+      font-weight: 600;
+
+      mat-icon {
+        color: #1976d2;
+      }
+    }
+
+    .venue-location {
+      margin: 0.25rem 0 0 0;
+      color: rgba(0, 0, 0, 0.6);
+      font-size: 0.9rem;
+    }
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+
+    button {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      min-width: 120px;
+    }
+  }
+}
+
+.loading-container,
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 3rem;
+  text-align: center;
+}
+
+.print-map-canvas {
+  width: 100%;
+}
+
+/* Print-only header: hidden on screen, shown on print */
+.print-only-header {
+  display: none;
+}
+
+/* Print styles */
+@media print {
+  @page {
+    margin: 2mm 5mm 5mm 5mm;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only-header {
+    display: block !important;
+    padding: 0;
+    margin: 0 0 2mm 0;
+    border-bottom: 0.5pt solid #999;
+
+    .print-header-top {
+      text-align: right;
+      margin-bottom: 0;
+      font-size: 8pt;
+      color: #666;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 13pt;
+      font-weight: 600;
+    }
+
+    p {
+      margin: 0;
+      font-size: 9pt;
+      color: #333;
+    }
+  }
+
+  .print-map-wrapper {
+    padding: 0;
+    margin: 0;
+    gap: 0;
+  }
+
+  .print-map-content {
+    gap: 0;
+  }
+
+  .print-map-canvas {
+    width: 100%;
+    overflow: visible !important;
+  }
+}

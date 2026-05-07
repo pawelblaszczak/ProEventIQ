@@ -688,7 +688,8 @@
             "LEGEND_RESERVED": "Zarezerwowane", 
             "LEGEND_BLOCKED": "Zablokowane",
             "LEGEND_SELECTED": "Wybrane",
-            "MANAGE_BUTTON": "Zarządzaj rezerwacjami"
+            "MANAGE_BUTTON": "Zarządzaj rezerwacjami",
+            "PRINT_MAP_BUTTON": "Mapa rezerwacji"
         },
         "STATUS": {
             "PAST": "Minione wydarzenie",
@@ -723,6 +724,12 @@
         "SAVE_ERROR": "Nie udało się zapisać rezerwacji",
         "NO_CHANGES_SNACK": "Brak zmian rezerwacji do zapisania.",
         "SAVE_ERROR_SNACK": "Nie udało się zapisać zmian. Spróbuj ponownie."
+    },
+    "PRINT_MAP": {
+        "LOADING": "Wczytywanie mapy rezerwacji...",
+        "TITLE": "Mapa rezerwacji",
+        "PRINT_BUTTON": "Drukuj",
+        "BACK_BUTTON": "Wróć"
     },
     "EDIT": {
         "ADD_TITLE": "Dodaj nowe wydarzenie",

@@ -1263,3 +1263,60 @@ $border-radius: 12px;
 }
 
 }
+
+// Print-map mode styles
+.print-map-mode {
+  .toolbar-card {
+    margin-bottom: 0.5rem;
+  }
+}
+
+@media print {
+  :host {
+    min-height: auto;
+    background-color: white;
+  }
+  
+  .toolbar-card,
+  .editor-header,
+  .instructions-panel {
+    display: none !important;
+  }
+
+  .venue-map-editor {
+    padding: 0;
+    margin: 0;
+  }
+
+  .canvas-card {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .venue-canvas-container {
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+
+    canvas {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+  }
+
+  .editor-content {
+    gap: 0 !important;
+  }
+
+  .map-row {
+    margin-top: 0 !important;
+  }
+
+  // Hide sidebar panels in print
+  .reservation-panel,
+  .selection-panel {
+    display: none !important;
+  }
+}

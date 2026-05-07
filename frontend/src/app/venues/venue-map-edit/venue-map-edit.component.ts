@@ -199,7 +199,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   }
 
   @ViewChild('canvasContainer', { static: false }) canvasContainer!: ElementRef<HTMLDivElement>;
-  @Input() mode: 'preview' | 'edit' | 'reservation' | 'reservation-preview' = 'edit'; // Added 'reservation' and 'reservation-preview' modes
+  @Input() mode: 'preview' | 'edit' | 'reservation' | 'reservation-preview' | 'print-map' = 'edit';
   @Input() venueData: Venue | null = null; // Allow venue data to be passed in
   @Input() eventData: Event | null = null; // Event context for reservation header
   @Input() reservationData: Reservation[] = []; // Existing reservations for the event
@@ -430,9 +430,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     return this.hasChanges();
   });
 
-  // Template-friendly helper to check for reservation-like modes (interactive + preview)
+  // Template-friendly helper to check for reservation-like modes (interactive + preview + print-map)
   public isReservationLike(): boolean {
-    return this.mode === 'reservation' || this.mode === 'reservation-preview';
+    return this.mode === 'reservation' || this.mode === 'reservation-preview' || this.mode === 'print-map';
   }
   showGrid = signal(true);
   gridSize = 20;
@@ -502,7 +502,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     // Watch for reservation and participant data changes (reservation mode)
     effect(() => {
       // Apply reservations when in reservation-like modes and Konva is ready
-      if ((this.mode === 'reservation' || this.mode === 'reservation-preview') && this.konvaInitialized) {
+      if ((this.mode === 'reservation' || this.mode === 'reservation-preview' || this.mode === 'print-map') && this.konvaInitialized) {
         this.applyReservationsToSeats();
         console.log('Effect: Applied reservations to seats (reservation-like mode)');
       }
@@ -570,7 +570,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
   ngOnChanges(changes: SimpleChanges) {
     // Handle input data changes for reservation-like modes (interactive reservation and read-only preview)
-    if (this.mode === 'reservation' || this.mode === 'reservation-preview') {
+    if (this.mode === 'reservation' || this.mode === 'reservation-preview' || this.mode === 'print-map') {
       // If parent provided event data, capture its id for navigation
       if (changes['eventData'] && this.eventData) {
         try {
@@ -701,7 +701,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       this.venue.set(this.venueData);
       this.loading.set(false);
       this.initializeEditableSectors(this.venueData);
-    } else if ((this.mode === 'reservation' || this.mode === 'reservation-preview') && this.venueData) {
+    } else if ((this.mode === 'reservation' || this.mode === 'reservation-preview' || this.mode === 'print-map') && this.venueData) {
       // Reservation mode: use passed venue data and initialize participants/reservations
       this.venue.set(this.venueData);
       this.loading.set(false);
@@ -1141,6 +1141,179 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     console.log('applyReservationsToSeats completed');
   // Ensure labels reflect new authoritative initial assignments
   this.refreshSectorAllocationLabels();
+  
+  // In print-map mode, render participant grouping borders and labels
+  if (this.mode === 'print-map') {
+    this.renderPrintMapParticipantGroups();
+  }
+  }
+
+  // Store print-map participant label groups for cleanup and dragging
+  private printMapParticipantGroups: Konva.Group[] = [];
+
+  /**
+   * Renders dotted borders around each participant's seats and draggable name labels.
+   * Used exclusively in 'print-map' mode for generating printable reservation maps.
+   */
+  private renderPrintMapParticipantGroups(): void {
+    if (!this.layer) return;
+
+    // Clean up existing print-map groups
+    this.printMapParticipantGroups.forEach(g => g.destroy());
+    this.printMapParticipantGroups = [];
+
+    // Collect all seats per participant across all sectors (excluding blocked and unassigned)
+    const participantSeatsMap = new Map<number, { seats: Konva.Circle[], participant: Participant }>();
+    const participantsList = this.participants()?.length ? this.participants() : (this.participantData || []);
+
+    this.sectorSeats.forEach((seats) => {
+      seats.forEach(seat => {
+        const pid = seat.getAttr('participantId') as number | null;
+        if (pid == null || pid === this.BLOCKED_PARTICIPANT_ID) return;
+
+        if (!participantSeatsMap.has(pid)) {
+          const participant = participantsList.find(p => p.participantId === pid);
+          if (participant) {
+            participantSeatsMap.set(pid, { seats: [], participant });
+          }
+        }
+        const entry = participantSeatsMap.get(pid);
+        if (entry) {
+          entry.seats.push(seat);
+        }
+      });
+    });
+
+    // Get the inverse of the layer's absolute transform to convert screen coords to layer-local coords
+    const layerTransform = this.layer!.getAbsoluteTransform().copy().invert();
+
+    // For each participant, draw a convex hull border and a draggable name label
+    participantSeatsMap.forEach(({ seats, participant }, pid) => {
+      if (seats.length === 0) return;
+
+      // Get seat positions in layer-local coordinate space
+      // (accounts for stage zoom and sector group position/rotation)
+      const positions = seats.map(seat => {
+        const absPos = seat.getAbsolutePosition();
+        return layerTransform.point(absPos);
+      });
+
+      // Compute convex hull with padding
+      const seatRadius = 3; // match the rendered seat radius
+      const padding = seatRadius + 5;
+      const hull = this.getConvexHull(positions);
+
+      if (hull.length < 2) return;
+
+      // Expand hull outward by padding
+      const expandedHull = this.expandHull(hull, padding);
+
+      // Create a group to hold the border and label
+      const group = new Konva.Group({
+        listening: true,
+        name: `print-map-participant-${pid}`
+      });
+
+      // Draw dotted border
+      const points = expandedHull.flatMap(p => [p.x, p.y]);
+      const borderColor = participant.seatColor || this.getParticipantColor(pid);
+      const border = new Konva.Line({
+        points,
+        closed: true,
+        stroke: borderColor,
+        strokeWidth: 1.5,
+        dash: [4, 3],
+        fill: 'transparent',
+        listening: false
+      });
+      group.add(border);
+
+      // Calculate label position (center-top of the hull)
+      const minX = Math.min(...expandedHull.map(p => p.x));
+      const maxX = Math.max(...expandedHull.map(p => p.x));
+      const minY = Math.min(...expandedHull.map(p => p.y));
+      const labelX = (minX + maxX) / 2;
+      const labelY = minY - 16;
+
+      // Create a draggable label (similar to sector name tooltips)
+      const labelGroup = new Konva.Label({
+        x: labelX,
+        y: labelY,
+        draggable: true,
+        name: `print-map-label-${pid}`
+      });
+
+      labelGroup.add(new Konva.Tag({
+        fill: '#ffffff',
+        stroke: borderColor,
+        strokeWidth: 1,
+        cornerRadius: 3,
+        shadowColor: 'rgba(0,0,0,0.15)',
+        shadowBlur: 3,
+        shadowOffsetY: 1
+      }));
+
+      labelGroup.add(new Konva.Text({
+        text: participant.name || `Participant ${pid}`,
+        fontSize: 11,
+        fontFamily: 'Arial, sans-serif',
+        fill: '#333333',
+        padding: 4
+      }));
+
+      // Change cursor on hover
+      labelGroup.on('mouseenter', () => {
+        if (this.stage) this.stage.container().style.cursor = 'move';
+      });
+      labelGroup.on('mouseleave', () => {
+        if (this.stage) this.stage.container().style.cursor = 'default';
+      });
+
+      group.add(labelGroup);
+      this.layer!.add(group);
+      this.printMapParticipantGroups.push(group);
+    });
+
+    // Ensure all participant border groups render on top of sector groups
+    this.printMapParticipantGroups.forEach(g => g.moveToTop());
+
+    this.layer.batchDraw();
+  }
+
+  /**
+   * Expands a convex hull outward by the given padding distance.
+   */
+  private expandHull(hull: {x: number, y: number}[], padding: number): {x: number, y: number}[] {
+    if (hull.length < 3) {
+      // For 1-2 points, create a padded rectangle
+      const minX = Math.min(...hull.map(p => p.x)) - padding;
+      const maxX = Math.max(...hull.map(p => p.x)) + padding;
+      const minY = Math.min(...hull.map(p => p.y)) - padding;
+      const maxY = Math.max(...hull.map(p => p.y)) + padding;
+      return [
+        { x: minX, y: minY },
+        { x: maxX, y: minY },
+        { x: maxX, y: maxY },
+        { x: minX, y: maxY }
+      ];
+    }
+
+    // Compute centroid
+    const cx = hull.reduce((s, p) => s + p.x, 0) / hull.length;
+    const cy = hull.reduce((s, p) => s + p.y, 0) / hull.length;
+
+    // Expand each point outward from centroid
+    return hull.map(p => {
+      const dx = p.x - cx;
+      const dy = p.y - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist === 0) return { x: p.x + padding, y: p.y };
+      const scale = (dist + padding) / dist;
+      return {
+        x: cx + dx * scale,
+        y: cy + dy * scale
+      };
+    });
   }
 
   private initializeKonva() {
@@ -1419,6 +1592,11 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
     // Ensure tooltip is always at the absolute top if it exists
     if (this.seatTooltip) this.seatTooltip.moveToTop();
+
+    // In print-map mode, ensure participant border groups stay on top of everything
+    if (this.mode === 'print-map' && this.printMapParticipantGroups.length > 0) {
+      this.printMapParticipantGroups.forEach(g => g.moveToTop());
+    }
   }
 
   private renderGrid() {
@@ -1706,7 +1884,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     // FIX: Re-apply reservations if in reservation-preview mode
     // This ensures that if sectors are re-rendered (e.g. on init or settings change),
     // the reservations (including blocked seats) are visible.
-    if (this.mode === 'reservation-preview' && this.reservationData.length > 0) {
+    if ((this.mode === 'reservation-preview' || this.mode === 'print-map') && this.reservationData.length > 0) {
        this.applyReservationsToSeats();
     }
 
@@ -3734,8 +3912,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     event.cancelBubble = true;
     event.evt?.stopPropagation();
     
-  // Don't allow selection in preview modes
-  if (this.mode === 'preview' || this.mode === 'reservation-preview') return;
+  // Don't allow selection in preview/print modes
+  if (this.mode === 'preview' || this.mode === 'reservation-preview' || this.mode === 'print-map') return;
     
     this.selectSector(sector, event.evt?.ctrlKey || event.evt?.metaKey);
   }
@@ -3745,8 +3923,8 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     event.cancelBubble = true;
     event.evt?.stopPropagation();
     
-    // Don't allow selection in preview modes
-    if (this.mode === 'preview' || this.mode === 'reservation-preview') return;
+    // Don't allow selection in preview/print modes
+    if (this.mode === 'preview' || this.mode === 'reservation-preview' || this.mode === 'print-map') return;
     
     const ctrlKey = event.evt?.ctrlKey || event.evt?.metaKey;
     

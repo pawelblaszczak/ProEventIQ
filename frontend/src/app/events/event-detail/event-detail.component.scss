@@ -1215,6 +1215,12 @@ $border-radius: 12px;
         box-shadow: 0 4px 12px rgba($primary-color, 0.18);
       }
     }
+
+    .venue-map-actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
   }
   
   .map-preview-content {

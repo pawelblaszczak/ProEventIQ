@@ -663,7 +663,8 @@
             "LEGEND_RESERVED": "Reserved", 
             "LEGEND_BLOCKED": "Blocked",
             "LEGEND_SELECTED": "Selected",
-            "MANAGE_BUTTON": "Manage Reservations"
+            "MANAGE_BUTTON": "Manage Reservations",
+            "PRINT_MAP_BUTTON": "Reservation Map"
         },
         "STATUS": {
             "PAST": "Past Event",
@@ -698,6 +699,12 @@
         "SAVE_ERROR": "Failed to save reservations",
         "NO_CHANGES_SNACK": "No reservation changes to save.",
         "SAVE_ERROR_SNACK": "Failed to save reservation changes. Please try again."
+    },
+    "PRINT_MAP": {
+        "LOADING": "Loading reservation map...",
+        "TITLE": "Reservation Map",
+        "PRINT_BUTTON": "Print",
+        "BACK_BUTTON": "Back"
     },
     "EDIT": {
         "ADD_TITLE": "Add New Event",

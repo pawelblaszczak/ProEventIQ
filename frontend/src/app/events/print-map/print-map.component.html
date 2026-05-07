@@ -1,0 +1,70 @@
+<div class="print-map-wrapper">
+  <div *ngIf="loading()" class="loading-container">
+    <mat-progress-spinner diameter="50" mode="indeterminate" color="primary"></mat-progress-spinner>
+    <p>{{ 'EVENTS.PRINT_MAP.LOADING' | translate }}</p>
+  </div>
+
+  <div *ngIf="!loading() && error()" class="error-container">
+    <mat-icon color="warn">error</mat-icon>
+    <p>{{ error() }}</p>
+    <button mat-stroked-button (click)="goBack()">
+      <mat-icon>arrow_back</mat-icon>
+      {{ 'BUTTON.BACK' | translate }}
+    </button>
+  </div>
+
+  <div *ngIf="venue()" class="print-map-content animate-fade-in">
+    <div class="print-map-header no-print">
+      <div class="venue-info">
+        <h1 class="venue-name">
+          <mat-icon>map</mat-icon>
+          {{ 'EVENTS.PRINT_MAP.TITLE' | translate }}: {{ event()?.showName }}
+        </h1>
+        <p class="venue-location" *ngIf="event()?.dateTime">
+          {{ formatDateTime(event()?.dateTime) }}
+        </p>
+        <p class="venue-location">
+          {{ venue()?.name }}
+          <span *ngIf="venue()?.address"> – {{ venue()?.address }}</span>
+          <span *ngIf="venue()?.city">, {{ venue()?.city }}</span>
+          <span *ngIf="venue()?.country">, {{ venue()?.country }}</span>
+        </p>
+      </div>
+      <div class="header-actions">
+        <button mat-raised-button color="primary" (click)="onPrint()">
+          <mat-icon>print</mat-icon>
+          {{ 'EVENTS.PRINT_MAP.PRINT_BUTTON' | translate }}
+        </button>
+        <button mat-stroked-button (click)="goBack()">
+          <mat-icon>arrow_back</mat-icon>
+          {{ 'EVENTS.PRINT_MAP.BACK_BUTTON' | translate }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Print-only header: visible only when printing -->
+    <div class="print-only-header">
+      <div class="print-header-top">
+        <span class="print-brand">{{ printDate }} &nbsp; ProEventIQ</span>
+      </div>
+      <h2>{{ event()?.showName }}</h2>
+      <p *ngIf="event()?.dateTime">{{ formatDateTime(event()?.dateTime) }}</p>
+      <p>
+        {{ venue()?.name }}
+        <span *ngIf="venue()?.address"> – {{ venue()?.address }}</span>
+        <span *ngIf="venue()?.city">, {{ venue()?.city }}</span>
+        <span *ngIf="venue()?.country">, {{ venue()?.country }}</span>
+      </p>
+    </div>
+
+    <div class="print-map-canvas">
+      <app-venue-map-edit
+        [mode]="'print-map'"
+        [venueData]="venue()"
+        [eventData]="event()"
+        [reservationData]="reservations()"
+        [participantData]="participants()">
+      </app-venue-map-edit>
+    </div>
+  </div>
+</div>

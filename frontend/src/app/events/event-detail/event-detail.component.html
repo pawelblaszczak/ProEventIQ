@@ -316,10 +316,16 @@
         </span>
         <span class="banner-subtitle">{{ 'EVENTS.DETAIL.VENUE_MAP.SUBTITLE' | translate }}</span>
       </h3>
-  <button mat-raised-button color="primary" class="edit-map-btn" [routerLink]="['/events', event()?.eventId, 'reservations']" [attr.aria-label]="'EVENTS.DETAIL.VENUE_MAP.MANAGE_BUTTON' | translate">
-        <mat-icon>settings</mat-icon>
-        {{ 'EVENTS.DETAIL.VENUE_MAP.MANAGE_BUTTON' | translate }}
-      </button>
+  <div class="venue-map-actions">
+        <button mat-raised-button color="primary" class="edit-map-btn" [routerLink]="['/events', event()?.eventId, 'reservations']" [attr.aria-label]="'EVENTS.DETAIL.VENUE_MAP.MANAGE_BUTTON' | translate">
+          <mat-icon>settings</mat-icon>
+          {{ 'EVENTS.DETAIL.VENUE_MAP.MANAGE_BUTTON' | translate }}
+        </button>
+        <button mat-stroked-button color="primary" class="edit-map-btn" [routerLink]="['/events', event()?.eventId, 'print-map']" [attr.aria-label]="'EVENTS.DETAIL.VENUE_MAP.PRINT_MAP_BUTTON' | translate">
+          <mat-icon>map</mat-icon>
+          {{ 'EVENTS.DETAIL.VENUE_MAP.PRINT_MAP_BUTTON' | translate }}
+        </button>
+      </div>
     </div>
     <mat-card-content class="map-preview-content">
       <app-venue-map-edit 

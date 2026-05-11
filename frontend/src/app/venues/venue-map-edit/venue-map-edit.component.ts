@@ -1246,6 +1246,35 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       const minY = Math.min(...expandedHull.map(p => p.y));
       const labelX = (minX + maxX) / 2;
       const labelY = minY - 16;
+      
+      // Calculate true centroid of the seats
+      const sumX = positions.reduce((sum, p) => sum + p.x, 0);
+      const sumY = positions.reduce((sum, p) => sum + p.y, 0);
+      const centroidX = sumX / positions.length;
+      const centroidY = sumY / positions.length;
+      
+      // Find the seat closest to the centroid to guarantee the line points inside the group
+      let closestSeat = positions[0];
+      let minDist = Infinity;
+      positions.forEach(p => {
+        const dist = Math.pow(p.x - centroidX, 2) + Math.pow(p.y - centroidY, 2);
+        if (dist < minDist) {
+          minDist = dist;
+          closestSeat = p;
+        }
+      });
+      const targetX = closestSeat.x;
+      const targetY = closestSeat.y;
+
+      // Draw line pointing to the center of group
+      const leaderLine = new Konva.Line({
+        points: [labelX, labelY, targetX, targetY],
+        stroke: borderColor,
+        strokeWidth: 1,
+        dash: [2, 2],
+        listening: false
+      });
+      group.add(leaderLine);
 
       // Create a draggable label (similar to sector name tooltips)
       const labelGroup = new Konva.Label({
@@ -1279,6 +1308,11 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       });
       labelGroup.on('mouseleave', () => {
         if (this.stage) this.stage.container().style.cursor = 'default';
+      });
+
+      // Update leader line points on drag
+      labelGroup.on('dragmove', () => {
+        leaderLine.points([labelGroup.x(), labelGroup.y(), targetX, targetY]);
       });
 
       group.add(labelGroup);

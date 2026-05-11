@@ -36,6 +36,14 @@ components:
           minimum: 1
           readOnly: true
           description: Total number of tickets (children + guardian)
+        labelX:
+          type: number
+          format: double
+          description: X coordinate of the participant's label on the map
+        labelY:
+          type: number
+          format: double
+          description: Y coordinate of the participant's label on the map
       required:
         - participantId
         - eventId

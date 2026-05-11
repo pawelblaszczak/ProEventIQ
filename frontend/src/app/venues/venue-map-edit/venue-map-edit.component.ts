@@ -413,6 +413,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   hasChanges = signal(false);  // Grid settings
   private settingsLoaded = false; // Track if view settings have been loaded from storage
   hasReservationChanges = signal(false);  // Track reservation changes in reservation mode
+  hasParticipantLabelChanges = signal(false); // Track participant label changes in print-map mode
   pendingReservationChanges: Array<{
     id?: number;
     eventId: number;
@@ -423,10 +424,15 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   // Raw JSON text used for import layout textarea
   importJsonText: string = '';
   
+  participantLabelChanges = new Map<number, {labelX: number, labelY: number}>();
+
   // Computed signal that returns true if there are any changes (venue or reservation)
   readonly hasAnyChanges = computed(() => {
     if (this.mode === 'reservation') {
       return this.hasReservationChanges();
+    }
+    if (this.mode === 'print-map') {
+      return this.hasParticipantLabelChanges();
     }
     return this.hasChanges();
   });
@@ -1244,8 +1250,10 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       const minX = Math.min(...expandedHull.map(p => p.x));
       const maxX = Math.max(...expandedHull.map(p => p.x));
       const minY = Math.min(...expandedHull.map(p => p.y));
-      const labelX = (minX + maxX) / 2;
-      const labelY = minY - 16;
+      
+      const savedLabel = this.participantLabelChanges.get(pid);
+      let labelX = savedLabel ? savedLabel.labelX : (participant.labelX ?? ((minX + maxX) / 2));
+      let labelY = savedLabel ? savedLabel.labelY : (participant.labelY ?? (minY - 16));
       
       // Calculate true centroid of the seats
       const sumX = positions.reduce((sum, p) => sum + p.x, 0);
@@ -1313,6 +1321,12 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       // Update leader line points on drag
       labelGroup.on('dragmove', () => {
         leaderLine.points([labelGroup.x(), labelGroup.y(), targetX, targetY]);
+      });
+      
+      // Save position on drag end
+      labelGroup.on('dragend', () => {
+        this.participantLabelChanges.set(pid, { labelX: labelGroup.x(), labelY: labelGroup.y() });
+        this.hasParticipantLabelChanges.set(true);
       });
 
       group.add(labelGroup);
@@ -5902,6 +5916,10 @@ console.log("addSelectionIndicators2");
       await this.saveReservationChanges();
       return;
     }
+    if (this.mode === 'print-map') {
+      await this.savePrintMapChanges();
+      return;
+    }
     await this.saveChanges();
   }
 
@@ -5911,10 +5929,73 @@ console.log("addSelectionIndicators2");
       this.reservationCancel.emit();
       return;
     }
+    if (this.mode === 'print-map') {
+      this.cancelPrintMapChanges();
+      return;
+    }
     this.cancelChanges();
   }
   
-  // ===== Venue JSON import =====
+  public async savePrintMapChanges(): Promise<void> {
+    const changes = Array.from(this.participantLabelChanges.entries());
+    if (changes.length === 0) return;
+    
+    // We expect eventData to be provided in print-map mode
+    const eventId = this.eventData?.eventId;
+    if (!eventId) {
+      this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.NO_EVENT_CONTEXT'), this.translate.instant('BUTTON.CLOSE'), { duration: 3000 });
+      return;
+    }
+
+    try {
+      this.saving.set(true);
+      const updatePromises = changes.map(([pid, pos]) => {
+        // Find the participant to get the rest of the required input payload
+        const p = this.participants().find(x => x.participantId === pid) || 
+                  this.participantData.find(x => x.participantId === pid);
+        if (!p) return Promise.resolve();
+
+        const input: any = {
+          name: p.name,
+          address: p.address,
+          seatColor: p.seatColor,
+          childrenTicketCount: p.childrenTicketCount,
+          guardianTicketCount: p.guardianTicketCount,
+          labelX: pos.labelX,
+          labelY: pos.labelY
+        };
+        // Use venueApi (which is ProEventIQService)
+        return firstValueFrom(this.venueApi.eventsEventIdParticipantsParticipantIdPut(eventId, pid, input));
+      });
+
+      await Promise.all(updatePromises);
+      
+      this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.CHANGES_SAVED'), this.translate.instant('BUTTON.CLOSE'), { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
+      this.participantLabelChanges.clear();
+      this.hasParticipantLabelChanges.set(false);
+    } catch (e) {
+      console.error('Failed to save participant label positions', e);
+      this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.ERROR_SAVING'), this.translate.instant('BUTTON.CLOSE'), { duration: 4000, horizontalPosition: 'center', verticalPosition: 'top' });
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  public async cancelPrintMapChanges(): Promise<void> {
+    if (!this.hasParticipantLabelChanges()) return;
+    const confirmed = await firstValueFrom(this.confirmationDialog.confirm({
+      title: 'Cancel Changes',
+      message: 'Are you sure you want to cancel your label position changes?',
+      confirmButtonText: 'Yes, Cancel',
+      cancelButtonText: 'Keep Editing'
+    }));
+
+    if (confirmed) {
+      this.participantLabelChanges.clear();
+      this.hasParticipantLabelChanges.set(false);
+      this.renderPrintMapParticipantGroups(); // redraw map at original positions
+    }
+  }
   /**
    * Parse JSON from the textarea and call backend /venues/import.
    * On success, refreshes the current venue and clears the textarea.

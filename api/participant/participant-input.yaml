@@ -23,6 +23,14 @@ components:
           minimum: 0
           default: 0
           description: Number of tickets for guardians
+        labelX:
+          type: number
+          format: double
+          description: X coordinate of the participant's label on the map
+        labelY:
+          type: number
+          format: double
+          description: Y coordinate of the participant's label on the map
       required:
         - name
         - childrenTicketCount

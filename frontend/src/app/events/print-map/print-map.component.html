@@ -31,6 +31,18 @@
         </p>
       </div>
       <div class="header-actions">
+        <button mat-stroked-button color="warn" 
+                *ngIf="mapComponent?.hasParticipantLabelChanges()"
+                (click)="mapComponent?.cancelPrintMapChanges()">
+          <mat-icon>cancel</mat-icon>
+          {{ 'VENUES.MAP.CANCEL' | translate }}
+        </button>
+        <button mat-raised-button color="accent" 
+                *ngIf="mapComponent?.hasParticipantLabelChanges()"
+                (click)="mapComponent?.savePrintMapChanges()">
+          <mat-icon>save</mat-icon>
+          {{ 'VENUES.MAP.SAVE_CHANGES' | translate }}
+        </button>
         <button mat-raised-button color="primary" (click)="onPrint()">
           <mat-icon>print</mat-icon>
           {{ 'EVENTS.PRINT_MAP.PRINT_BUTTON' | translate }}

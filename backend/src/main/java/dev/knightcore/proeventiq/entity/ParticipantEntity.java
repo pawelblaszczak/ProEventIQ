@@ -30,6 +30,12 @@ public class ParticipantEntity {
     @Column(name = "guardian_ticket_count", nullable = false)
     private Integer guardianTicketCount = 0;
 
+    @Column(name = "label_x")
+    private Double labelX;
+
+    @Column(name = "label_y")
+    private Double labelY;
+
     @Column(name = "all_ticket_count", insertable = false, updatable = false)
     private Integer allTicketCount;
 
@@ -54,6 +60,10 @@ public class ParticipantEntity {
     public void setChildrenTicketCount(Integer childrenTicketCount) { this.childrenTicketCount = childrenTicketCount; }
     public Integer getGuardianTicketCount() { return guardianTicketCount; }
     public void setGuardianTicketCount(Integer guardianTicketCount) { this.guardianTicketCount = guardianTicketCount; }
+    public Double getLabelX() { return labelX; }
+    public void setLabelX(Double labelX) { this.labelX = labelX; }
+    public Double getLabelY() { return labelY; }
+    public void setLabelY(Double labelY) { this.labelY = labelY; }
     public Integer getAllTicketCount() { return allTicketCount; }
     // No setter for allTicketCount as it is generated
     public LocalDateTime getCreatedAt() { return createdAt; }

@@ -2,7 +2,7 @@
 
 API for ProEventIQ
 
-The version of the OpenAPI document: 0.54
+The version of the OpenAPI document: 0.55
 
 ## Building
 

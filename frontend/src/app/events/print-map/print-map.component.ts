@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, OnInit, inject, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, inject, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
@@ -30,6 +30,8 @@ import { forkJoin } from 'rxjs';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PrintMapComponent implements OnInit {
+  @ViewChild(VenueMapEditComponent) mapComponent?: VenueMapEditComponent;
+
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(ProEventIQService);

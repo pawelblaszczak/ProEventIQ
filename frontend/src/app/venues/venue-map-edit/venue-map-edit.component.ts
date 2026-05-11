@@ -1222,7 +1222,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       // lengthThreshold = edge length below which we don't carve out.
       // 2 is default concavity; we use 2.5 to prevent it from dividing closely packed rows
       const rawHull = concaveman(pts, 2.5, 0);
-      const expandedHull = rawHull.map(p => ({ x: p[0], y: p[1] }));
+      const expandedHull = rawHull.map((p: number[]) => ({ x: p[0], y: p[1] }));
 
       if (expandedHull.length < 2) return;
 
@@ -1233,7 +1233,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       });
 
       // Draw dotted border
-      const points = expandedHull.flatMap(p => [p.x, p.y]);
+      const points = expandedHull.flatMap((p: {x: number, y: number}) => [p.x, p.y]);
       const borderColor = participant.seatColor || this.getParticipantColor(pid);
       const border = new Konva.Line({
         points,
@@ -1247,9 +1247,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       group.add(border);
 
       // Calculate label position (center-top of the hull)
-      const minX = Math.min(...expandedHull.map(p => p.x));
-      const maxX = Math.max(...expandedHull.map(p => p.x));
-      const minY = Math.min(...expandedHull.map(p => p.y));
+      const minX = Math.min(...expandedHull.map((p: {x: number, y: number}) => p.x));
+      const maxX = Math.max(...expandedHull.map((p: {x: number, y: number}) => p.x));
+      const minY = Math.min(...expandedHull.map((p: {x: number, y: number}) => p.y));
       
       const savedLabel = this.participantLabelChanges.get(pid);
       let labelX = savedLabel ? savedLabel.labelX : (participant.labelX ?? ((minX + maxX) / 2));

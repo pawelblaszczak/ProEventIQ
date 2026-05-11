@@ -24,6 +24,8 @@
     "@angular/router": "17.3.12",
     "@ngx-translate/core": "^17.0.0",
     "@ngx-translate/http-loader": "^17.0.0",
+    "@types/concaveman": "^1.1.6",
+    "concaveman": "^2.0.0",
     "keycloak-js": "^26.2.0",
     "konva": "^9.3.20",
     "ngx-konva": "^16.2.0",

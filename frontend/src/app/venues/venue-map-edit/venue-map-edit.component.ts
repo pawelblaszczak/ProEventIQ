@@ -18,6 +18,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import Konva from 'konva';
+import concaveman from 'concaveman';
 import { Venue } from '../../api/model/venue';
 import { VenueInput } from '../../api/model/venue-input';
 import { Sector } from '../../api/model/sector';
@@ -1198,15 +1199,26 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         return layerTransform.point(absPos);
       });
 
-      // Compute convex hull with padding
+      // Compute concave hull with padding
       const seatRadius = 3; // match the rendered seat radius
       const padding = seatRadius + 5;
-      const hull = this.getConvexHull(positions);
+      
+      // To create a padded hull, we add cushioned corner points for each seat
+      const pts: [number, number][] = [];
+      positions.forEach(p => {
+        pts.push([p.x - padding, p.y - padding]);
+        pts.push([p.x + padding, p.y - padding]);
+        pts.push([p.x + padding, p.y + padding]);
+        pts.push([p.x - padding, p.y + padding]);
+      });
+      
+      // Use concaveman to generate a concave hull. Higher concavity = smoother shape, 
+      // lengthThreshold = edge length below which we don't carve out.
+      // 2 is default concavity; we use 2.5 to prevent it from dividing closely packed rows
+      const rawHull = concaveman(pts, 2.5, 0);
+      const expandedHull = rawHull.map(p => ({ x: p[0], y: p[1] }));
 
-      if (hull.length < 2) return;
-
-      // Expand hull outward by padding
-      const expandedHull = this.expandHull(hull, padding);
+      if (expandedHull.length < 2) return;
 
       // Create a group to hold the border and label
       const group = new Konva.Group({
@@ -1278,42 +1290,6 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     this.printMapParticipantGroups.forEach(g => g.moveToTop());
 
     this.layer.batchDraw();
-  }
-
-  /**
-   * Expands a convex hull outward by the given padding distance.
-   */
-  private expandHull(hull: {x: number, y: number}[], padding: number): {x: number, y: number}[] {
-    if (hull.length < 3) {
-      // For 1-2 points, create a padded rectangle
-      const minX = Math.min(...hull.map(p => p.x)) - padding;
-      const maxX = Math.max(...hull.map(p => p.x)) + padding;
-      const minY = Math.min(...hull.map(p => p.y)) - padding;
-      const maxY = Math.max(...hull.map(p => p.y)) + padding;
-      return [
-        { x: minX, y: minY },
-        { x: maxX, y: minY },
-        { x: maxX, y: maxY },
-        { x: minX, y: maxY }
-      ];
-    }
-
-    // Compute centroid
-    const cx = hull.reduce((s, p) => s + p.x, 0) / hull.length;
-    const cy = hull.reduce((s, p) => s + p.y, 0) / hull.length;
-
-    // Expand each point outward from centroid
-    return hull.map(p => {
-      const dx = p.x - cx;
-      const dy = p.y - cy;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist === 0) return { x: p.x + padding, y: p.y };
-      const scale = (dist + padding) / dist;
-      return {
-        x: cx + dx * scale,
-        y: cy + dy * scale
-      };
-    });
   }
 
   private initializeKonva() {

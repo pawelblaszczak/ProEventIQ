@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@types/concaveman": "^1.1.6",
+    "concaveman": "^2.0.0"
+  }
+}

@@ -728,7 +728,8 @@
     "PRINT_MAP": {
         "LOADING": "Wczytywanie mapy rezerwacji...",
         "TITLE": "Mapa rezerwacji",
-        "PRINT_BUTTON": "Drukuj",
+        "PRINT_BUTTON": "Print",
+      "EXPORT_PDF_BUTTON": "Eksportuj do PDF",
         "BACK_BUTTON": "Wróć"
     },
     "EDIT": {

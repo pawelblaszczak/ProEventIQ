@@ -2,7 +2,7 @@ openapi: 3.0.1
 info:
   title: ProEventIQ Rest API
   description: API for ProEventIQ  
-  version: "0.55"
+  version: "0.56"
 servers:
   - url: http://{hostname}:{port}/api
     variables:
@@ -42,6 +42,8 @@ paths:
     $ref: './event/event-controller.yaml#/events'
   /events/{eventId}:
     $ref: './event/event-controller.yaml#/eventById'
+  /events/{eventId}/map:
+    $ref: './event/event-controller.yaml#/eventMap'
   /events/{eventId}/participants:
     $ref: './participant/participant-controller.yaml#/participantsByEvent'
   /events/{eventId}/participants/{participantId}:
@@ -60,3 +62,9 @@ paths:
     $ref: './reservation/reservation-controller.yaml#/reservationByEventId'
   /seat-block/{eventId}:
     $ref: './seat-block/seat-block-controller.yaml#/seatBlockByEventId'
+  /events/{eventId}/map/export:
+    $ref: './event/event-controller.yaml#/eventMapExport'
+
+
+
+ 

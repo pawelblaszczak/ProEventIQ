@@ -43,9 +43,9 @@
           <mat-icon>save</mat-icon>
           {{ 'VENUES.MAP.SAVE_CHANGES' | translate }}
         </button>
-        <button mat-raised-button color="primary" (click)="onPrint()">
-          <mat-icon>print</mat-icon>
-          {{ 'EVENTS.PRINT_MAP.PRINT_BUTTON' | translate }}
+        <button mat-raised-button color="primary" (click)="onExportPdf()" [disabled]="isExporting()">
+          <mat-icon>picture_as_pdf</mat-icon>
+          {{ 'EVENTS.PRINT_MAP.EXPORT_PDF_BUTTON' | translate }}
         </button>
         <button mat-stroked-button (click)="goBack()">
           <mat-icon>arrow_back</mat-icon>
@@ -80,3 +80,4 @@
     </div>
   </div>
 </div>
+

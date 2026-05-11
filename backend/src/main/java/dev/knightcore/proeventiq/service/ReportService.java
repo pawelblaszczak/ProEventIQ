@@ -1488,6 +1488,129 @@ public class ReportService {
     }
 
     @Transactional(readOnly = true)
+    public Optional<byte[]> generateMapFromImage(Long eventId, String base64Image) {
+        try {
+            Optional<EventEntity> eventOpt = eventRepository.findById(eventId);
+            if (eventOpt.isEmpty()) return Optional.empty();
+            
+            EventEntity event = eventOpt.get();
+            Optional<ShowEntity> showOpt = showRepository.findById(event.getShowId());
+            Optional<VenueEntity> venueOpt = venueRepository.findById(event.getVenueId());
+            
+            String showName = showOpt.isPresent() && showOpt.get().getName() != null ? showOpt.get().getName() : "N/A";
+            String venueInfo = venueOpt.isPresent() && venueOpt.get().getName() != null ? venueOpt.get().getName() : "N/A";
+            
+            String dateStr = event.getDateTime() != null ? 
+                event.getDateTime().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy 'r. godz.' HH:mm")) : "N/A";
+
+            try (PDDocument document = new PDDocument()) {
+                PDRectangle pageSize = PDRectangle.A4; 
+                boolean isLandscape = true;
+                if (isLandscape) {
+                    pageSize = new PDRectangle(PDRectangle.A4.getHeight(), PDRectangle.A4.getWidth());
+                }
+                
+                PDPage page = new PDPage(pageSize);
+                document.addPage(page);
+                
+                try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
+                    PDFont headerFont = PDType0Font.load(document, getClass().getResourceAsStream("/fonts/arimo-bold.ttf"));
+                    PDFont serifFont = PDType0Font.load(document, getClass().getResourceAsStream("/fonts/ptserif-regular.ttf"));
+
+                    float margin = 30;
+                    float pageWidth = page.getMediaBox().getWidth();
+                    float pageHeight = page.getMediaBox().getHeight();
+                    float yPosition = pageHeight - margin;
+
+                    // Text Header
+                    contentStream.setFont(headerFont, 16);
+                    contentStream.beginText();
+                    contentStream.newLineAtOffset(margin, yPosition);
+                    contentStream.showText(showName);
+                    contentStream.endText();
+                    yPosition -= 18;
+
+                    contentStream.setFont(serifFont, 12);
+                    contentStream.beginText();
+                    contentStream.newLineAtOffset(margin, yPosition);
+                    contentStream.showText(venueInfo + " | " + dateStr);
+                    contentStream.endText();
+                    yPosition -= 20;
+
+                    // Image
+                    String base64Data = base64Image.substring(base64Image.indexOf(",") + 1);
+                    byte[] imageBytes = java.util.Base64.getDecoder().decode(base64Data);
+                    PDImageXObject pdImage = PDImageXObject.createFromByteArray(document, imageBytes, "map");
+
+                    // Scale
+                    float maxW = pageWidth - 2 * margin;
+                    float maxH = yPosition - margin;
+                    float scale = Math.min(maxW / pdImage.getWidth(), maxH / pdImage.getHeight());
+                    float drawW = pdImage.getWidth() * scale;
+                    float drawH = pdImage.getHeight() * scale;
+                    
+                    float drawX = margin + (maxW - drawW) / 2;
+                    float drawY = margin + (maxH - drawH) / 2;
+
+                    contentStream.drawImage(pdImage, drawX, drawY, drawW, drawH);
+                }
+                
+                java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                document.save(baos);
+                return Optional.of(baos.toByteArray());
+            }
+        } catch (Exception e) {
+            log.error("Error generating map from image", e);
+            return Optional.empty();
+        }
+    }
+    public String generateEventMapFilename(Long eventId) {
+        return String.format("event_map_%d.pdf", eventId);
+    }
+
+    public Optional<byte[]> generateEventMap(Long eventId) {
+        log.info("Generating PDF map for event {}", eventId);
+        
+        try {
+            Optional<EventEntity> eventOpt = eventRepository.findById(eventId);
+            if (eventOpt.isEmpty()) {
+                log.warn("Event not found - eventId: {}", eventId);
+                return Optional.empty();
+            }
+            EventEntity event = eventOpt.get();
+            
+            Optional<ShowEntity> showOpt = showRepository.findById(event.getShowId());
+            Optional<VenueEntity> venueOpt = venueRepository.findById(event.getVenueId());
+            
+            if (showOpt.isEmpty() || venueOpt.isEmpty()) {
+                log.warn("Show or venue not found for event {}", eventId);
+                return Optional.empty();
+            }
+            ShowEntity show = showOpt.get();
+            VenueEntity venue = venueOpt.get();
+            
+            UserEntity organizer = null;
+            Optional<String> currentUserEmail = keycloakUserService.getCurrentUserEmail();
+            if (currentUserEmail.isPresent()) {
+                Optional<UserEntity> organizerOpt = userRepository.findByEmail(currentUserEmail.get());
+                if (organizerOpt.isPresent()) {
+                    organizer = organizerOpt.get();
+                }
+            }
+
+            // Fetch all reservations
+            List<ReservationEntity> reservations = reservationRepository.findByEventId(eventId);
+            java.util.Set<Long> allAllocatedSeatIds = reservations.stream()
+                .map(ReservationEntity::getSeatId)
+                .collect(java.util.stream.Collectors.toSet());
+
+            byte[] pdfBytes = createPdfMap(event, new ParticipantEntity() {{ setName("Podgląd wszystkich rezerwacji"); }}, show, venue, allAllocatedSeatIds, organizer);
+            return Optional.of(pdfBytes);
+        } catch (Exception e) {
+            log.error("Error generating event map: {}", e.getMessage(), e);
+            return Optional.empty();
+        }
+    }
     public Optional<byte[]> generateParticipantMap(Long eventId, Long participantId) {
         log.info("Generating PDF map for participant {} in event {}", participantId, eventId);
         
@@ -2177,3 +2300,6 @@ public class ReportService {
         }
     }
 }
+
+
+

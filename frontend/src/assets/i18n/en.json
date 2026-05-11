@@ -704,6 +704,7 @@
         "LOADING": "Loading reservation map...",
         "TITLE": "Reservation Map",
         "PRINT_BUTTON": "Print",
+      "EXPORT_PDF_BUTTON": "Export to PDF",
         "BACK_BUTTON": "Back"
     },
     "EDIT": {

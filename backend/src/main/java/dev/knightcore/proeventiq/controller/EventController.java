@@ -1,5 +1,8 @@
 package dev.knightcore.proeventiq.controller;
-
+import java.util.Map;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.PathVariable;
 import dev.knightcore.proeventiq.api.controller.EventsApi;
 import dev.knightcore.proeventiq.api.model.Event;
 import dev.knightcore.proeventiq.api.model.EventInput;
@@ -274,6 +277,60 @@ public class EventController implements EventsApi {
     }
 
     @Override
+    public ResponseEntity<Resource> eventsEventIdMapExportPost(Long eventId, 
+            dev.knightcore.proeventiq.api.model.EventsEventIdMapExportPostRequest request) {
+        log.info("Exporting event map image to PDF for event ID: {}", eventId);
+        try {
+            String base64Image = request.getImage();
+            if (base64Image == null || !base64Image.startsWith("data:image")) {
+                return ResponseEntity.badRequest().build();
+            }
+            return reportService.generateMapFromImage(eventId, base64Image)
+                    .map(pdfBytes -> {
+                        HttpHeaders headers = new HttpHeaders();
+                        headers.setContentType(MediaType.APPLICATION_PDF);
+                        String filename = String.format("event_map_%d.pdf", eventId);
+                        headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename);
+                        return ResponseEntity.ok()
+                                .headers(headers)
+                                .body((Resource) new ByteArrayResource(pdfBytes));
+                    })
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (Exception e) {
+            log.error("Error generating event map from image: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    @Override
+    public ResponseEntity<Resource> eventsEventIdMapGet(Long eventId) {
+        log.info("Generating event map for event ID: {}", eventId);
+        try {
+            return reportService.generateEventMap(eventId)
+                    .map(mapBytes -> {
+                        HttpHeaders headers = new HttpHeaders();
+                        headers.setContentType(MediaType.APPLICATION_PDF);
+                        String filename = reportService.generateEventMapFilename(eventId);
+                        headers.set(HttpHeaders.CONTENT_DISPOSITION, 
+                            "attachment; filename=" + filename);
+                        
+                        org.springframework.core.io.Resource resource = new ByteArrayResource(mapBytes);
+                        return ResponseEntity.ok()
+                                .headers(headers)
+                                .body(resource);
+                    })
+                    .orElseGet(() -> {
+                        log.warn("Event map not generated for event ID: {}", eventId);
+                        return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+                    });
+        } catch (NumberFormatException e) {
+            log.error(INVALID_EVENT_ID_FORMAT, eventId);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (Exception e) {
+            log.error("Error generating event map: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    @Override
     public ResponseEntity<Resource> eventsEventIdParticipantsParticipantIdMapGet(Long eventId, Long participantId) {
         log.info("Generating participant map for participant {} in event ID: {}", participantId, eventId);
         try {
@@ -301,3 +358,8 @@ public class EventController implements EventsApi {
         }
     }
 }
+
+
+
+
+

@@ -215,3 +215,81 @@ eventById:
                   type: string
                 message:
                   type: string
+eventMap:
+  get:
+    tags: [ProEventIQ]
+    summary: Export event map to PDF
+    description: Generate and download a PDF map containing event and all seat reservation details
+    operationId: eventsEventIdMapGet
+    parameters:
+      - in: path
+        name: eventId
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: ID of the event
+    responses:
+      '200':
+        description: PDF map generated successfully
+        content:
+          application/pdf:
+            schema:
+              type: string
+              format: binary
+        headers:
+          Content-Disposition:
+            schema:
+              type: string
+            description: Indicates the filename of the PDF
+      '404':
+        description: Event not found
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                error:
+                  type: string
+                message:
+                  type: string
+eventMapExport:
+    post:
+      tags: [ProEventIQ]
+      summary: Export event map from image to PDF
+      description: Generate a PDF event map from a base64 encoded frontend canvas image
+      operationId: eventsEventIdMapExportPost
+      parameters:
+        - in: path
+          name: eventId
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: ID of the event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  description: Base64 encoded image string
+      responses:
+        '200':
+          description: PDF map generated successfully
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              description: Indicates the filename of the PDF
+        '404':
+          description: Event not found
+

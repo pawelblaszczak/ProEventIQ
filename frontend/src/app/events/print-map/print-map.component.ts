@@ -149,8 +149,55 @@ export class PrintMapComponent implements OnInit {
     }
   }
 
-  onPrint(): void {
-    window.print();
+  isExporting = signal(false);
+
+  onExportPdf(): void {
+    const ev = this.event();
+    if (!ev || !ev.eventId || !this.mapComponent) return;
+
+    this.isExporting.set(true);
+    
+    // Slight delay to ensure any layout/rendering finishes before capturing
+    setTimeout(() => {
+      const dataUrl = this.mapComponent!.getMapImageDataUrl();
+      if (!dataUrl) {
+        this.error.set(this.translate.instant('EVENTS.RESERVATION.ERROR_LOAD_EVENT'));
+        this.isExporting.set(false);
+        return;
+      }
+      
+      this.api.eventsEventIdMapExportPost(ev.eventId!, { image: dataUrl }, 'response').subscribe({
+        next: (response: any) => {
+          const filename = this.getFilenameFromContentDisposition(response) || `event_map_$"{ev.eventId}".pdf`;
+          const blob = new Blob([response.body], { type: 'application/pdf' });
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+          this.isExporting.set(false);
+        },
+        error: (err) => {
+          console.error('Failed to export map PDF', err);
+          this.error.set(this.translate.instant('EVENTS.RESERVATION.ERROR_LOAD_EVENT'));
+          this.isExporting.set(false);
+        }
+      });
+    }, 500);
+  }
+  private getFilenameFromContentDisposition(response: any): string | null {
+    const contentDisposition = response.headers.get('Content-Disposition');
+    if (!contentDisposition) {
+      return null;
+    }
+    const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+    if (filenameMatch?.[1]) {
+      return filenameMatch[1].replace(/['"]/g, '');
+    }
+    return null;
   }
 
   formatDateTime(dateTime: string | undefined): string {
@@ -171,3 +218,6 @@ export class PrintMapComponent implements OnInit {
     return `${dateStr}, ${timeStr}`;
   }
 }
+
+
+

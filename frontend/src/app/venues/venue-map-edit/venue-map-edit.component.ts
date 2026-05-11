@@ -4469,6 +4469,27 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     return selected.every(s => s.sectorId != null && s.sectorId !== -1);
   }
   // Allocation helpers for reservation mode (stubs)
+  public getMapImageDataUrl(): string | null {
+    if (!this.stage) return null;
+    
+    // Temporarily hide grid lines for export
+    const gridLines = this.layer ? this.layer.find('.grid-line') : [];
+    const wasVisibleMap = new Map<any, boolean>();
+    gridLines.forEach(line => {
+      wasVisibleMap.set(line, line.visible());
+      line.visible(false);
+    });
+    
+    const dataUrl = this.stage.toDataURL({ pixelRatio: 2 });
+    
+    // Restore grid lines visibility
+    gridLines.forEach(line => {
+      line.visible(wasVisibleMap.get(line) ?? true);
+    });
+    
+    return dataUrl;
+  }
+
   public allocateAll(): void {
     if (this.mode !== 'reservation') return;
     console.log('allocateAll called');
@@ -6065,3 +6086,4 @@ console.log("addSelectionIndicators2");
     return this.selectedParticipantId() === this.BLOCKED_PARTICIPANT_ID;
   }
 }
+

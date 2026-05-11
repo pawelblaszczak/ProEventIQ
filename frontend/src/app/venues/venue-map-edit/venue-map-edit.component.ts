@@ -1209,19 +1209,20 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       const seatRadius = 3; // match the rendered seat radius
       const padding = seatRadius + 5;
       
-      // To create a padded hull, we add cushioned corner points for each seat
+      // To create a padded hull, we add cushioned points for each seat in a circle.
+      // Using 12 points ensures smooth corners, regardless of sector rotation.
       const pts: [number, number][] = [];
       positions.forEach(p => {
-        pts.push([p.x - padding, p.y - padding]);
-        pts.push([p.x + padding, p.y - padding]);
-        pts.push([p.x + padding, p.y + padding]);
-        pts.push([p.x - padding, p.y + padding]);
+        const numPoints = 12;
+        for (let i = 0; i < numPoints; i++) {
+          const angle = (i * 2 * Math.PI) / numPoints;
+          pts.push([p.x + Math.cos(angle) * padding, p.y + Math.sin(angle) * padding]);
+        }
       });
       
-      // Use concaveman to generate a concave hull. Higher concavity = smoother shape, 
-      // lengthThreshold = edge length below which we don't carve out.
-      // 2 is default concavity; we use 2.5 to prevent it from dividing closely packed rows
-      const rawHull = concaveman(pts, 2.5, 0);
+      // Use concaveman to generate a concave hull.
+      // A lengthThreshold of 15 prevents dipping into the small gaps between seats, eliminating wavy/scalloped edges.
+      const rawHull = concaveman(pts, 1.5, 15);
       const expandedHull = rawHull.map((p: number[]) => ({ x: p[0], y: p[1] }));
 
       if (expandedHull.length < 2) return;
@@ -1241,6 +1242,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         stroke: borderColor,
         strokeWidth: 1.5,
         dash: [4, 3],
+        lineJoin: 'round',
+        lineCap: 'round',
+        // Tension removed to prevent uncontrolled wiggling on straight spans
         fill: 'transparent',
         listening: false
       });

@@ -239,30 +239,18 @@ export class EventEditComponent {
 
   private formatDateTimeForApi(dateTimeValue: string): string {
     if (!dateTimeValue) return dateTimeValue;
-    
-    // If the value is already in ISO format with timezone, return as is
-    if (dateTimeValue.includes('Z') || 
-        (dateTimeValue.includes('+') && dateTimeValue.length > 16) || 
-        (dateTimeValue.includes('-') && dateTimeValue.lastIndexOf('-') > 10)) {
-      return dateTimeValue;
+
+    // The datetime-local input provides a wall-clock value without a timezone
+    // (e.g. "2025-07-02T08:30"), which JavaScript interprets as local time.
+    // Convert it to a proper UTC ISO 8601 string so the round-trip with the
+    // backend stays consistent with how the value is read back for display
+    // (which converts UTC -> local time).
+    const date = new Date(dateTimeValue);
+    if (Number.isNaN(date.getTime())) {
+      return dateTimeValue; // Return as is if parsing fails
     }
-    
-    // Convert datetime-local format to ISO 8601 with UTC timezone
-    // datetime-local format: "2025-07-02T10:00" -> "2025-07-02T10:00:00Z"
-    let isoString = dateTimeValue;
-    
-    // Add seconds if missing
-    const timePattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
-    if (timePattern.exec(isoString)) {
-      isoString += ':00';
-    }
-    
-    // Add UTC timezone
-    if (!isoString.endsWith('Z')) {
-      isoString += 'Z';
-    }
-      
-    return isoString;
+
+    return date.toISOString();
   }
 
   private formatDateTimeForForm(isoDateTime: string): string {

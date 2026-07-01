@@ -2068,49 +2068,95 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       const shouldUseTransparentFill = !seatsVisibleLocal && this.isReservationLike();
       const fillColor = shouldUseTransparentFill ? this.withAlpha(this.getSectorColor(sector), 0.25) : this.getSectorColor(sector);
 
+      // Small uniform margin around seat centres (seat radius + a few px)
+      const outlineMargin = seatRadius + 4;
+
+      let outlinePoints: number[];
+
       if (hull.length > 2) {
-        // Standard convex hull polygon
-        const points = hull.flatMap(p => [p.x, p.y]);
-        outline = new Konva.Line({
-          points,
-          closed: true,
-          stroke: strokeColor,
-          strokeWidth: sector.isSelected ? 3 : 2,
-          fill: fillColor,
-          shadowColor: undefined,
-          shadowBlur: 0,
-          shadowOffsetX: 0,
-          shadowOffsetY: 0,
-          name: 'sector-outline',
-          listening: true
+        // Multi-row sector: inflate the convex hull using proper edge-normal offsetting.
+        // For each vertex, compute the outward bisector of its two adjacent edge normals
+        // and push the vertex along that bisector so that the perpendicular distance to
+        // each adjacent offset edge equals outlineMargin.  This gives a uniform margin on
+        // every side regardless of the polygon aspect ratio.
+        const n = hull.length;
+
+        // Determine polygon orientation via signed area (in screen coords Y-down)
+        let signedArea = 0;
+        for (let i = 0; i < n; i++) {
+          const j = (i + 1) % n;
+          signedArea += hull[i].x * hull[j].y - hull[j].x * hull[i].y;
+        }
+        const cwSign = signedArea > 0 ? 1 : -1; // +1 = CW in screen coords
+
+        // Outward unit normal for each edge (hull[i] → hull[i+1])
+        const edgeNormals: {x: number, y: number}[] = [];
+        for (let i = 0; i < n; i++) {
+          const j = (i + 1) % n;
+          const dx = hull[j].x - hull[i].x;
+          const dy = hull[j].y - hull[i].y;
+          const len = Math.sqrt(dx * dx + dy * dy) || 1;
+          // Right-hand normal of (dx,dy) is (dy,-dx); outward for CW polygon
+          edgeNormals.push({ x: cwSign * dy / len, y: -cwSign * dx / len });
+        }
+
+        // Offset each vertex: push it along the bisector of its two adjacent edge normals
+        // by the amount that ensures a perpendicular distance of outlineMargin from both edges.
+        // Formula: offset_vector = outlineMargin * (n1 + n2) / (1 + dot(n1, n2))
+        outlinePoints = hull.flatMap((p, i) => {
+          const prevI = (i - 1 + n) % n;
+          const n1 = edgeNormals[prevI]; // normal of incoming edge
+          const n2 = edgeNormals[i];     // normal of outgoing edge
+          const dotN = n1.x * n2.x + n1.y * n2.y;
+          const denom = Math.max(0.1, 1 + dotN); // guard against near-antiparallel edges
+          const scale = outlineMargin / denom;
+          return [p.x + (n1.x + n2.x) * scale, p.y + (n1.y + n2.y) * scale];
         });
       } else {
-        // Degenerate case (e.g. all seats in a straight line) –
-        // draw a padded rectangle around seats so the sector is still visible.
+        // Degenerate case – all seats are collinear (single row or column).
+        // Build a thin oriented rectangle polygon that follows the row direction.
         const xs = seatPositions.map(p => p.x);
         const ys = seatPositions.map(p => p.y);
         const minX = Math.min(...xs);
         const maxX = Math.max(...xs);
         const minY = Math.min(...ys);
         const maxY = Math.max(...ys);
-        const padding = 20;
 
-        outline = new Konva.Rect({
-          x: minX - padding,
-          y: minY - padding,
-          width: Math.max(10, (maxX - minX) + 2 * padding),
-          height: Math.max(10, (maxY - minY) + 2 * padding),
-          stroke: strokeColor,
-          strokeWidth: sector.isSelected ? 3 : 2,
-          fill: fillColor,
-          shadowColor: undefined,
-          shadowBlur: 0,
-          shadowOffsetX: 0,
-          shadowOffsetY: 0,
-          name: 'sector-outline',
-          listening: true
-        });
+        // Direction vector of the row
+        const rowDx = maxX - minX;
+        const rowDy = maxY - minY;
+        const rowLen = Math.sqrt(rowDx * rowDx + rowDy * rowDy) || 1;
+        // Unit tangent (along the row) and unit normal (perpendicular)
+        const tx = rowDx / rowLen;
+        const ty = rowDy / rowLen;
+        const nx = -ty;
+        const ny = tx;
+
+        // Corners of the oriented bounding rectangle + margin
+        const p0x = minX - tx * outlineMargin - nx * outlineMargin;
+        const p0y = minY - ty * outlineMargin - ny * outlineMargin;
+        const p1x = maxX + tx * outlineMargin - nx * outlineMargin;
+        const p1y = maxY + ty * outlineMargin - ny * outlineMargin;
+        const p2x = maxX + tx * outlineMargin + nx * outlineMargin;
+        const p2y = maxY + ty * outlineMargin + ny * outlineMargin;
+        const p3x = minX - tx * outlineMargin + nx * outlineMargin;
+        const p3y = minY - ty * outlineMargin + ny * outlineMargin;
+        outlinePoints = [p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y];
       }
+
+      outline = new Konva.Line({
+        points: outlinePoints,
+        closed: true,
+        stroke: strokeColor,
+        strokeWidth: sector.isSelected ? 3 : 2,
+        fill: fillColor,
+        shadowColor: undefined,
+        shadowBlur: 0,
+        shadowOffsetX: 0,
+        shadowOffsetY: 0,
+        name: 'sector-outline',
+        listening: true
+      });
 
       if (outline) {
         // Attach common handlers for both Line and Rect

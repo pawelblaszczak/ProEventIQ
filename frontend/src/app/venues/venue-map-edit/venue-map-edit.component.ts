@@ -2880,15 +2880,16 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       if (prev) prev.destroy();
 
       const seatsVisible = this.showSeats();
-  if (this.mode === 'reservation-preview' && !seatsVisible && seatPositions && seatPositions.length > 0) {
-        // Compute convex hull for clipping region
-        const hull = (seatPositions.length > 2) ? this.getConvexHull(seatPositions) : seatPositions;
+      if (this.mode === 'reservation-preview' && !seatsVisible && seatPositions && seatPositions.length > 0) {
+        // Align fill to the visible sector border and support one-row sectors.
+        const polygon = this.getOverlayPolygonFromSector(group, seatPositions);
+        if (polygon.length < 3) return group;
 
-        // Compute bounding box for the hull
-        const minX = Math.min(...hull.map(p => p.x));
-        const maxX = Math.max(...hull.map(p => p.x));
-        const minY = Math.min(...hull.map(p => p.y));
-        const maxY = Math.max(...hull.map(p => p.y));
+        // Compute bounding box for the clipping polygon
+        const minX = Math.min(...polygon.map(p => p.x));
+        const maxX = Math.max(...polygon.map(p => p.x));
+        const minY = Math.min(...polygon.map(p => p.y));
+        const maxY = Math.max(...polygon.map(p => p.y));
         const bboxWidth = Math.max(1, maxX - minX);
         const bboxHeight = Math.max(1, maxY - minY);
 
@@ -2919,7 +2920,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         const ratio = totalSeats > 0 ? Math.max(0, Math.min(1, allocatedCount / totalSeats)) : 0;
 
         if (ratio > 0) {
-          // Create a group that will clip its children to the polygon (hull).
+          // Create a group that will clip its children to the sector polygon.
           // The group's origin is placed at minX/minY so the rect can be local to it.
           const allocGroup = new Konva.Group({
             x: minX,
@@ -2928,12 +2929,12 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
             name: 'sector-allocation-group'
           });
 
-          // Define clipping based on hull coordinates adjusted to group origin
+          // Define clipping based on polygon coordinates adjusted to group origin
           allocGroup.clipFunc((ctx: any) => {
-            if (!hull || hull.length === 0) return;
+            if (!polygon || polygon.length === 0) return;
             ctx.beginPath();
-            ctx.moveTo(hull[0].x - minX, hull[0].y - minY);
-            for (let i = 1; i < hull.length; i++) ctx.lineTo(hull[i].x - minX, hull[i].y - minY);
+            ctx.moveTo(polygon[0].x - minX, polygon[0].y - minY);
+            for (let i = 1; i < polygon.length; i++) ctx.lineTo(polygon[i].x - minX, polygon[i].y - minY);
             ctx.closePath();
             ctx.clip();
           });
@@ -3779,6 +3780,59 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
   }
 
+  // Prefer the rendered sector outline as the overlay clip polygon so
+  // reservation fills match the visible border (including one-row sectors).
+  private getOverlayPolygonFromSector(
+    group: Konva.Group,
+    seatPositions: { x: number; y: number }[]
+  ): { x: number; y: number }[] {
+    const outlineNode = group.findOne('.sector-outline') as Konva.Line | null;
+    if (outlineNode && typeof outlineNode.points === 'function') {
+      const raw = outlineNode.points();
+      if (Array.isArray(raw) && raw.length >= 6) {
+        const polygon: { x: number; y: number }[] = [];
+        for (let i = 0; i < raw.length - 1; i += 2) {
+          polygon.push({ x: raw[i], y: raw[i + 1] });
+        }
+        if (polygon.length >= 3) return polygon;
+      }
+    }
+
+    const hull = seatPositions.length > 2 ? this.getConvexHull(seatPositions) : seatPositions;
+    if (hull.length >= 3) return hull;
+
+    // Collinear fallback: minimal polygon so clipping still has area.
+    if (seatPositions.length >= 2) {
+      const xs = seatPositions.map(p => p.x);
+      const ys = seatPositions.map(p => p.y);
+      const minX = Math.min(...xs);
+      const maxX = Math.max(...xs);
+      const minY = Math.min(...ys);
+      const maxY = Math.max(...ys);
+      const width = Math.max(1, maxX - minX);
+      const height = Math.max(1, maxY - minY);
+      return [
+        { x: minX, y: minY },
+        { x: minX + width, y: minY },
+        { x: minX + width, y: minY + height },
+        { x: minX, y: minY + height }
+      ];
+    }
+
+    if (seatPositions.length === 1) {
+      const p = seatPositions[0];
+      const half = 1;
+      return [
+        { x: p.x - half, y: p.y - half },
+        { x: p.x + half, y: p.y - half },
+        { x: p.x + half, y: p.y + half },
+        { x: p.x - half, y: p.y + half }
+      ];
+    }
+
+    return [];
+  }
+
   // Lightweight overlay creation for reservation-preview mode. This only builds
   // the clipped allocation fills and avoids recreating entire sector groups which
   // is expensive during zoom operations.
@@ -3828,12 +3882,14 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
       if (!seatPositions || seatPositions.length === 0) return;
 
-      // convex hull and bbox
-      const hull = seatPositions.length > 2 ? this.getConvexHull(seatPositions) : seatPositions;
-      const minX = Math.min(...hull.map(p => p.x));
-      const maxX = Math.max(...hull.map(p => p.x));
-      const minY = Math.min(...hull.map(p => p.y));
-      const maxY = Math.max(...hull.map(p => p.y));
+      // Use the visible sector polygon to keep overlay aligned with borders.
+      const polygon = this.getOverlayPolygonFromSector(group, seatPositions);
+      if (polygon.length < 3) return;
+
+      const minX = Math.min(...polygon.map(p => p.x));
+      const maxX = Math.max(...polygon.map(p => p.x));
+      const minY = Math.min(...polygon.map(p => p.y));
+      const maxY = Math.max(...polygon.map(p => p.y));
       const bboxWidth = Math.max(1, maxX - minX);
       const bboxHeight = Math.max(1, maxY - minY);
 
@@ -3866,10 +3922,10 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       try {
         const allocGroup = new Konva.Group({ x: minX, y: minY, listening: false, name: 'sector-allocation-group' });
         allocGroup.clipFunc((ctx: any) => {
-          if (!hull || hull.length === 0) return;
+          if (!polygon || polygon.length === 0) return;
           ctx.beginPath();
-          ctx.moveTo(hull[0].x - minX, hull[0].y - minY);
-          for (let i = 1; i < hull.length; i++) ctx.lineTo(hull[i].x - minX, hull[i].y - minY);
+          ctx.moveTo(polygon[0].x - minX, polygon[0].y - minY);
+          for (let i = 1; i < polygon.length; i++) ctx.lineTo(polygon[i].x - minX, polygon[i].y - minY);
           ctx.closePath();
           ctx.clip();
         });

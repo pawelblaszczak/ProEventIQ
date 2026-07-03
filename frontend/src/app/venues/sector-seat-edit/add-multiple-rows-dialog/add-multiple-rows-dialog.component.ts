@@ -16,6 +16,8 @@ export interface AddMultipleRowsDialogResult {
   seatDirection: 'LTR' | 'RTL';
   rowDirection: 'TTB' | 'BTT';
   rowNaming: 'Roman' | 'Arabic';
+  firstSeatLabel?: string;
+  firstRowLabel?: string;
 }
 
 @Component({
@@ -45,7 +47,9 @@ export class AddMultipleRowsDialogComponent {
     rowSpacing: [20, [Validators.required, Validators.min(0)]],
     seatDirection: ['LTR', [Validators.required]],
     rowDirection: ['TTB', [Validators.required]],
-    rowNaming: ['Roman', [Validators.required]]
+    rowNaming: ['Roman', [Validators.required]],
+    firstSeatLabel: ['', [Validators.maxLength(20)]],
+    firstRowLabel: ['', [Validators.maxLength(20)]]
   });
 
   onConfirm(): void {
@@ -56,7 +60,9 @@ export class AddMultipleRowsDialogComponent {
         rowSpacing: this.addRowsForm.value.rowSpacing,
         seatDirection: this.addRowsForm.value.seatDirection,
         rowDirection: this.addRowsForm.value.rowDirection,
-        rowNaming: this.addRowsForm.value.rowNaming
+        rowNaming: this.addRowsForm.value.rowNaming,
+        firstSeatLabel: this.addRowsForm.value.firstSeatLabel?.trim() || undefined,
+        firstRowLabel: this.addRowsForm.value.firstRowLabel?.trim() || undefined
       };
       this.dialogRef.close(result);
     }

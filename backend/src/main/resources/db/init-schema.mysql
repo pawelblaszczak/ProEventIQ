@@ -62,6 +62,7 @@ CREATE TABLE seat (
     seat_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     seat_row_id BIGINT NOT NULL,
     order_number INT NOT NULL,
+    seat_label VARCHAR(20) NULL,
     position_x FLOAT,
     position_y FLOAT,
     price_category VARCHAR(50),

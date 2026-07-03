@@ -14,12 +14,14 @@ export interface AddSeatDialogData {
     seatRowId: number;
     name?: string;
     orderNumber?: number;
+    seatCount?: number;
   }>;
 }
 
 export interface AddSeatDialogResult {
   selectedRowId: number;
   seatCount: number;
+  firstSeatLabel?: string;
 }
 
 @Component({
@@ -46,23 +48,37 @@ export class AddSeatDialogComponent {
 
   addSeatForm: FormGroup = this.fb.group({
     selectedRowId: ['', Validators.required],
-    seatCount: [1, [Validators.required, Validators.min(1), Validators.max(50)]]
+    seatCount: [1, [Validators.required, Validators.min(1), Validators.max(50)]],
+    firstSeatLabel: ['', [Validators.maxLength(20)]]
   });
 
   constructor() {
-    // Pre-select the first row if available
+    // Pre-select the first row if available and set default firstSeatLabel
     if (this.data.rows && this.data.rows.length > 0) {
+      const firstRow = this.data.rows[0];
       this.addSeatForm.patchValue({
-        selectedRowId: this.data.rows[0].seatRowId
+        selectedRowId: firstRow.seatRowId,
+        firstSeatLabel: firstRow.seatCount === null || firstRow.seatCount === undefined ? '' : String(firstRow.seatCount + 1)
+      });
+    }
+  }
+
+  onSelectedRowChange(rowId: number): void {
+    const row = this.data.rows.find(r => r.seatRowId === rowId);
+    if (row) {
+      this.addSeatForm.patchValue({
+        firstSeatLabel: row.seatCount === null || row.seatCount === undefined ? '' : String(row.seatCount + 1)
       });
     }
   }
 
   onConfirm(): void {
     if (this.addSeatForm.valid) {
+      const labelValue: string = this.addSeatForm.value.firstSeatLabel?.trim() ?? '';
       const result: AddSeatDialogResult = {
         selectedRowId: this.addSeatForm.value.selectedRowId,
-        seatCount: this.addSeatForm.value.seatCount
+        seatCount: this.addSeatForm.value.seatCount,
+        firstSeatLabel: labelValue.length > 0 ? labelValue : undefined
       };
       this.dialogRef.close(result);
     }

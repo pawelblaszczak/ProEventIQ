@@ -371,6 +371,7 @@
         "SEATS": "Seats",
         "ADD_SEAT": "Add Seat",
         "DELETE_SEATS": "Delete Selected Seats",
+        "CHANGE_SEAT_LABEL": "Change Seat Label",
         "ROWS": "Rows",
         "ADD_ROW": "Add Row",
         "ADD_MULTIPLE_ROWS": "Add Multiple Rows",
@@ -405,7 +406,8 @@
         "NO_SECTOR": "No sector available",
         "ADD_ROWS_FIRST": "Please add rows first before adding seats",
         "PASTE_JSON": "Please paste sector layout JSON first",
-        "ROW_NAME_UPDATED": "Row name updated to \"{{rowName}}\""
+        "ROW_NAME_UPDATED": "Row name updated to \"{{rowName}}\"",
+        "SEAT_LABEL_CHANGED": "Seat label changed"
       },
       "INSTRUCTIONS": {
         "TITLE": "How to Edit Seats",
@@ -449,7 +451,20 @@
           "COUNT_REQUIRED": "Seat count is required",
           "MIN_SEATS": "Minimum 1 seat",
           "MAX_SEATS": "Maximum 50 seats",
+          "FIRST_SEAT_LABEL": "First seat label",
+          "FIRST_SEAT_LABEL_HINT": "E.g. 22, 1A (empty = auto numbering)",
+          "FIRST_LABEL_MAX": "Maximum 20 characters",
           "SUBMIT": "Add Seats"
+        },
+        "CHANGE_SEAT_LABEL": {
+          "TITLE": "Change Seat Label",
+          "CURRENT_LABEL": "Current label for seat {{orderNumber}}:",
+          "NEW_LABEL": "New Label",
+          "LABEL_HINT": "E.g. 22, 1A (empty = no label)",
+          "LABEL_MAX": "Maximum 20 characters",
+          "APPLY_TO_FOLLOWING": "Change labels for {{count}} following seats in row",
+          "APPLY_HINT": "If new label is a number, it will be incremented for subsequent seats",
+          "SUBMIT": "Change Label"
         },
         "ADD_MULTIPLE_ROWS": {
           "TITLE": "Add Multiple Rows",
@@ -476,6 +491,11 @@
           "ROW_SPACING_LABEL": "Row Spacing",
           "ROW_SPACING_REQUIRED": "Row spacing is required",
           "MIN_SPACING": "Minimum 0",
+          "FIRST_SEAT_LABEL": "First seat label",
+          "FIRST_SEAT_LABEL_HINT": "E.g. 1, 22, 1A (empty = auto numbering)",
+          "FIRST_ROW_LABEL": "First row label",
+          "FIRST_ROW_LABEL_HINT": "E.g. I, V, A, Row1 (empty = auto numbering with selected naming)",
+          "FIRST_LABEL_MAX": "Maximum 20 characters",
           "SUBMIT": "Add Rows"
         }
       },

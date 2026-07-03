@@ -205,6 +205,7 @@ public class SeatService {
         
         SeatEntity seatEntity = new SeatEntity();
         seatEntity.setOrderNumber(seatInput.getOrderNumber());
+        seatEntity.setSeatLabel(seatInput.getSeatLabel().orElse(null));
         seatEntity.setPriceCategory(seatInput.getPriceCategory());
         seatEntity.setStatus(seatInput.getStatus() != null ? seatInput.getStatus().getValue() : null);
         seatEntity.setSeatRow(rowEntity);

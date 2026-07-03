@@ -369,6 +369,7 @@
         "SEATS": "Miejsca",
         "ADD_SEAT": "Dodaj miejsce",
         "DELETE_SEATS": "Usuń zaznaczone miejsca",
+        "CHANGE_SEAT_LABEL": "Zmień etykietę miejsca",
         "ROWS": "Rzędy",
         "ADD_ROW": "Dodaj rząd",
         "ADD_MULTIPLE_ROWS": "Dodaj wiele rzędów",
@@ -402,7 +403,8 @@
         "ROW_DELETED": "Rząd \"{{name}}\" usunięty",
         "NO_SECTOR": "Brak dostępnego sektora",
         "ADD_ROWS_FIRST": "Najpierw dodaj rzędy przed dodaniem miejsc",
-        "PASTE_JSON": "Proszę wkleić JSON z układem sektora",        "ROW_NAME_UPDATED": "Zaktualizowano nazwę rzędu na \"{{rowName}}\""
+        "PASTE_JSON": "Proszę wkleić JSON z układem sektora",        "ROW_NAME_UPDATED": "Zaktualizowano nazwę rzędu na \"{{rowName}}\"",
+        "SEAT_LABEL_CHANGED": "Etykieta miejsca zmieniona"
       },
       "INSTRUCTIONS": {
         "TITLE": "Jak edytować miejsca",
@@ -446,7 +448,20 @@
           "COUNT_REQUIRED": "Liczba miejsc jest wymagana",
           "MIN_SEATS": "Minimum 1 miejsce",
           "MAX_SEATS": "Maksimum 50 miejsc",
+          "FIRST_SEAT_LABEL": "Etykieta pierwszego miejsca",
+          "FIRST_SEAT_LABEL_HINT": "Np. 22, 1A (puste = automatyczna numeracja)",
+          "FIRST_LABEL_MAX": "Maksymalnie 20 znaków",
           "SUBMIT": "Dodaj miejsca"
+        },
+        "CHANGE_SEAT_LABEL": {
+          "TITLE": "Zmień etykietę miejsca",
+          "CURRENT_LABEL": "Bieżąca etykieta miejsca {{orderNumber}}:",
+          "NEW_LABEL": "Nowa etykieta",
+          "LABEL_HINT": "Np. 22, 1A (puste = brak etykiety)",
+          "LABEL_MAX": "Maksymalnie 20 znaków",
+          "APPLY_TO_FOLLOWING": "Zmień etykiety {{count}} następnych miejsc w rzędzie",
+          "APPLY_HINT": "Jeśli nowa etykieta jest numerem, będzie inkrementowana dla kolejnych miejsc",
+          "SUBMIT": "Zmień etykietę"
         },
         "ADD_MULTIPLE_ROWS": {
           "TITLE": "Dodaj wiele rzędów",
@@ -473,6 +488,11 @@
           "ROW_SPACING_LABEL": "Odstęp między rzędami",
           "ROW_SPACING_REQUIRED": "Odstęp między rzędami jest wymagany",
           "MIN_SPACING": "Minimum 0",
+          "FIRST_SEAT_LABEL": "Etykieta pierwszego miejsca",
+          "FIRST_SEAT_LABEL_HINT": "Np. 1, 22, 1A (puste = automatyczna numeracja)",
+          "FIRST_ROW_LABEL": "Etykieta pierwszego rzędu",
+          "FIRST_ROW_LABEL_HINT": "Np. I, V, A, Rząd1 (puste = automatyczna numeracja z wybranym systemem)",
+          "FIRST_LABEL_MAX": "Maksymalnie 20 znaków",
           "SUBMIT": "Dodaj rzędy"
         }
       },

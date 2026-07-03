@@ -12,7 +12,10 @@ public class SeatEntity {
     
     @Column(name = "order_number")
     private Integer orderNumber;
-    
+
+    @Column(name = "seat_label")
+    private String seatLabel;
+
     @Column(name = "position_x")
     private Float positionX;
     
@@ -33,6 +36,8 @@ public class SeatEntity {
     public void setSeatId(Long seatId) { this.seatId = seatId; }
     public Integer getOrderNumber() { return orderNumber; }
     public void setOrderNumber(Integer orderNumber) { this.orderNumber = orderNumber; }
+    public String getSeatLabel() { return seatLabel; }
+    public void setSeatLabel(String seatLabel) { this.seatLabel = seatLabel; }
     public Float getPositionX() { return positionX; }
     public void setPositionX(Float positionX) { this.positionX = positionX; }
     public Float getPositionY() { return positionY; }

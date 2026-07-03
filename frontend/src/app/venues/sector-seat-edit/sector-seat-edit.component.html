@@ -88,6 +88,12 @@
                     color="warn">
               <mat-icon>delete</mat-icon>
             </button>
+            <button mat-icon-button 
+                    (click)="changeSeatLabelInToolbarMode()"
+                    [disabled]="selectedSeats().length !== 1"
+                    [matTooltip]="'VENUES.SECTOR_EDIT.TOOLBAR.CHANGE_SEAT_LABEL' | translate">
+              <mat-icon>edit</mat-icon>
+            </button>
             <div class="vertical-divider"></div>
           </div>
         </div>

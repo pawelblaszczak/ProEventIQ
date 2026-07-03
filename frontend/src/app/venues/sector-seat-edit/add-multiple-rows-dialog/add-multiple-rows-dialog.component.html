@@ -52,6 +52,30 @@
         <mat-error *ngIf="addRowsForm.get('rowSpacing')?.hasError('required')">{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.ROW_SPACING_REQUIRED' | translate }}</mat-error>
         <mat-error *ngIf="addRowsForm.get('rowSpacing')?.hasError('min')">{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.MIN_SPACING' | translate }}</mat-error>
       </mat-form-field>
+
+      <mat-form-field appearance="outline" class="form-field">
+        <mat-label>{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.FIRST_SEAT_LABEL' | translate }}</mat-label>
+        <input matInput
+               type="text"
+               formControlName="firstSeatLabel"
+               maxlength="20">
+        <mat-hint>{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.FIRST_SEAT_LABEL_HINT' | translate }}</mat-hint>
+        <mat-error *ngIf="addRowsForm.get('firstSeatLabel')?.hasError('maxlength')">
+          {{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.FIRST_LABEL_MAX' | translate }}
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="form-field">
+        <mat-label>{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.FIRST_ROW_LABEL' | translate }}</mat-label>
+        <input matInput
+               type="text"
+               formControlName="firstRowLabel"
+               maxlength="20">
+        <mat-hint>{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.FIRST_ROW_LABEL_HINT' | translate }}</mat-hint>
+        <mat-error *ngIf="addRowsForm.get('firstRowLabel')?.hasError('maxlength')">
+          {{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_MULTIPLE_ROWS.FIRST_LABEL_MAX' | translate }}
+        </mat-error>
+      </mat-form-field>
     </form>
   </mat-dialog-content>
   

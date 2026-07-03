@@ -3,6 +3,10 @@ SeatInput:
   properties:
     orderNumber:
       type: integer
+    seatLabel:
+      type: string
+      nullable: true
+      maxLength: 20
     position:
       type: object
       properties:

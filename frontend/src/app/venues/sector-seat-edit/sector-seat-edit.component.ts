@@ -21,6 +21,7 @@ import { AddSeatDialogComponent, AddSeatDialogData, AddSeatDialogResult } from '
 import { AddRowDialogComponent, AddRowDialogResult } from './add-row-dialog/add-row-dialog.component';
 import { AddMultipleRowsDialogComponent, AddMultipleRowsDialogResult } from './add-multiple-rows-dialog/add-multiple-rows-dialog.component';
 import { EditRowDialogComponent, EditRowDialogData, EditRowDialogResult } from './edit-row-dialog/edit-row-dialog.component';
+import { ChangeSeatLabelDialogComponent, ChangeSeatLabelDialogData, ChangeSeatLabelDialogResult } from './change-seat-label-dialog/change-seat-label-dialog.component';
 import { Venue } from '../../api/model/venue';
 import { Sector } from '../../api/model/sector';
 import { SectorInput } from '../../api/model/sector-input';
@@ -724,7 +725,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
 
     // Seat number text
     const text = new Konva.Text({
-      text: seat.orderNumber?.toString() ?? '',
+      text: seat.seatLabel ?? seat.orderNumber?.toString() ?? '',
       x: 1,
       y: 2,
       width: this.seatSize - 2,
@@ -746,7 +747,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
       const rowName = this.getRowNameForSeat(seat);
       const rowLabel = this.translate.instant('VENUES.MAP.ROW');
       const seatLabel = this.translate.instant('VENUES.COMMON.SEAT');
-      const tooltipText = `${rowLabel}: ${rowName}, ${seatLabel}: ${seat.orderNumber ?? ''}`;
+      const tooltipText = `${rowLabel}: ${rowName}, ${seatLabel}: ${seat.seatLabel ?? seat.orderNumber ?? ''}`;;
       const labelText = this.seatTooltip.findOne('Text') as Konva.Text;
       labelText.text(tooltipText);
       // Position tooltip above the seat, adjusted for zoom
@@ -1142,6 +1143,39 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     return result;
   }
 
+  private romanToNumber(roman: string): number | null {
+    const romanValues: { [key: string]: number } = {
+      'I': 1,
+      'V': 5,
+      'X': 10,
+      'L': 50,
+      'C': 100,
+      'D': 500,
+      'M': 1000
+    };
+
+    let total = 0;
+    let prevValue = 0;
+
+    for (let i = roman.length - 1; i >= 0; i--) {
+      const char = roman[i].toUpperCase();
+      const value = romanValues[char];
+      
+      if (value === undefined) {
+        return null; // Invalid Roman numeral
+      }
+
+      if (value < prevValue) {
+        total -= value;
+      } else {
+        total += value;
+      }
+      prevValue = value;
+    }
+
+    return total > 0 ? total : null;
+  }
+
   async addMultipleRows() {
     const dialogRef = this.dialog.open(AddMultipleRowsDialogComponent, {
       width: '400px',
@@ -1186,12 +1220,21 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
 
       // Create multiple rows
       const newRows: EditableRow[] = [];
+      
       for (let i = 0; i < result.rowCount; i++) {
         const tempId = this.generateTempId();
         const orderNumber = maxOrderNumber + i + 1;
-        const rowName = result.rowNaming === 'Arabic' 
-          ? orderNumber.toString() 
-          : this.numberToRoman(orderNumber);
+        
+        let rowName: string;
+        if (result.firstRowLabel) {
+          // Use firstRowLabel as base and increment it
+          rowName = this.generateRowLabel(result.firstRowLabel, i, result.rowNaming);
+        } else {
+          // Use default numbering
+          rowName = result.rowNaming === 'Arabic' 
+            ? orderNumber.toString() 
+            : this.numberToRoman(orderNumber);
+        }
         
         const newRow: EditableRow = {
           seatRowId: tempId,
@@ -1202,9 +1245,12 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
               ? result.seatCount - seatIndex 
               : seatIndex + 1;
 
+            const seatLabel = this.generateSeatLabel(result.firstSeatLabel, seatIndex);
+
             return {
               seatId: this.generateTempId(),
               orderNumber: seatOrderNumber,
+              seatLabel: seatLabel,
               position: { 
                 x: baseX + seatIndex * seatSpacing, 
                 y: result.rowDirection === 'BTT' 
@@ -1258,7 +1304,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     this.snackBar.open(this.translate.instant('VENUES.SECTOR_EDIT.SNACKBAR.SEAT_ADDED', { seat: newSeat.orderNumber, row: row.name }), this.translate.instant('BUTTON.CLOSE'), { duration: 2000 });
   }
 
-  addSeatsToRow(rowId: number, seatCount: number) {
+  addSeatsToRow(rowId: number, seatCount: number, firstSeatLabel?: string) {
     const sector = this.sector();
     if (!sector) {
       return;
@@ -1293,9 +1339,12 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     for (let i = 0; i < seatCount; i++) {
       const tempId = this.generateTempId();
       
+      const generatedLabel = this.generateSeatLabel(firstSeatLabel, i);
+
       const newSeat: EditableSeat = {
         seatId: tempId,
         orderNumber: startingOrderNumber + i,
+        seatLabel: generatedLabel,
         position: { x: baseX + (i + 1) * seatSpacing, y: baseY },
         status: 'active' as const,
         selected: false,
@@ -1313,6 +1362,63 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
       ? this.translate.instant('VENUES.SECTOR_EDIT.SNACKBAR.SEATS_ADDED_SINGLE', { row: rowName })
       : this.translate.instant('VENUES.SECTOR_EDIT.SNACKBAR.SEATS_ADDED_MULTIPLE', { count: seatCount, row: rowName });
     this.snackBar.open(message, this.translate.instant('BUTTON.CLOSE'), { duration: 2000 });
+  }
+
+  /**
+   * Generates a seat label for the i-th seat in a batch.
+   * If firstSeatLabel is a pure integer string (e.g. "22"), increments numerically.
+   * Otherwise returns the label unchanged (only for the first seat; rest get undefined).
+   */
+  private generateSeatLabel(firstSeatLabel: string | undefined, index: number): string | undefined {
+    if (!firstSeatLabel || index === 0) return firstSeatLabel;
+    return this.incrementLabelNumber(firstSeatLabel, index);
+  }
+
+  private generateRowLabel(firstRowLabel: string, index: number, rowNaming: 'Roman' | 'Arabic'): string {
+    if (index === 0) return firstRowLabel;
+    
+    // Try to parse and increment the label
+    if (rowNaming === 'Arabic') {
+      // For Arabic numerals: increment any numeric part
+      const incremented = this.incrementLabelNumber(firstRowLabel, index);
+      return incremented;
+    } else {
+      // For Roman numerals: parse the first roman numeral and increment it
+      const romanMatch = firstRowLabel.match(/^(M{0,3})(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})/i);
+      if (romanMatch) {
+        // Found a Roman numeral at the start
+        const romanPart = romanMatch[0];
+        const remainder = firstRowLabel.substring(romanPart.length);
+        const romanValue = this.romanToNumber(romanPart);
+        if (romanValue !== null) {
+          const newRomanValue = romanValue + index;
+          const newRoman = this.numberToRoman(newRomanValue);
+          return newRoman + remainder;
+        }
+      }
+      // If not a valid Roman numeral, return as-is
+      return firstRowLabel;
+    }
+  }
+
+  private incrementLabelNumber(label: string, steps: number): string {
+    // Find all digit sequences in the label
+    const digitMatches = label.match(/\d+/g);
+    if (!digitMatches || digitMatches.length === 0) {
+      // No digits found - return label as-is
+      return label;
+    }
+
+    // Find the first (leftmost) digit sequence
+    const firstDigitMatch = label.match(/\d+/);
+    if (!firstDigitMatch) return label;
+
+    const originalNumber = parseInt(firstDigitMatch[0], 10);
+    const newNumber = originalNumber + steps;
+    const paddedNewNumber = String(newNumber).padStart(firstDigitMatch[0].length, '0');
+    
+    // Replace the first occurrence of digits
+    return label.replace(/\d+/, paddedNewNumber);
   }
 
   deleteSelectedSeats() {
@@ -1430,7 +1536,8 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
       rows: sector.rows.map(row => ({
         seatRowId: row.seatRowId!,
         name: row.name,
-        orderNumber: row.orderNumber
+        orderNumber: row.orderNumber,
+        seatCount: row.seats?.length ?? 0
       }))
     };
     
@@ -1445,7 +1552,56 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     // Handle dialog result
     dialogRef.afterClosed().subscribe((result: AddSeatDialogResult | null) => {
       if (result && result.selectedRowId && result.seatCount > 0) {
-        this.addSeatsToRow(result.selectedRowId, result.seatCount);
+        this.addSeatsToRow(result.selectedRowId, result.seatCount, result.firstSeatLabel);
+      }
+    });
+  }
+
+  // Change seat label in toolbar mode - show dialog to edit label
+  changeSeatLabelInToolbarMode() {
+    const selectedSeats = this.selectedSeats();
+    if (selectedSeats.length !== 1) return;
+
+    const seat = selectedSeats[0];
+    const row = this.findSeatRow(seat);
+    if (!row) return;
+
+    // Calculate remaining seats in row after this one
+    const seatIndex = row.seats.findIndex(s => s.seatId === seat.seatId);
+    const remainingSeats = Math.max(0, row.seats.length - seatIndex - 1);
+
+    const dialogData: ChangeSeatLabelDialogData = {
+      currentLabel: seat.seatLabel,
+      currentOrderNumber: seat.orderNumber || 0,
+      remainingSeatsInRow: remainingSeats
+    };
+
+    const dialogRef = this.dialog.open(ChangeSeatLabelDialogComponent, {
+      width: '450px',
+      data: dialogData,
+      disableClose: false,
+      autoFocus: true
+    });
+
+    dialogRef.afterClosed().subscribe((result: ChangeSeatLabelDialogResult | null) => {
+      if (result) {
+        seat.seatLabel = result.newLabel || undefined;
+
+        // If apply to following seats, increment for next seats
+        if (result.applyToFollowingSeats && seatIndex >= 0 && seatIndex < row.seats.length - 1) {
+          for (let i = seatIndex + 1; i < row.seats.length; i++) {
+            const stepsFromFirst = i - seatIndex;
+            row.seats[i].seatLabel = this.incrementLabelNumber(result.newLabel, stepsFromFirst);
+          }
+        }
+
+        this.renderSector();
+        this.hasChanges.set(true);
+        this.snackBar.open(
+          this.translate.instant('VENUES.SECTOR_EDIT.SNACKBAR.SEAT_LABEL_CHANGED'),
+          this.translate.instant('BUTTON.CLOSE'),
+          { duration: 2000 }
+        );
       }
     });
   }
@@ -1614,6 +1770,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
         seats: row.seats.map(seat => ({
           seatId: seat.seatId === -1 ? undefined : seat.seatId,
           orderNumber: seat.orderNumber,
+          seatLabel: seat.seatLabel,
           position: seat.position,
           priceCategory: seat.priceCategory,
           status: seat.status

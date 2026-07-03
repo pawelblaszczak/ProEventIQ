@@ -11,7 +11,7 @@
     <form [formGroup]="addSeatForm" class="add-seat-form">
       <mat-form-field appearance="outline" class="form-field">
         <mat-label>{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_SEAT.ROW_LABEL' | translate }}</mat-label>
-        <mat-select formControlName="selectedRowId" required>
+        <mat-select formControlName="selectedRowId" required (selectionChange)="onSelectedRowChange($event.value)">
           <mat-option *ngFor="let row of data.rows" [value]="row.seatRowId">
             {{ row.name || 'Row ' + row.orderNumber }}
           </mat-option>
@@ -37,6 +37,18 @@
         </mat-error>
         <mat-error *ngIf="addSeatForm.get('seatCount')?.hasError('max')">
           {{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_SEAT.MAX_SEATS' | translate }}
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="form-field">
+        <mat-label>{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_SEAT.FIRST_SEAT_LABEL' | translate }}</mat-label>
+        <input matInput
+               type="text"
+               formControlName="firstSeatLabel"
+               maxlength="20">
+        <mat-hint>{{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_SEAT.FIRST_SEAT_LABEL_HINT' | translate }}</mat-hint>
+        <mat-error *ngIf="addSeatForm.get('firstSeatLabel')?.hasError('maxlength')">
+          {{ 'VENUES.SECTOR_EDIT.DIALOG.ADD_SEAT.FIRST_LABEL_MAX' | translate }}
         </mat-error>
       </mat-form-field>
     </form>

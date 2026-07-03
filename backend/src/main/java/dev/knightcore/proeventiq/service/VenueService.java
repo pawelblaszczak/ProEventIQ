@@ -424,6 +424,9 @@ public class VenueService {
         Seat seatDto = new Seat();
         seatDto.setSeatId(seatEntity.getSeatId());
         seatDto.setOrderNumber(seatEntity.getOrderNumber());
+        seatDto.setSeatLabel(seatEntity.getSeatLabel() != null
+            ? org.openapitools.jackson.nullable.JsonNullable.of(seatEntity.getSeatLabel())
+            : org.openapitools.jackson.nullable.JsonNullable.undefined());
         seatDto.setPriceCategory(seatEntity.getPriceCategory());
         seatDto.setStatus(seatEntity.getStatus() != null ?
             Seat.StatusEnum.fromValue(seatEntity.getStatus()) : null);

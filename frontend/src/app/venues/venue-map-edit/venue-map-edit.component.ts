@@ -3375,9 +3375,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   }
 
   // Helper function to get seat info (row name, seat number) based on index within a sector
-  private getSeatInfoFromIndex(sector: EditableSector, seatIndex: number): { rowName: string, seatNumber: number } {
+  private getSeatInfoFromIndex(sector: EditableSector, seatIndex: number): { rowName: string, seatNumber: string | number } {
     let currentIndex = 0;
-    let result = { rowName: 'Unknown', seatNumber: 0 };
+    let result: { rowName: string, seatNumber: string | number } = { rowName: 'Unknown', seatNumber: 0 };
     
     if (sector.rows) {
       for (const row of sector.rows) {
@@ -3388,7 +3388,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
             const seat = row.seats[seatIndexInRow];
             result = {
               rowName: row.name || `Row ${row.orderNumber || '?'}`,
-              seatNumber: seat.orderNumber || seatIndexInRow + 1
+              seatNumber: seat.seatLabel || seat.orderNumber || seatIndexInRow + 1
             };
             break;
           }

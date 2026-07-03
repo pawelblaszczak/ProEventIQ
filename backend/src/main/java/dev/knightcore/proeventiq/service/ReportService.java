@@ -299,7 +299,7 @@ public class ReportService {
                     seatRepository.findById(res.getSeatId()).ifPresent(s -> seatMap.put(s.getSeatId(), s));
                 }
                 
-                java.util.Map<String, java.util.Map<RowKey, java.util.List<Integer>>> grouped = new java.util.TreeMap<>();
+                java.util.Map<String, java.util.Map<RowKey, java.util.List<SeatNumberInfo>>> grouped = new java.util.TreeMap<>();
                 java.util.Set<String> sectorNames = new java.util.TreeSet<>();
                 for (var seat : seatMap.values()) {
                     var row = seat.getSeatRow();
@@ -314,7 +314,8 @@ public class ReportService {
                     RowKey rowKey = new RowKey(rowNameStr, rowOrder);
                     
                     grouped.computeIfAbsent(sectorName, k -> new java.util.TreeMap<>());
-                    grouped.get(sectorName).computeIfAbsent(rowKey, k -> new java.util.ArrayList<>()).add(seat.getOrderNumber());
+                    String displayLabel = (seat.getSeatLabel() != null) ? seat.getSeatLabel() : String.valueOf(seat.getOrderNumber());
+                    grouped.get(sectorName).computeIfAbsent(rowKey, k -> new java.util.ArrayList<>()).add(new SeatNumberInfo(displayLabel, seat.getOrderNumber()));
                 }
 
                 // --- Calculate Font Size ---
@@ -662,12 +663,12 @@ public class ReportService {
 
     private PageState addSeatsSection(PDDocument document, PDPage page, PDPageContentStream contentStream, PDFont headerFont, PDFont bodyFont,
                                   float margin, float yPosition, float lineHeight,
-                                  java.util.Map<String, java.util.Map<RowKey, java.util.List<Integer>>> grouped, int fontSize) throws IOException {
+                                  java.util.Map<String, java.util.Map<RowKey, java.util.List<SeatNumberInfo>>> grouped, int fontSize) throws IOException {
         LayoutResult result = layoutSeatsSection(document, page, contentStream, bodyFont, lineHeight, grouped, false, yPosition, fontSize);
         return result.pageState;
     }
 
-    private float calculateSeatsBlockHeight(java.util.Map<String, java.util.Map<RowKey, java.util.List<Integer>>> grouped, PDFont bodyFont, float lineHeight, float tableWidth, int fontSize) {
+    private float calculateSeatsBlockHeight(java.util.Map<String, java.util.Map<RowKey, java.util.List<SeatNumberInfo>>> grouped, PDFont bodyFont, float lineHeight, float tableWidth, int fontSize) {
         // Create dummy document/page for metric calculation context if needed, but mostly we just need font metrics.
         // We pass tableWidth via a hack or just assume layoutSeatsSection calculates width from page size.
         // layoutSeatsSection uses page.getMediaBox().
@@ -703,7 +704,7 @@ public class ReportService {
 
     private LayoutResult layoutSeatsSection(PDDocument document, PDPage page, PDPageContentStream contentStream, 
                                           PDFont bodyFont, float lineHeight,
-                                          java.util.Map<String, java.util.Map<RowKey, java.util.List<Integer>>> grouped,
+                                          java.util.Map<String, java.util.Map<RowKey, java.util.List<SeatNumberInfo>>> grouped,
                                           boolean dryRun, float startY, int fontSize) throws IOException {
         
         float currentY = startY;
@@ -740,8 +741,8 @@ public class ReportService {
                 for (var rowEntry : rowsMap.entrySet()) {
                     String rowName = rowEntry.getKey().name;
                     var seatNums = rowEntry.getValue();
-                    seatNums.sort(Integer::compareTo);
-                    String ranges = buildRanges(seatNums);
+                    seatNums.sort(Comparator.comparing(SeatNumberInfo::getOrderNumber, Comparator.nullsLast(Comparator.naturalOrder())));
+                    String ranges = buildSeatRanges(seatNums);
                     String lineText = "rząd " + rowName + " / miejsce " + ranges;
                     
                     String[] wrapped = wrapText(lineText, colWidth - 5, bodyFont, fontSize); // -5 padding
@@ -831,6 +832,58 @@ public class ReportService {
     /**
      * Build a compact ranges string from sorted list of integers: [1,2,3,5,7,8] -> "1-3, 5, 7-8".
      */
+    private String buildSeatRanges(java.util.List<SeatNumberInfo> seatInfos) {
+        if (seatInfos == null || seatInfos.isEmpty()) return "";
+        StringBuilder sb = new StringBuilder();
+        SeatNumberInfo start = null;
+        SeatNumberInfo prev = null;
+        for (SeatNumberInfo info : seatInfos) {
+            if (start == null) {
+                start = info;
+                prev = info;
+                continue;
+            }
+            
+            // Check if both orderNumber and label are continuous
+            boolean orderNumberContinues = prev.getOrderNumber() != null && info.getOrderNumber() != null && 
+                                          info.getOrderNumber() == prev.getOrderNumber() + 1;
+            boolean labelContinues = areLabelsNumericallyConsecutive(prev.getLabel(), info.getLabel());
+            
+            if (orderNumberContinues && labelContinues) {
+                prev = info;
+                continue;
+            }
+            
+            // flush range
+            appendSeatRange(sb, start, prev);
+            start = info;
+            prev = info;
+        }
+        // flush last
+        appendSeatRange(sb, start, prev);
+        return sb.toString();
+    }
+
+    private boolean areLabelsNumericallyConsecutive(String label1, String label2) {
+        try {
+            Integer num1 = Integer.parseInt(label1);
+            Integer num2 = Integer.parseInt(label2);
+            return num2 == num1 + 1;
+        } catch (NumberFormatException e) {
+            // If labels are not numbers, assume they're consecutive (non-numeric labels like A, B, C)
+            return false;
+        }
+    }
+
+    private void appendSeatRange(StringBuilder sb, SeatNumberInfo start, SeatNumberInfo end) {
+        if (sb.length() > 0) sb.append(", ");
+        if (start.getLabel().equals(end.getLabel())) {
+            sb.append(start.getLabel());
+        } else {
+            sb.append(start.getLabel()).append("-").append(end.getLabel());
+        }
+    }
+    
     private String buildRanges(java.util.List<Integer> nums) {
         if (nums == null || nums.isEmpty()) return "";
         StringBuilder sb = new StringBuilder();
@@ -2299,7 +2352,29 @@ public class ReportService {
             return String.format("participant_map_%s_event_%d.pdf", participantId, eventId);
         }
     }
+
+    /**
+     * Helper class to store seat display label and order number for sorting
+     */
+    private static class SeatNumberInfo {
+        private final String label;
+        private final Integer orderNumber;
+
+        public SeatNumberInfo(String label, Integer orderNumber) {
+            this.label = label;
+            this.orderNumber = orderNumber;
+        }
+
+        public String getLabel() {
+            return label;
+        }
+
+        public Integer getOrderNumber() {
+            return orderNumber;
+        }
+    }
 }
+
 
 
 

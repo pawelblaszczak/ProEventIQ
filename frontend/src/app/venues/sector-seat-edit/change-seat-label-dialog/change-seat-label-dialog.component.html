@@ -1,0 +1,52 @@
+<div class="change-seat-label-dialog">
+  <div class="dialog-header">
+    <div class="dialog-icon">
+      <mat-icon>edit</mat-icon>
+    </div>
+    <h2 mat-dialog-title class="dialog-title">{{ 'VENUES.SECTOR_EDIT.DIALOG.CHANGE_SEAT_LABEL.TITLE' | translate }}</h2>
+  </div>
+  
+  <mat-dialog-content class="dialog-content">
+    <form [formGroup]="changeLabelForm" class="change-label-form">
+      <mat-form-field appearance="outline" class="form-field">
+        <mat-label>{{ 'VENUES.SECTOR_EDIT.DIALOG.CHANGE_SEAT_LABEL.NEW_LABEL' | translate }}</mat-label>
+        <input matInput
+               type="text"
+               formControlName="seatLabel"
+               maxlength="20">
+        <mat-hint>{{ 'VENUES.SECTOR_EDIT.DIALOG.CHANGE_SEAT_LABEL.LABEL_HINT' | translate }}</mat-hint>
+        <mat-error *ngIf="changeLabelForm.get('seatLabel')?.hasError('maxlength')">
+          {{ 'VENUES.SECTOR_EDIT.DIALOG.CHANGE_SEAT_LABEL.LABEL_MAX' | translate }}
+        </mat-error>
+      </mat-form-field>
+
+      <div class="checkbox-section" *ngIf="data.remainingSeatsInRow > 0">
+        <mat-checkbox formControlName="applyToFollowingSeats" class="apply-checkbox">
+          {{ 'VENUES.SECTOR_EDIT.DIALOG.CHANGE_SEAT_LABEL.APPLY_TO_FOLLOWING' | translate: {count: data.remainingSeatsInRow} }}
+        </mat-checkbox>
+        <p class="checkbox-hint">
+          {{ 'VENUES.SECTOR_EDIT.DIALOG.CHANGE_SEAT_LABEL.APPLY_HINT' | translate }}
+        </p>
+      </div>
+    </form>
+  </mat-dialog-content>
+  
+  <mat-dialog-actions class="dialog-actions" align="end">
+    <button mat-stroked-button 
+            type="button" 
+            (click)="onCancel()" 
+            class="cancel-button">
+      <mat-icon>close</mat-icon>
+      {{ 'BUTTON.CANCEL' | translate }}
+    </button>
+    
+    <button mat-raised-button 
+            color="primary" 
+            type="button" 
+            (click)="onConfirm()"
+            class="confirm-button">
+      <mat-icon>check</mat-icon>
+      {{ 'VENUES.SECTOR_EDIT.DIALOG.CHANGE_SEAT_LABEL.SUBMIT' | translate }}
+    </button>
+  </mat-dialog-actions>
+</div>

@@ -135,12 +135,6 @@
           <mat-icon>group</mat-icon>
           {{ 'EVENTS.DETAIL.PARTICIPANTS.TITLE' | translate }}
         </h3>
-        <div class="participants-actions">
-          <button mat-raised-button color="primary" (click)="onAddParticipant()" [attr.aria-label]="'EVENTS.DETAIL.PARTICIPANTS.ADD_BUTTON' | translate" class="add-participant-btn">
-            <mat-icon>person_add</mat-icon>
-            {{ 'EVENTS.DETAIL.PARTICIPANTS.ADD_BUTTON' | translate }}
-          </button>
-        </div>
       </div>
       <mat-divider></mat-divider>
       <div *ngIf="participants()?.length; else noParticipants">
@@ -282,6 +276,10 @@
               </ng-template>
             </td>
             <td mat-footer-cell *matFooterCellDef style="width: 18%; min-width: 120px; background: #f5f5f5; border-top: 2px solid #ddd; padding: 12px;">
+              <button mat-raised-button color="primary" (click)="onAddParticipant()" [attr.aria-label]="'EVENTS.DETAIL.PARTICIPANTS.ADD_BUTTON' | translate" class="add-participant-btn">
+                <mat-icon>person_add</mat-icon>
+                {{ 'EVENTS.DETAIL.PARTICIPANTS.ADD_BUTTON' | translate }}
+              </button>
             </td>
           </ng-container>
 

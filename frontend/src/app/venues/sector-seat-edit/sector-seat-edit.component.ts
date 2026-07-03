@@ -1571,7 +1571,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     const remainingSeats = Math.max(0, row.seats.length - seatIndex - 1);
 
     const dialogData: ChangeSeatLabelDialogData = {
-      currentLabel: seat.seatLabel,
+      currentLabel: seat.seatLabel ?? undefined,
       currentOrderNumber: seat.orderNumber || 0,
       remainingSeatsInRow: remainingSeats
     };

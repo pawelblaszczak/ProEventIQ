@@ -44,6 +44,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Comparator;
@@ -62,6 +65,13 @@ public class ReportService {
     
     private static final Logger log = LoggerFactory.getLogger(ReportService.class);
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private static final ZoneId DISPLAY_ZONE = ZoneId.of("Europe/Warsaw");
+
+    /** Dates are stored as UTC LocalDateTime. Convert to Warsaw time for display in reports. */
+    private static LocalDateTime toDisplayDateTime(LocalDateTime utcDateTime) {
+        if (utcDateTime == null) return null;
+        return utcDateTime.atOffset(ZoneOffset.UTC).atZoneSameInstant(DISPLAY_ZONE).toLocalDateTime();
+    }
     
     // Static initializer to ensure ImageIO plugins (including WebP) are discovered
     static {
@@ -277,8 +287,8 @@ public class ReportService {
                 if (ticketDescription == null || ticketDescription.trim().isEmpty()) {
                      java.time.format.DateTimeFormatter dateFormatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
                      java.time.format.DateTimeFormatter timeFormatter = java.time.format.DateTimeFormatter.ofPattern("HH:mm");
-                     String dateStr = event.getDateTime().format(dateFormatter);
-                     String timeStr = event.getDateTime().format(timeFormatter);
+                     String dateStr = toDisplayDateTime(event.getDateTime()).format(dateFormatter);
+                     String timeStr = toDisplayDateTime(event.getDateTime()).format(timeFormatter);
                      
                      ticketDescription = "Poniżej przesyłamy informacje dotyczące przedstawienia pt. \"" + show.getName() + "\".\n" +
                                        "Data: " + dateStr + " godz. " + timeStr + "\n" +
@@ -504,7 +514,7 @@ public class ReportService {
                 DateTimeFormatter customDateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy 'r. godz.' HH:mm");
                 
                 drawField(contentStream, serifFont, bodyFont, "Data:", 
-                    event.getDateTime() != null ? event.getDateTime().format(customDateFormatter) : "", 
+                    event.getDateTime() != null ? toDisplayDateTime(event.getDateTime()).format(customDateFormatter) : "", 
                     startY, valueBoxX, valueBoxWidth, valueBoxHeight, labelColor);
                 
                 drawField(contentStream, serifFont, bodyFont, "Sektor:", 
@@ -1554,7 +1564,7 @@ public class ReportService {
             String venueInfo = venueOpt.isPresent() && venueOpt.get().getName() != null ? venueOpt.get().getName() : "N/A";
             
             String dateStr = event.getDateTime() != null ? 
-                event.getDateTime().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy 'r. godz.' HH:mm")) : "N/A";
+                toDisplayDateTime(event.getDateTime()).format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy 'r. godz.' HH:mm")) : "N/A";
 
             try (PDDocument document = new PDDocument()) {
                 PDRectangle pageSize = PDRectangle.A4; 
@@ -1791,7 +1801,7 @@ public class ReportService {
                 contentStream.beginText();
                 contentStream.newLineAtOffset(margin, yPosition);
                 String dateStr = event.getDateTime() != null ? 
-                    event.getDateTime().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy 'r. godz.' HH:mm")) : "N/A";
+                    toDisplayDateTime(event.getDateTime()).format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy 'r. godz.' HH:mm")) : "N/A";
                 safeShowText(contentStream, dateStr);
                 contentStream.endText();
                 yPosition -= 14;

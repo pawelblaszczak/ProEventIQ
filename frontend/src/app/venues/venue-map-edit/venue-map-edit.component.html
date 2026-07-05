@@ -210,6 +210,29 @@
           </div>
         </div>
 
+        <!-- Participant Label Rotation Controls (print-map mode) -->
+        <div class="tool-group" *ngIf="mode === 'print-map'">
+          <h3 class="tool-group-title">
+            <mat-icon>rotate_right</mat-icon>
+            Rotate label
+          </h3>
+          <div class="tool-buttons">
+            <button mat-icon-button
+                    (click)="rotateSelectedPrintMapLabel(false)"
+                    [disabled]="!canRotateSelectedPrintMapLabel()"
+                    [matTooltip]="'VENUES.MAP.ROTATE_LEFT' | translate">
+              <mat-icon>rotate_left</mat-icon>
+            </button>
+            <button mat-icon-button
+                    (click)="rotateSelectedPrintMapLabel(true)"
+                    [disabled]="!canRotateSelectedPrintMapLabel()"
+                    [matTooltip]="'VENUES.MAP.ROTATE_RIGHT' | translate">
+              <mat-icon>rotate_right</mat-icon>
+            </button>
+            <div class="vertical-divider"></div>
+          </div>
+        </div>
+
         <!-- Font Size Controls (only when in label edit mode) -->
         <div class="tool-group" *ngIf="mode === 'edit' && editMode() === 'labels'">
           <h3 class="tool-group-title">

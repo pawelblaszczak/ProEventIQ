@@ -36,6 +36,9 @@ public class ParticipantEntity {
     @Column(name = "label_y")
     private Double labelY;
 
+    @Column(name = "label_rotation")
+    private Integer labelRotation;
+
     @Column(name = "all_ticket_count", insertable = false, updatable = false)
     private Integer allTicketCount;
 
@@ -64,6 +67,8 @@ public class ParticipantEntity {
     public void setLabelX(Double labelX) { this.labelX = labelX; }
     public Double getLabelY() { return labelY; }
     public void setLabelY(Double labelY) { this.labelY = labelY; }
+    public Integer getLabelRotation() { return labelRotation; }
+    public void setLabelRotation(Integer labelRotation) { this.labelRotation = labelRotation; }
     public Integer getAllTicketCount() { return allTicketCount; }
     // No setter for allTicketCount as it is generated
     public LocalDateTime getCreatedAt() { return createdAt; }

@@ -182,6 +182,7 @@ public class EventService {
         entity.setGuardianTicketCount(guardian);
         entity.setLabelX(input.getLabelX());
         entity.setLabelY(input.getLabelY());
+        entity.setLabelRotation(input.getLabelRotation());
         entity.setCreatedAt(LocalDateTime.now());
         entity.setUpdatedAt(LocalDateTime.now());
         ParticipantEntity saved = participantRepository.save(entity);
@@ -202,6 +203,7 @@ public class EventService {
             if (input.getName() != null) entity.setName(input.getName());
             if (input.getLabelX() != null) entity.setLabelX(input.getLabelX());
             if (input.getLabelY() != null) entity.setLabelY(input.getLabelY());
+            if (input.getLabelRotation() != null) entity.setLabelRotation(input.getLabelRotation());
             if (input.getAddress() != null) entity.setAddress(input.getAddress());
             if (input.getSeatColor() != null) entity.setSeatColor(input.getSeatColor());
             
@@ -324,6 +326,7 @@ public class EventService {
         dto.setSeatColor(entity.getSeatColor());
         dto.setLabelX(entity.getLabelX());
         dto.setLabelY(entity.getLabelY());
+        dto.setLabelRotation(entity.getLabelRotation());
         return dto;
     }
 }

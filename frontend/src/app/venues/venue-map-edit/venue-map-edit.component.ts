@@ -424,7 +424,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   // Raw JSON text used for import layout textarea
   importJsonText: string = '';
   
-  participantLabelChanges = new Map<number, {labelX: number, labelY: number}>();
+  participantLabelChanges = new Map<number, {labelX: number, labelY: number, labelRotation: number}>();
 
   // Computed signal that returns true if there are any changes (venue or reservation)
   readonly hasAnyChanges = computed(() => {
@@ -1157,6 +1157,45 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
 
   // Store print-map participant label groups for cleanup and dragging
   private printMapParticipantGroups: Konva.Group[] = [];
+  private readonly printMapLabelByParticipant = new Map<number, Konva.Label>();
+  selectedPrintMapParticipantId = signal<number | null>(null);
+
+  public canRotateSelectedPrintMapLabel(): boolean {
+    const selectedPid = this.selectedPrintMapParticipantId();
+    return selectedPid != null && this.printMapLabelByParticipant.has(selectedPid);
+  }
+
+  public rotateSelectedPrintMapLabel(clockwise: boolean): void {
+    if (this.mode !== 'print-map') return;
+    const selectedPid = this.selectedPrintMapParticipantId();
+    if (selectedPid == null) return;
+
+    const labelGroup = this.printMapLabelByParticipant.get(selectedPid);
+    if (!labelGroup) return;
+
+    const step = clockwise ? 5 : -5;
+    const nextRotation = Math.round(labelGroup.rotation() + step);
+    labelGroup.rotation(nextRotation);
+    this.participantLabelChanges.set(selectedPid, {
+      labelX: labelGroup.x(),
+      labelY: labelGroup.y(),
+      labelRotation: nextRotation
+    });
+    this.hasParticipantLabelChanges.set(true);
+    this.updatePrintMapLabelSelectionVisual();
+    this.layer?.batchDraw();
+  }
+
+  private updatePrintMapLabelSelectionVisual(): void {
+    const selectedPid = this.selectedPrintMapParticipantId();
+    this.printMapLabelByParticipant.forEach((labelGroup, pid) => {
+      const tag = labelGroup.findOne('Tag') as Konva.Tag | null;
+      if (!tag) return;
+      const isSelected = selectedPid === pid;
+      tag.strokeWidth(isSelected ? 2 : 1);
+      tag.shadowBlur(isSelected ? 5 : 3);
+    });
+  }
 
   /**
    * Renders dotted borders around each participant's seats and draggable name labels.
@@ -1168,6 +1207,10 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
     // Clean up existing print-map groups
     this.printMapParticipantGroups.forEach(g => g.destroy());
     this.printMapParticipantGroups = [];
+    this.printMapLabelByParticipant.clear();
+
+    // Keep currently selected participant only if we still have a label for it after render
+    const previouslySelectedPid = this.selectedPrintMapParticipantId();
 
     // Collect all seats per participant across all sectors (excluding blocked and unassigned)
     const participantSeatsMap = new Map<number, { seats: Konva.Circle[], participant: Participant }>();
@@ -1258,6 +1301,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       const savedLabel = this.participantLabelChanges.get(pid);
       let labelX = savedLabel ? savedLabel.labelX : (participant.labelX ?? ((minX + maxX) / 2));
       let labelY = savedLabel ? savedLabel.labelY : (participant.labelY ?? (minY - 16));
+      const labelRotation = savedLabel ? savedLabel.labelRotation : (participant.labelRotation ?? 0);
       
       // Calculate true centroid of the seats
       const sumX = positions.reduce((sum, p) => sum + p.x, 0);
@@ -1292,6 +1336,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       const labelGroup = new Konva.Label({
         x: labelX,
         y: labelY,
+        rotation: labelRotation,
         draggable: true,
         name: `print-map-label-${pid}`
       });
@@ -1329,14 +1374,33 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
       
       // Save position on drag end
       labelGroup.on('dragend', () => {
-        this.participantLabelChanges.set(pid, { labelX: labelGroup.x(), labelY: labelGroup.y() });
+        this.participantLabelChanges.set(pid, {
+          labelX: labelGroup.x(),
+          labelY: labelGroup.y(),
+          labelRotation: Math.round(labelGroup.rotation())
+        });
         this.hasParticipantLabelChanges.set(true);
+      });
+
+      labelGroup.on('click tap', (evt) => {
+        evt.cancelBubble = true;
+        this.selectedPrintMapParticipantId.set(pid);
+        this.updatePrintMapLabelSelectionVisual();
+        this.layer?.batchDraw();
       });
 
       group.add(labelGroup);
       this.layer!.add(group);
       this.printMapParticipantGroups.push(group);
+      this.printMapLabelByParticipant.set(pid, labelGroup);
     });
+
+    if (previouslySelectedPid != null && this.printMapLabelByParticipant.has(previouslySelectedPid)) {
+      this.selectedPrintMapParticipantId.set(previouslySelectedPid);
+    } else {
+      this.selectedPrintMapParticipantId.set(null);
+    }
+    this.updatePrintMapLabelSelectionVisual();
 
     // Ensure all participant border groups render on top of sector groups
     this.printMapParticipantGroups.forEach(g => g.moveToTop());
@@ -6089,13 +6153,27 @@ console.log("addSelectionIndicators2");
           childrenTicketCount: p.childrenTicketCount,
           guardianTicketCount: p.guardianTicketCount,
           labelX: pos.labelX,
-          labelY: pos.labelY
+          labelY: pos.labelY,
+          labelRotation: pos.labelRotation
         };
         // Use venueApi (which is ProEventIQService)
         return firstValueFrom(this.venueApi.eventsEventIdParticipantsParticipantIdPut(eventId, pid, input));
       });
 
       await Promise.all(updatePromises);
+
+      // Refresh participants from backend so subsequent renders use persisted rotation/position values.
+      try {
+        const refreshedParticipants = await firstValueFrom(this.venueApi.eventsEventIdParticipantsGet(eventId));
+        if (refreshedParticipants) {
+          this.participants.set(refreshedParticipants);
+          this.participantData = refreshedParticipants;
+        }
+      } catch (refreshError) {
+        // If refresh fails, keep local data and continue with success flow.
+      }
+
+      this.renderPrintMapParticipantGroups();
       
       this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.CHANGES_SAVED'), this.translate.instant('BUTTON.CLOSE'), { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top' });
       this.participantLabelChanges.clear();

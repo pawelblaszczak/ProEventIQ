@@ -31,6 +31,9 @@ components:
           type: number
           format: double
           description: Y coordinate of the participant's label on the map
+        labelRotation:
+          type: integer
+          description: Rotation angle of the participant's label on the map in degrees
       required:
         - name
         - childrenTicketCount

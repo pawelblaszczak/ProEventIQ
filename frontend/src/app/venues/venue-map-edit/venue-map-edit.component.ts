@@ -91,6 +91,11 @@ interface EditableSector extends Sector {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, OnChanges {
+  private getSeatRenderRadius(): number {
+    // Print maps need slightly smaller seat dots so dashed participant borders stay readable.
+    return this.mode === 'print-map' ? 1.8 : 3;
+  }
+
   private updateSeatAppearance(seat: Konva.Circle, participantId: number | null, group?: Konva.Group) {
     const color = this.getParticipantColor(participantId);
     seat.fill(color);
@@ -1248,9 +1253,10 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         return layerTransform.point(absPos);
       });
 
-      // Compute concave hull with padding
-      const seatRadius = 3; // match the rendered seat radius
-      const padding = seatRadius + 5;
+      // Compute concave hull with a tight margin so adjacent participant groups do not overlap.
+      const seatRadius = this.getSeatRenderRadius(); // match the rendered seat radius
+      const hullMargin = 1.4;
+      const padding = seatRadius + hullMargin;
       
       // To create a padded hull, we add cushioned points for each seat in a circle.
       // Using 12 points ensures smooth corners, regardless of sector rotation.
@@ -1283,8 +1289,9 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
         points,
         closed: true,
         stroke: borderColor,
-        strokeWidth: 1.5,
+        strokeWidth: 1,
         dash: [4, 3],
+        dashOffset: (Math.abs(pid) % 7) * 1.5,
         lineJoin: 'round',
         lineCap: 'round',
         // Tension removed to prevent uncontrolled wiggling on straight spans
@@ -2073,7 +2080,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   private drawSectorShape(group: Konva.Group, sector: EditableSector) {
     // --- Dynamic sector shape based on seats layout ---
     // Use smaller scale for venue overview - seats should appear smaller
-    const seatRadius = 3; // Reduced from 8 to 3 for overview
+    const seatRadius = this.getSeatRenderRadius(); // Slightly smaller in print-map mode
     const seatSpacing = 2; // Reduced from 6 to 2 for overview
     let seatPositions: {x: number, y: number, seatId?: number, seatRowId?: number}[] = [];
     let maxRowLength = 0;
@@ -3221,7 +3228,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   // Optimized seat rendering - inspired by KonvaTest approach
   private renderSeatsOptimized(group: Konva.Group, sector: EditableSector, seatPositions: {x: number, y: number, seatId?: number, seatRowId?: number}[]) {
     const sectorId = sector.sectorId!;
-    const seatRadius = 3;
+    const seatRadius = this.getSeatRenderRadius();
     
     // Check if we already have seats for this sector
     let existingSeats = this.sectorSeats.get(sectorId);

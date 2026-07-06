@@ -63,13 +63,19 @@
             <mat-error *ngIf="form.get('dateTime')?.hasError('required')">{{ 'EVENTS.EDIT.DATE_REQUIRED' | translate }}</mat-error>
           </mat-form-field>
           
-          <!-- Ticket Description -->
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>{{ 'EVENTS.EDIT.TICKET_DESC_LABEL' | translate }}</mat-label>
-            <textarea matInput formControlName="ticketDescription" rows="10" [placeholder]="'EVENTS.EDIT.TICKET_DESC_PLACEHOLDER' | translate"></textarea>
-            <mat-icon matSuffix>description</mat-icon>
-            <mat-hint>{{ 'EVENTS.EDIT.TICKET_DESC_HINT' | translate }}</mat-hint>
-          </mat-form-field>
+          <!-- Ticket Description with Quill WYSIWYG Editor -->
+          <div class="full-width quill-container">
+            <label class="quill-label">{{ 'EVENTS.EDIT.TICKET_DESC_LABEL' | translate }}</label>
+            <quill-editor 
+              #quillRef
+              formControlName="ticketDescription" 
+              [placeholder]="'EVENTS.EDIT.TICKET_DESC_PLACEHOLDER' | translate"
+              [modules]="editorModules"
+              (onEditorCreated)="onEditorCreated($event)"
+              theme="snow">
+            </quill-editor>
+            <small class="quill-hint">{{ 'EVENTS.EDIT.TICKET_DESC_HINT' | translate }}</small>
+          </div>
 
           <!-- Price -->
           <mat-form-field appearance="outline" class="full-width">

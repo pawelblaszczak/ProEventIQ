@@ -1,6 +1,10 @@
 /* Import Angular Material theme */
 @use '@angular/material' as mat;
 
+// Import Quill WYSIWYG Editor Styles
+@import 'quill/dist/quill.core.css';
+@import 'quill/dist/quill.snow.css';
+
 // Include the common styles for Angular Material
 @include mat.core();
 

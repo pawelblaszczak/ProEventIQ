@@ -17,6 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.jsoup.Jsoup;
+import org.jsoup.safety.Safelist;
+import org.jsoup.nodes.Document;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -277,7 +280,7 @@ public class EventService {
         entity.setShowId(input.getShowId());
         entity.setVenueId(input.getVenueId());
         entity.setDateTime(input.getDateTime().toLocalDateTime());
-        entity.setTicketDescription(input.getTicketDescription());
+        entity.setTicketDescription(sanitizeHtmlContent(input.getTicketDescription()));
         entity.setPrice(input.getPrice() != null ? BigDecimal.valueOf(input.getPrice()) : null);
     }
     
@@ -328,5 +331,52 @@ public class EventService {
         dto.setLabelY(entity.getLabelY());
         dto.setLabelRotation(entity.getLabelRotation());
         return dto;
+    }
+
+    /**
+     * Sanitizes HTML content from Quill editor to prevent XSS attacks.
+     * Allows only safe formatting tags and attributes.
+     * 
+     * @param htmlContent the HTML content from Quill editor
+     * @return sanitized HTML content
+     */
+    private String sanitizeHtmlContent(String htmlContent) {
+        if (htmlContent == null || htmlContent.isEmpty()) {
+            return htmlContent;
+        }
+
+        try {
+            // Create a custom safelist that allows Quill formatting tags
+            Safelist safelist = new Safelist()
+                // Text formatting
+                .addTags("p", "br", "strong", "b", "em", "i", "u", "s", "strike", "span")
+                // Headings
+                .addTags("h1", "h2", "h3", "h4", "h5", "h6")
+                // Lists
+                .addTags("ul", "ol", "li")
+                // Blockquote
+                .addTags("blockquote")
+                // Code
+                .addTags("pre", "code")
+                // Inline styles and classes for formatting (color, size, alignment)
+                .addAttributes("p", "style", "class")
+                .addAttributes("span", "style", "class")
+                .addAttributes("h1", "style", "class")
+                .addAttributes("h2", "style", "class")
+                .addAttributes("h3", "style", "class")
+                .addAttributes("h4", "style", "class")
+                .addAttributes("h5", "style", "class")
+                .addAttributes("h6", "style", "class");
+
+            // Parse and clean the HTML
+            String cleaned = Jsoup.clean(htmlContent, "", safelist, new Document.OutputSettings().indentAmount(0).prettyPrint(false));
+            
+            log.debug("HTML content sanitized successfully");
+            return cleaned;
+        } catch (Exception e) {
+            log.error("Error sanitizing HTML content", e);
+            // Return empty string if sanitization fails to prevent saving malicious content
+            return "";
+        }
     }
 }

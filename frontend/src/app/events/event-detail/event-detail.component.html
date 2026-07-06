@@ -104,7 +104,7 @@
               {{ showTicketDescription() ? ('EVENTS.DETAIL.CLICK_TO_HIDE' | translate) : ('EVENTS.DETAIL.CLICK_TO_SHOW' | translate) }}
             </span>
           </div>
-          <div class="info-value animate-fade-in" *ngIf="showTicketDescription()" style="white-space: pre-wrap; margin-top: 0.5rem;">{{ event()?.ticketDescription }}</div>
+          <div class="info-value animate-fade-in quill-content" *ngIf="showTicketDescription()" [innerHTML]="getSafeHtml(event()?.ticketDescription)" style="margin-top: 0.5rem;"></div>
         </div>
         <div class="info-item full-width">
           <div class="info-label">{{ 'EVENTS.DETAIL.PRICE' | translate }}</div>

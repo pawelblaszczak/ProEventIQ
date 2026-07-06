@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal, OnInit } from '@ang
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -58,6 +59,7 @@ export class EventDetailComponent implements OnInit {
   private readonly eventService = inject(EventService);
   private readonly dialog = inject(MatDialog);
   private readonly colorService = inject(ColorService);
+  private readonly sanitizer = inject(DomSanitizer);
   public readonly translate = inject(TranslateService);
 
   private readonly eventId = signal<number | null>(null);
@@ -76,6 +78,12 @@ export class EventDetailComponent implements OnInit {
   public getTotalTickets(): number {
     const list = this.participants();
     return Array.isArray(list) ? list.reduce((sum, p) => sum + (p.allTicketCount || 0), 0) : 0;
+  }
+
+  /** Sanitizes HTML content for safe display */
+  public getSafeHtml(html: string | null | undefined): SafeHtml {
+    if (!html) return this.sanitizer.sanitize(1, '') || '';
+    return this.sanitizer.bypassSecurityTrustHtml(html);
   }
 
   /** Returns how many seats are currently allocated for a participant (based on reservations) */

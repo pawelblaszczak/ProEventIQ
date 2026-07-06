@@ -1,5 +1,12 @@
 package dev.knightcore.proeventiq.service;
 
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Node;
+import org.jsoup.nodes.TextNode;
+import org.jsoup.select.Elements;
+
 import dev.knightcore.proeventiq.api.model.Event;
 import dev.knightcore.proeventiq.entity.EventEntity;
 import dev.knightcore.proeventiq.entity.ParticipantEntity;
@@ -388,30 +395,14 @@ public class ReportService {
                 contentStream.endText();
                 yPosition -= lineHeight * 2; // Dynamic spacing
 
-                // Content Font
-                contentStream.setFont(serifFont, fontSize); // Use dynamic font size
-                
-                // Process ticket description line by line to preserve paragraphs
-                String[] descParagraphs = ticketDescription.split("\\r?\\n");
-                
-                for (String paragraph : descParagraphs) {
-                    if (paragraph.trim().isEmpty()) {
-                         // Empty line
-                         yPosition -= lineHeight;
-                         continue;
-                    }
-                    
-                    for (String line : wrapText(paragraph, pageWidth - 2 * margin, serifFont, fontSize)) {
-                         contentStream.beginText();
-                         contentStream.newLineAtOffset(margin, yPosition);
-                         safeShowText(contentStream, line);
-                         contentStream.endText();
-                         yPosition -= lineHeight;
-                    }
-                }
+                // Content Font - Render HTML ticket description with formatting support
+                yPosition = renderHtmlTicketDescription(contentStream, ticketDescription, 
+                                                       serifFont, serifBoldFont, serifFont,
+                                                       margin, pageWidth - 2 * margin, yPosition, fontSize);
                 
                 yPosition -= 8 + lineHeight;
                 
+                 contentStream.setFont(serifFont, fontSize);
                  for (String note : footerNotes) {
                      for(String line : wrapText(note, pageWidth - 2 * margin, serifFont, fontSize)) {
                         contentStream.beginText();
@@ -2383,7 +2374,325 @@ public class ReportService {
             return orderNumber;
         }
     }
+
+    /**
+     * Renders HTML-formatted ticket description in the PDF, preserving paragraphs,
+     * line breaks, colors, bold/italic and Quill font sizes.
+     */
+    private float renderHtmlTicketDescription(PDPageContentStream contentStream, String htmlContent, 
+                                             PDFont regularFont, PDFont boldFont, PDFont italicFont,
+                                             float margin, float maxWidth, float yPosition, int fontSize) throws IOException {
+        if (htmlContent == null || htmlContent.isEmpty()) {
+            return yPosition;
+        }
+
+        try {
+            Document doc = Jsoup.parse(htmlContent);
+            for (Element block : doc.body().children()) {
+                yPosition = renderHtmlBlock(contentStream, block, regularFont, boldFont, italicFont,
+                                            margin, maxWidth, yPosition, fontSize, new HtmlStyle());
+            }
+        } catch (Exception e) {
+            log.warn("Error rendering HTML ticket description, falling back to plain text: {}", e.getMessage());
+            String plainText = htmlContent.replaceAll("<[^>]*>", " ").replaceAll("\\s+", " ").trim();
+            for (String line : wrapText(plainText, maxWidth, regularFont, fontSize)) {
+                contentStream.setFont(regularFont, fontSize);
+                contentStream.beginText();
+                contentStream.newLineAtOffset(margin, yPosition);
+                safeShowText(contentStream, line);
+                contentStream.endText();
+                yPosition -= fontSize + 2;
+            }
+        }
+        return yPosition;
+    }
+
+    /** Mutable style context passed down while walking the HTML tree. */
+    private static class HtmlStyle {
+        boolean bold = false;
+        boolean italic = false;
+        float[] color = null;      // null = black
+        float sizeMultiplier = 1f; // Quill sizes
+
+        HtmlStyle() {}
+        HtmlStyle(HtmlStyle other) {
+            this.bold = other.bold;
+            this.italic = other.italic;
+            this.color = other.color;
+            this.sizeMultiplier = other.sizeMultiplier;
+        }
+    }
+
+    private enum TextAlign {
+        LEFT,
+        CENTER,
+        RIGHT,
+        JUSTIFY
+    }
+
+    /** A single word with the styling that applies to it. */
+    private static class TextRun {
+        final String word;
+        final boolean bold;
+        final boolean italic;
+        final float[] color;
+        final float sizeMultiplier;
+        final boolean lineBreak;
+
+        TextRun(String word, HtmlStyle style, boolean lineBreak) {
+            this.word = word;
+            this.bold = style.bold;
+            this.italic = style.italic;
+            this.color = style.color;
+            this.sizeMultiplier = style.sizeMultiplier;
+            this.lineBreak = lineBreak;
+        }
+    }
+
+    private static class RenderLine {
+        final java.util.List<TextRun> runs = new java.util.ArrayList<>();
+        float width = 0f;
+        float maxSize = 0f;
+    }
+
+    private float renderHtmlBlock(PDPageContentStream contentStream, Element block,
+                                  PDFont regularFont, PDFont boldFont, PDFont italicFont,
+                                  float margin, float maxWidth, float yPosition, int fontSize,
+                                  HtmlStyle inherited) throws IOException {
+        String tag = block.tagName().toLowerCase();
+
+        // Lists render each item as its own line with a bullet/number
+        if (tag.equals("ul") || tag.equals("ol")) {
+            int num = 1;
+            for (Element li : block.select("> li")) {
+                String bullet = tag.equals("ol") ? (num + ". ") : "• ";
+                java.util.List<TextRun> runs = new java.util.ArrayList<>();
+                runs.add(new TextRun(bullet, inherited, false));
+                collectRuns(li, new HtmlStyle(inherited), runs);
+                yPosition = renderRuns(contentStream, runs, regularFont, boldFont, italicFont,
+                                       margin + 15, maxWidth - 15, yPosition, fontSize, resolveBlockAlignment(block));
+                num++;
+            }
+            return yPosition - 3;
+        }
+
+        // Headings get a larger bold style
+        HtmlStyle blockStyle = new HtmlStyle(inherited);
+        if (tag.matches("h[1-6]")) {
+            blockStyle.bold = true;
+            int level = tag.charAt(1) - '0';
+            blockStyle.sizeMultiplier = Math.max(1f, 1.8f - (level - 1) * 0.15f);
+            yPosition -= 4;
+        }
+
+        java.util.List<TextRun> runs = new java.util.ArrayList<>();
+        collectRuns(block, blockStyle, runs);
+        TextAlign alignment = resolveBlockAlignment(block);
+
+        // Empty paragraph (e.g. <p><br></p>) -> blank line
+        boolean hasContent = runs.stream().anyMatch(r -> !r.lineBreak && !r.word.isBlank());
+        if (!hasContent) {
+            return yPosition - (fontSize + 4);
+        }
+
+        yPosition = renderRuns(contentStream, runs, regularFont, boldFont, italicFont,
+                               margin, maxWidth, yPosition, fontSize, alignment);
+        return yPosition - 3;
+    }
+
+    private TextAlign resolveBlockAlignment(Element block) {
+        String cls = block.className();
+        if (cls != null) {
+            if (cls.contains("ql-align-center")) return TextAlign.CENTER;
+            if (cls.contains("ql-align-right")) return TextAlign.RIGHT;
+            if (cls.contains("ql-align-justify")) return TextAlign.JUSTIFY;
+        }
+
+        String styleAttr = block.attr("style");
+        if (styleAttr != null && !styleAttr.isEmpty()) {
+            String lower = styleAttr.toLowerCase();
+            if (lower.contains("text-align:center")) return TextAlign.CENTER;
+            if (lower.contains("text-align: center")) return TextAlign.CENTER;
+            if (lower.contains("text-align:right")) return TextAlign.RIGHT;
+            if (lower.contains("text-align: right")) return TextAlign.RIGHT;
+            if (lower.contains("text-align:justify")) return TextAlign.JUSTIFY;
+            if (lower.contains("text-align: justify")) return TextAlign.JUSTIFY;
+        }
+
+        return TextAlign.LEFT;
+    }
+
+    /** Recursively collect styled words from an element into runs. */
+    private void collectRuns(Node node, HtmlStyle style, java.util.List<TextRun> runs) {
+        for (Node child : node.childNodes()) {
+            if (child instanceof TextNode) {
+                String text = ((TextNode) child).getWholeText();
+                if (text.isEmpty()) continue;
+                String[] words = text.split(" ", -1);
+                for (int i = 0; i < words.length; i++) {
+                    if (!words[i].isEmpty()) {
+                        runs.add(new TextRun(words[i], style, false));
+                    }
+                }
+            } else if (child instanceof Element) {
+                Element el = (Element) child;
+                String tag = el.tagName().toLowerCase();
+                if (tag.equals("br")) {
+                    runs.add(new TextRun("", style, true));
+                    continue;
+                }
+                HtmlStyle childStyle = new HtmlStyle(style);
+                if (tag.equals("strong") || tag.equals("b")) childStyle.bold = true;
+                if (tag.equals("em") || tag.equals("i")) childStyle.italic = true;
+                applyStyleAttributes(el, childStyle);
+                collectRuns(el, childStyle, runs);
+            }
+        }
+    }
+
+    private void applyStyleAttributes(Element el, HtmlStyle style) {
+        // Quill size classes
+        String cls = el.className();
+        if (cls.contains("ql-size-large")) style.sizeMultiplier = 1.5f;
+        else if (cls.contains("ql-size-huge")) style.sizeMultiplier = 2.0f;
+        else if (cls.contains("ql-size-small")) style.sizeMultiplier = 0.75f;
+
+        // Inline color: color: rgb(r, g, b)
+        String styleAttr = el.attr("style");
+        if (styleAttr != null && styleAttr.contains("color")) {
+            java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("color:\\s*rgb\\((\\d+),\\s*(\\d+),\\s*(\\d+)\\)")
+                .matcher(styleAttr);
+            if (m.find()) {
+                style.color = new float[] {
+                    Integer.parseInt(m.group(1)) / 255f,
+                    Integer.parseInt(m.group(2)) / 255f,
+                    Integer.parseInt(m.group(3)) / 255f
+                };
+            }
+        }
+    }
+
+    /** Render a list of styled runs with word-wrapping and explicit line breaks. */
+    private float renderRuns(PDPageContentStream contentStream, java.util.List<TextRun> runs,
+                             PDFont regularFont, PDFont boldFont, PDFont italicFont,
+                             float margin, float maxWidth, float yPosition, int fontSize,
+                             TextAlign alignment) throws IOException {
+        java.util.List<RenderLine> lines = new java.util.ArrayList<>();
+        RenderLine currentLine = new RenderLine();
+
+        for (TextRun run : runs) {
+            if (run.lineBreak) {
+                if (!currentLine.runs.isEmpty()) {
+                    lines.add(currentLine);
+                    currentLine = new RenderLine();
+                } else {
+                    // Preserve explicit blank line from <br>
+                    lines.add(new RenderLine());
+                }
+                continue;
+            }
+
+            PDFont font = run.bold ? boldFont : (run.italic ? italicFont : regularFont);
+            float runSize = fontSize * run.sizeMultiplier;
+            float spaceWidth = font.getStringWidth(" ") / 1000f * runSize;
+            float wordWidth = safeStringWidth(font, run.word, runSize);
+
+            float addedWidth = currentLine.runs.isEmpty() ? wordWidth : spaceWidth + wordWidth;
+            if (!currentLine.runs.isEmpty() && (currentLine.width + addedWidth) > maxWidth) {
+                lines.add(currentLine);
+                currentLine = new RenderLine();
+                addedWidth = wordWidth;
+            }
+
+            currentLine.runs.add(run);
+            currentLine.width += addedWidth;
+            currentLine.maxSize = Math.max(currentLine.maxSize, runSize);
+        }
+
+        if (!currentLine.runs.isEmpty()) {
+            lines.add(currentLine);
+        }
+
+        // If nothing to render, keep cursor unchanged.
+        if (lines.isEmpty()) {
+            contentStream.setNonStrokingColor(0f, 0f, 0f);
+            return yPosition;
+        }
+
+        for (int lineIndex = 0; lineIndex < lines.size(); lineIndex++) {
+            RenderLine line = lines.get(lineIndex);
+            float lineHeight = line.maxSize > 0 ? line.maxSize + 3 : fontSize + 3;
+
+            // Explicit blank line
+            if (line.runs.isEmpty()) {
+                yPosition -= lineHeight;
+                continue;
+            }
+
+            float x = margin;
+            if (alignment == TextAlign.CENTER) {
+                x += Math.max(0f, (maxWidth - line.width) / 2f);
+            } else if (alignment == TextAlign.RIGHT) {
+                x += Math.max(0f, maxWidth - line.width);
+            }
+
+            boolean isLastLine = lineIndex == lines.size() - 1;
+            int gapCount = Math.max(0, line.runs.size() - 1);
+            float justifyExtra = 0f;
+            if (alignment == TextAlign.JUSTIFY && !isLastLine && gapCount > 0) {
+                justifyExtra = Math.max(0f, (maxWidth - line.width) / gapCount);
+            }
+
+            for (int i = 0; i < line.runs.size(); i++) {
+                TextRun run = line.runs.get(i);
+                PDFont font = run.bold ? boldFont : (run.italic ? italicFont : regularFont);
+                float runSize = fontSize * run.sizeMultiplier;
+
+                if (i > 0) {
+                    float spaceWidth = font.getStringWidth(" ") / 1000f * runSize;
+                    x += spaceWidth;
+                    if (justifyExtra > 0f) {
+                        x += justifyExtra;
+                    }
+                }
+
+                if (run.color != null) {
+                    contentStream.setNonStrokingColor(run.color[0], run.color[1], run.color[2]);
+                } else {
+                    contentStream.setNonStrokingColor(0f, 0f, 0f);
+                }
+
+                contentStream.setFont(font, runSize);
+                contentStream.beginText();
+                contentStream.newLineAtOffset(x, yPosition);
+                safeShowText(contentStream, run.word);
+                contentStream.endText();
+
+                x += safeStringWidth(font, run.word, runSize);
+            }
+
+            yPosition -= lineHeight;
+        }
+
+        contentStream.setNonStrokingColor(0f, 0f, 0f);
+        return yPosition;
+    }
+
+    private float safeStringWidth(PDFont font, String text, float size) {
+        try {
+            return font.getStringWidth(text) / 1000f * size;
+        } catch (Exception e) {
+            try {
+                String sanitized = replacePolishCharacters(sanitizeText(text));
+                return font.getStringWidth(sanitized) / 1000f * size;
+            } catch (Exception ex) {
+                return text.length() * size * 0.5f;
+            }
+        }
+    }
 }
+
 
 
 

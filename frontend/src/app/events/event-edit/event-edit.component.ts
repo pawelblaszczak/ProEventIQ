@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, ChangeDetectorRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
@@ -11,6 +11,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { QuillEditorComponent } from 'ngx-quill';
 import { ProEventIQService } from '../../api/api/pro-event-iq.service';
 import { EventInput } from '../../api/model/event-input';
 import { ShowOption } from '../../api/model/show-option';
@@ -31,7 +32,8 @@ import { VenueOption } from '../../api/model/venue-option';
     MatProgressSpinnerModule,
     MatSelectModule,
     MatAutocompleteModule,
-    TranslateModule
+    TranslateModule,
+    QuillEditorComponent
   ],
   templateUrl: './event-edit.component.html',
   styleUrls: ['./event-edit.component.scss'],
@@ -42,6 +44,7 @@ export class EventEditComponent {
   private readonly router = inject(Router);
   private readonly eventApi = inject(ProEventIQService);
   private readonly translate = inject(TranslateService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   form: FormGroup;
   eventId: number | null = null;
@@ -56,6 +59,17 @@ export class EventEditComponent {
   venueInputValue = '';
   filteredShowsList: ShowOption[] = [];
   filteredVenuesList: VenueOption[] = [];
+
+  editorModules = {
+    toolbar: [
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ 'size': ['small', false, 'large', 'huge'] }],
+      [{ 'color': [] }],
+      [{ 'align': [] }]
+    ]
+  };
+
+  quillEditorInstance: any;
 
   constructor() {
     const fb = inject(FormBuilder);
@@ -112,7 +126,7 @@ export class EventEditComponent {
           showId: event.showId,
           venueId: event.venueId,
           dateTime: this.formatDateTimeForForm(event.dateTime!),
-          ticketDescription: event.ticketDescription,
+          ticketDescription: event.ticketDescription || '',
           price: event.price ?? null
         });
         // Set display values for autocomplete fields
@@ -120,6 +134,15 @@ export class EventEditComponent {
         this.showInputValue = show ? show.name : '';
         const venue = this.venues().find(v => v.venueId === event.venueId);
         this.venueInputValue = venue ? venue.name : '';
+        
+        // Set Quill content if editor is already initialized
+        if (this.quillEditorInstance) {
+          setTimeout(() => {
+            this.quillEditorInstance.root.innerHTML = event.ticketDescription || '';
+          }, 0);
+        }
+        
+        this.cdr.markForCheck();
         this.loading.set(false);
       },
       error: () => {
@@ -127,6 +150,16 @@ export class EventEditComponent {
         this.loading.set(false);
       }
     });
+  }
+
+  onEditorCreated(quill: any) {
+    this.quillEditorInstance = quill;
+    const ticketDescControl = this.form.get('ticketDescription');
+    if (ticketDescControl && ticketDescControl.value) {
+      setTimeout(() => {
+        quill.root.innerHTML = ticketDescControl.value;
+      }, 0);
+    }
   }
 
   loadShows() {

@@ -394,7 +394,9 @@
         "OFF": "OFF",
         "TOGGLE_SNAP": "Toggle Snap to Grid",
         "SNAP": "Snap",
-        "DESELECT": "Deselect"
+        "DESELECT": "Deselect",
+        "ROTATE_LEFT": "Rotate Left (15°) — requires 2+ seats from the same row selected",
+        "ROTATE_RIGHT": "Rotate Right (15°) — requires 2+ seats from the same row selected"
       },
       "SNACKBAR": {
         "INIT_ERROR": "Failed to initialize canvas editor",

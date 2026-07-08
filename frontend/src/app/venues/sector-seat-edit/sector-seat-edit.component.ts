@@ -139,6 +139,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
   importJsonText = '';
 
   private nextTempId = -1;
+  private rotationPivotSeatId: number | null = null;
 
   private generateTempId(): number {
     return this.nextTempId--;
@@ -893,12 +894,16 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     if (!current.includes(seat)) {
       this.selectedSeats.set([...current, seat]);
     }
+    this.rotationPivotSeatId = null; // selection changed — pivot must be re-evaluated
     this.updateSeatDisplay(seat);
   }
 
   private deselectSeat(seat: EditableSeat) {
     seat.selected = false;
     this.selectedSeats.set(this.selectedSeats().filter(s => s !== seat));
+    if (seat.seatId === this.rotationPivotSeatId) {
+      this.rotationPivotSeatId = null;
+    }
     this.updateSeatDisplay(seat);
   }
 
@@ -1421,6 +1426,50 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
     return label.replace(/\d+/, paddedNewNumber);
   }
 
+  canRotateSeats(): boolean {
+    const selected = this.selectedSeats();
+    if (selected.length < 2) return false;
+    const row = this.findSeatRow(selected[0]);
+    if (!row) return false;
+    return selected.every(seat => row.seats.some(s => s.seatId === seat.seatId));
+  }
+
+  rotateSeats(direction: 'left' | 'right') {
+    if (!this.canRotateSeats()) return;
+
+    const selected = this.selectedSeats();
+
+    // Lock the pivot for the lifetime of this selection so crossing 90° does
+    // not cause a different seat to become the new anchor.
+    let pivotSeat = selected.find(s => s.seatId === this.rotationPivotSeatId);
+    if (!pivotSeat) {
+      pivotSeat = selected.reduce((min, s) =>
+        (s.position?.x ?? 0) < (min.position?.x ?? 0) ? s : min, selected[0]);
+      this.rotationPivotSeatId = pivotSeat.seatId ?? null;
+    }
+
+    const pivotX = pivotSeat.position?.x ?? 0;
+    const pivotY = pivotSeat.position?.y ?? 0;
+    const angleDelta = direction === 'right' ? Math.PI / 36 : -Math.PI / 36; // 5°
+
+    selected.forEach(seat => {
+      if (seat.seatId === pivotSeat!.seatId) return;
+
+      const dx = (seat.position?.x ?? 0) - pivotX;
+      const dy = (seat.position?.y ?? 0) - pivotY;
+      const radius = Math.sqrt(dx * dx + dy * dy);
+      const newAngle = Math.atan2(dy, dx) + angleDelta;
+
+      this.updateSeatPosition(
+        seat,
+        pivotX + radius * Math.cos(newAngle),
+        pivotY + radius * Math.sin(newAngle)
+      );
+    });
+
+    this.hasChanges.set(true);
+  }
+
   deleteSelectedSeats() {
     const selectedSeats = this.selectedSeats();
     if (selectedSeats.length === 0) return;
@@ -1514,6 +1563,7 @@ export class SectorSeatEditComponent implements OnInit, AfterViewInit, OnDestroy
 
     this.selectedSeats.set([]);
     this.selectedRows.set([]);
+    this.rotationPivotSeatId = null;
     this.updateRowVisualSelection();
   }
 

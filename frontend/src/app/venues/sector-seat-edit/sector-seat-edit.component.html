@@ -94,6 +94,18 @@
                     [matTooltip]="'VENUES.SECTOR_EDIT.TOOLBAR.CHANGE_SEAT_LABEL' | translate">
               <mat-icon>edit</mat-icon>
             </button>
+            <button mat-icon-button
+                    (click)="rotateSeats('left')"
+                    [disabled]="!canRotateSeats()"
+                    [matTooltip]="'VENUES.SECTOR_EDIT.TOOLBAR.ROTATE_LEFT' | translate">
+              <mat-icon>rotate_left</mat-icon>
+            </button>
+            <button mat-icon-button
+                    (click)="rotateSeats('right')"
+                    [disabled]="!canRotateSeats()"
+                    [matTooltip]="'VENUES.SECTOR_EDIT.TOOLBAR.ROTATE_RIGHT' | translate">
+              <mat-icon>rotate_right</mat-icon>
+            </button>
             <div class="vertical-divider"></div>
           </div>
         </div>

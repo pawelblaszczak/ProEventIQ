@@ -392,7 +392,9 @@
         "OFF": "WYŁ",
         "TOGGLE_SNAP": "Przełącz przyciąganie do siatki",
         "SNAP": "Przyciąganie",
-        "DESELECT": "Odznacz wszystko"
+        "DESELECT": "Odznacz wszystko",
+        "ROTATE_LEFT": "Obróć w lewo (15°) — wymaga zaznaczenia co najmniej 2 miejsc z tego samego rzędu",
+        "ROTATE_RIGHT": "Obróć w prawo (15°) — wymaga zaznaczenia co najmniej 2 miejsc z tego samego rzędu"
       },
       "SNACKBAR": {
         "INIT_ERROR": "Nie udało się zainicjować edytora",

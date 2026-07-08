@@ -346,24 +346,31 @@ public class ReportService {
                 // Max available vertical space for content (excluding footer)
                 float maxContentHeight = pageHeight - margin - footerHeight - safetyGap;
 
-                // Try sizes 11 down to 6
+                 // Spacing tuning for tighter ticket layout
+                 final float descriptionToNotesGapFactor = 0.45f;
+                 final float notesToThanksGapFactor = 0.35f;
+                 final float thanksToSeatsGapFactor = 1.2f;
+                 final float seatsTopPaddingFactor = 0.3f;
+                 final float seatsBlockTrailingGapFactor = 0.5f;
+
+                 // Try sizes 11 down to 6
                 for (int size = 11; size >= 6; size--) {
                      float lh = (size == 11) ? 15 : (size * 1.4f); // heuristic
                      
                      float usedHeight = lh * 2; // "Szanowni Państwo" (using dynamic lineHeight spacing)
                      
                      usedHeight += calculateTextHeight(ticketDescription, contentWidth, serifFont, size, lh);
-                     usedHeight += 8 + lh; // Spacing before footer notes
+                     usedHeight += Math.max(4f, lh * descriptionToNotesGapFactor); // Spacing before footer notes
                      
                      for(String note : footerNotes) {
                          usedHeight += calculateTextHeight(note, contentWidth, serifFont, size, lh);
                      }
-                     usedHeight += lh; // spacing
-                     usedHeight += lh * 2; // "Dziękujemy"
+                     usedHeight += Math.max(2f, lh * notesToThanksGapFactor); // spacing
+                     usedHeight += lh * thanksToSeatsGapFactor; // "Dziękujemy"
                      
                      // Seats
                      float seatsH = calculateSeatsBlockHeight(grouped, bodyFont, lh, pageWidth - 40, size);
-                     usedHeight += seatsH + lh; // + spacing
+                     usedHeight += seatsH + (lh * seatsBlockTrailingGapFactor); // + spacing
                      
                      if (usedHeight <= maxContentHeight) {
                          currentFontSize = size;
@@ -400,7 +407,7 @@ public class ReportService {
                                                        serifFont, serifBoldFont, serifFont,
                                                        margin, pageWidth - 2 * margin, yPosition, fontSize);
                 
-                yPosition -= 8 + lineHeight;
+                yPosition -= Math.max(4f, lineHeight * descriptionToNotesGapFactor);
                 
                  contentStream.setFont(serifFont, fontSize);
                  for (String note : footerNotes) {
@@ -413,7 +420,7 @@ public class ReportService {
                      }
                 }
                 
-                yPosition -= lineHeight;
+                yPosition -= Math.max(2f, lineHeight * notesToThanksGapFactor);
                 
                 // "Dziękujemy" - Center
                 contentStream.setFont(serifFont, 14);
@@ -422,11 +429,11 @@ public class ReportService {
                 contentStream.newLineAtOffset((pageWidth - dziekWidth)/2, yPosition);
                 safeShowText(contentStream, "Dziękujemy");
                 contentStream.endText();
-                yPosition -= lineHeight * 2; // Fixed spacing        
+                yPosition -= lineHeight * thanksToSeatsGapFactor; // Reduced spacing
                 
                 // Calculate required height for seats block
                 float seatsBlockHeight = calculateSeatsBlockHeight(grouped, bodyFont, lineHeight, pageWidth - 40, fontSize); 
-                float totalBlockHeight = seatsBlockHeight + lineHeight;
+                float totalBlockHeight = seatsBlockHeight + (lineHeight * seatsBlockTrailingGapFactor);
                 
                 float requiredSpace = totalBlockHeight + footerHeight + 10; // Total needed: content + footer + small gap
                 
@@ -438,7 +445,7 @@ public class ReportService {
                 }
                 // Otherwise render from current yPosition (natural flow)
 
-                yPosition -= lineHeight;
+                yPosition -= lineHeight * seatsTopPaddingFactor;
 
                 // --- 2. Seats Section ---
                 PageState currentState = new PageState(page, contentStream, yPosition);
@@ -2438,6 +2445,7 @@ public class ReportService {
         final float[] color;
         final float sizeMultiplier;
         final boolean lineBreak;
+        final boolean whitespace;
 
         TextRun(String word, HtmlStyle style, boolean lineBreak) {
             this.word = word;
@@ -2446,10 +2454,7 @@ public class ReportService {
             this.color = style.color;
             this.sizeMultiplier = style.sizeMultiplier;
             this.lineBreak = lineBreak;
-        }
-
-        boolean isWhitespaceOnly() {
-            return !lineBreak && word != null && !word.isEmpty() && word.chars().allMatch(Character::isWhitespace);
+            this.whitespace = !lineBreak && word != null && !word.isEmpty() && word.chars().allMatch(Character::isWhitespace);
         }
     }
 
@@ -2496,7 +2501,7 @@ public class ReportService {
         // Empty paragraph (e.g. <p><br></p>) -> blank line
         boolean hasContent = runs.stream().anyMatch(r -> !r.lineBreak && !r.word.isBlank());
         if (!hasContent) {
-            return yPosition - (fontSize + 4);
+            return yPosition - Math.max(4f, fontSize * 0.6f);
         }
 
         yPosition = renderRuns(contentStream, runs, regularFont, boldFont, italicFont,
@@ -2532,48 +2537,16 @@ public class ReportService {
             if (child instanceof TextNode) {
                 String text = ((TextNode) child).getWholeText();
                 if (text.isEmpty()) continue;
-
-                int index = 0;
-                while (index < text.length()) {
-                    char ch = text.charAt(index);
-
-                    if (ch == '\r' || ch == '\n') {
-                        if (ch == '\r' && index + 1 < text.length() && text.charAt(index + 1) == '\n') {
-                            index++;
-                        }
+                java.util.regex.Matcher matcher = java.util.regex.Pattern
+                    .compile("(\\r\\n|\\r|\\n|[^\\S\\r\\n]+|\\S+)")
+                    .matcher(text);
+                while (matcher.find()) {
+                    String token = matcher.group();
+                    if (token.equals("\r\n") || token.equals("\r") || token.equals("\n")) {
                         runs.add(new TextRun("", style, true));
-                        index++;
-                        continue;
-                    }
-
-                    if (Character.isWhitespace(ch)) {
-                        int start = index;
-                        while (index < text.length()) {
-                            char ws = text.charAt(index);
-                            if (ws == '\r' || ws == '\n' || !Character.isWhitespace(ws)) {
-                                break;
-                            }
-                            index++;
-                        }
-
-                        if (index > start) {
-                            String whitespace = text.substring(start, index).replace("\t", "    ");
-                            runs.add(new TextRun(whitespace, style, false));
-                        }
-                        continue;
-                    }
-
-                    int start = index;
-                    while (index < text.length()) {
-                        char c = text.charAt(index);
-                        if (c == '\r' || c == '\n' || Character.isWhitespace(c)) {
-                            break;
-                        }
-                        index++;
-                    }
-
-                    if (index > start) {
-                        runs.add(new TextRun(text.substring(start, index), style, false));
+                    } else {
+                        // Render tabs as fixed spaces so user indentation survives in PDF.
+                        runs.add(new TextRun(token.replace("\t", "    "), style, false));
                     }
                 }
             } else if (child instanceof Element) {
@@ -2637,15 +2610,20 @@ public class ReportService {
 
             PDFont font = run.bold ? boldFont : (run.italic ? italicFont : regularFont);
             float runSize = fontSize * run.sizeMultiplier;
-            float addedWidth = safeStringWidth(font, run.word, runSize);
-            if (!currentLine.runs.isEmpty() && (currentLine.width + addedWidth) > maxWidth) {
+            float wordWidth = safeStringWidth(font, run.word, runSize);
+
+            if (!currentLine.runs.isEmpty() && (currentLine.width + wordWidth) > maxWidth) {
                 lines.add(currentLine);
                 currentLine = new RenderLine();
-                addedWidth = safeStringWidth(font, run.word, runSize);
+
+                // Avoid carrying whitespace to the beginning of a wrapped line.
+                if (run.whitespace) {
+                    continue;
+                }
             }
 
             currentLine.runs.add(run);
-            currentLine.width += addedWidth;
+            currentLine.width += wordWidth;
             currentLine.maxSize = Math.max(currentLine.maxSize, runSize);
         }
 
@@ -2661,7 +2639,7 @@ public class ReportService {
 
         for (int lineIndex = 0; lineIndex < lines.size(); lineIndex++) {
             RenderLine line = lines.get(lineIndex);
-            float lineHeight = line.maxSize > 0 ? line.maxSize + 3 : fontSize + 3;
+            float lineHeight = line.maxSize > 0 ? line.maxSize + 2 : Math.max(3f, fontSize * 0.6f);
 
             // Explicit blank line
             if (line.runs.isEmpty()) {
@@ -2677,7 +2655,12 @@ public class ReportService {
             }
 
             boolean isLastLine = lineIndex == lines.size() - 1;
-            int gapCount = (int) line.runs.stream().filter(TextRun::isWhitespaceOnly).count();
+            int gapCount = 0;
+            for (int i = 1; i < line.runs.size(); i++) {
+                if (!line.runs.get(i - 1).whitespace && !line.runs.get(i).whitespace) {
+                    gapCount++;
+                }
+            }
             float justifyExtra = 0f;
             if (alignment == TextAlign.JUSTIFY && !isLastLine && gapCount > 0) {
                 justifyExtra = Math.max(0f, (maxWidth - line.width) / gapCount);
@@ -2687,6 +2670,10 @@ public class ReportService {
                 TextRun run = line.runs.get(i);
                 PDFont font = run.bold ? boldFont : (run.italic ? italicFont : regularFont);
                 float runSize = fontSize * run.sizeMultiplier;
+
+                if (i > 0 && justifyExtra > 0f && !line.runs.get(i - 1).whitespace && !run.whitespace) {
+                    x += justifyExtra;
+                }
 
                 if (run.color != null) {
                     contentStream.setNonStrokingColor(run.color[0], run.color[1], run.color[2]);
@@ -2701,9 +2688,6 @@ public class ReportService {
                 contentStream.endText();
 
                 x += safeStringWidth(font, run.word, runSize);
-                if (justifyExtra > 0f && run.isWhitespaceOnly()) {
-                    x += justifyExtra;
-                }
             }
 
             yPosition -= lineHeight;

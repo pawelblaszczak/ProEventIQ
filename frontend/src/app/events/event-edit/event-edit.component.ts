@@ -65,7 +65,9 @@ export class EventEditComponent {
       ['bold', 'italic', 'underline', 'strike'],
       [{ 'size': ['small', false, 'large', 'huge'] }],
       [{ 'color': [] }],
-      [{ 'align': [] }]
+      [{ 'align': [] }],
+      [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+      [{ 'indent': '-1' }, { 'indent': '+1' }]
     ]
   };
 

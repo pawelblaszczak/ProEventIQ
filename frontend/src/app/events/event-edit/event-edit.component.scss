@@ -406,6 +406,7 @@ button {
     ::ng-deep .ql-editor {
       min-height: 15rem;
       padding: 12px;
+      white-space: pre-wrap;
     }
   }
   

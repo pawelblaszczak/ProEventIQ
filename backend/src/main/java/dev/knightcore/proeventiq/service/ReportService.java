@@ -2447,6 +2447,10 @@ public class ReportService {
             this.sizeMultiplier = style.sizeMultiplier;
             this.lineBreak = lineBreak;
         }
+
+        boolean isWhitespaceOnly() {
+            return !lineBreak && word != null && !word.isEmpty() && word.chars().allMatch(Character::isWhitespace);
+        }
     }
 
     private static class RenderLine {
@@ -2528,10 +2532,48 @@ public class ReportService {
             if (child instanceof TextNode) {
                 String text = ((TextNode) child).getWholeText();
                 if (text.isEmpty()) continue;
-                String[] words = text.split(" ", -1);
-                for (int i = 0; i < words.length; i++) {
-                    if (!words[i].isEmpty()) {
-                        runs.add(new TextRun(words[i], style, false));
+
+                int index = 0;
+                while (index < text.length()) {
+                    char ch = text.charAt(index);
+
+                    if (ch == '\r' || ch == '\n') {
+                        if (ch == '\r' && index + 1 < text.length() && text.charAt(index + 1) == '\n') {
+                            index++;
+                        }
+                        runs.add(new TextRun("", style, true));
+                        index++;
+                        continue;
+                    }
+
+                    if (Character.isWhitespace(ch)) {
+                        int start = index;
+                        while (index < text.length()) {
+                            char ws = text.charAt(index);
+                            if (ws == '\r' || ws == '\n' || !Character.isWhitespace(ws)) {
+                                break;
+                            }
+                            index++;
+                        }
+
+                        if (index > start) {
+                            String whitespace = text.substring(start, index).replace("\t", "    ");
+                            runs.add(new TextRun(whitespace, style, false));
+                        }
+                        continue;
+                    }
+
+                    int start = index;
+                    while (index < text.length()) {
+                        char c = text.charAt(index);
+                        if (c == '\r' || c == '\n' || Character.isWhitespace(c)) {
+                            break;
+                        }
+                        index++;
+                    }
+
+                    if (index > start) {
+                        runs.add(new TextRun(text.substring(start, index), style, false));
                     }
                 }
             } else if (child instanceof Element) {
@@ -2595,14 +2637,11 @@ public class ReportService {
 
             PDFont font = run.bold ? boldFont : (run.italic ? italicFont : regularFont);
             float runSize = fontSize * run.sizeMultiplier;
-            float spaceWidth = font.getStringWidth(" ") / 1000f * runSize;
-            float wordWidth = safeStringWidth(font, run.word, runSize);
-
-            float addedWidth = currentLine.runs.isEmpty() ? wordWidth : spaceWidth + wordWidth;
+            float addedWidth = safeStringWidth(font, run.word, runSize);
             if (!currentLine.runs.isEmpty() && (currentLine.width + addedWidth) > maxWidth) {
                 lines.add(currentLine);
                 currentLine = new RenderLine();
-                addedWidth = wordWidth;
+                addedWidth = safeStringWidth(font, run.word, runSize);
             }
 
             currentLine.runs.add(run);
@@ -2638,7 +2677,7 @@ public class ReportService {
             }
 
             boolean isLastLine = lineIndex == lines.size() - 1;
-            int gapCount = Math.max(0, line.runs.size() - 1);
+            int gapCount = (int) line.runs.stream().filter(TextRun::isWhitespaceOnly).count();
             float justifyExtra = 0f;
             if (alignment == TextAlign.JUSTIFY && !isLastLine && gapCount > 0) {
                 justifyExtra = Math.max(0f, (maxWidth - line.width) / gapCount);
@@ -2648,14 +2687,6 @@ public class ReportService {
                 TextRun run = line.runs.get(i);
                 PDFont font = run.bold ? boldFont : (run.italic ? italicFont : regularFont);
                 float runSize = fontSize * run.sizeMultiplier;
-
-                if (i > 0) {
-                    float spaceWidth = font.getStringWidth(" ") / 1000f * runSize;
-                    x += spaceWidth;
-                    if (justifyExtra > 0f) {
-                        x += justifyExtra;
-                    }
-                }
 
                 if (run.color != null) {
                     contentStream.setNonStrokingColor(run.color[0], run.color[1], run.color[2]);
@@ -2670,6 +2701,9 @@ public class ReportService {
                 contentStream.endText();
 
                 x += safeStringWidth(font, run.word, runSize);
+                if (justifyExtra > 0f && run.isWhitespaceOnly()) {
+                    x += justifyExtra;
+                }
             }
 
             yPosition -= lineHeight;

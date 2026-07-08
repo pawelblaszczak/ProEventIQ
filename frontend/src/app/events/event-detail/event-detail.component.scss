@@ -245,6 +245,7 @@ $border-radius: 12px;
 
           &.quill-content {
             line-height: 1.6;
+            white-space: pre-wrap;
             
             // Quill default content styling
             ::ng-deep {

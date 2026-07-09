@@ -235,6 +235,7 @@ export class VenueMapEditComponent implements OnInit, AfterViewInit, OnDestroy, 
   // Reservation mode participant selection
   selectedParticipantId = signal<number | null>(null);
   readonly BLOCKED_PARTICIPANT_ID = -1;
+  private readonly blockedSeatsClipboardStorageKey = 'proeventiq_blocked_seats_clipboard_v1';
   
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -6275,6 +6276,222 @@ console.log("addSelectionIndicators2");
 
   isBlockedSelected(): boolean {
     return this.selectedParticipantId() === this.BLOCKED_PARTICIPANT_ID;
+  }
+
+  private getCurrentVenueIdForClipboard(): number | null {
+    const currentVenue = this.venue();
+    if (currentVenue?.venueId != null) return currentVenue.venueId;
+    if (this.venueData?.venueId != null) return this.venueData.venueId;
+    return null;
+  }
+
+  private readBlockedSeatsClipboard(): { venueId: number; seatIds: number[] } | null {
+    try {
+      const raw = localStorage.getItem(this.blockedSeatsClipboardStorageKey);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      const venueId = Number(parsed?.venueId);
+      const seatIdsRaw = Array.isArray(parsed?.seatIds) ? parsed.seatIds : [];
+      const seatIds = seatIdsRaw
+        .map((id: unknown) => Number(id))
+        .filter((id: number) => Number.isFinite(id) && id > 0);
+
+      if (!Number.isFinite(venueId) || venueId <= 0 || seatIds.length === 0) return null;
+      return { venueId, seatIds };
+    } catch {
+      return null;
+    }
+  }
+
+  private getEffectiveParticipantIdForSeat(seat: Konva.Circle): number | null {
+    const seatId = seat.getAttr('seatId') as number | undefined;
+    if (seatId != null) {
+      const pending = this.pendingReservationMap.get(seatId);
+      if (pending && Object.prototype.hasOwnProperty.call(pending, 'participantId')) {
+        return (pending.participantId ?? null) as number | null;
+      }
+    }
+
+    const current = seat.getAttr('participantId') as number | null | undefined;
+    return current ?? null;
+  }
+
+  private getBlockedSeatIdsFromCurrentMap(): number[] {
+    const blockedSeatIds: number[] = [];
+    this.sectorSeats.forEach(seats => {
+      seats.forEach(seat => {
+        const seatId = seat.getAttr('seatId') as number | undefined;
+        if (!seatId) return;
+        const effectivePid = this.getEffectiveParticipantIdForSeat(seat);
+        if (effectivePid === this.BLOCKED_PARTICIPANT_ID) {
+          blockedSeatIds.push(seatId);
+        }
+      });
+    });
+
+    return Array.from(new Set(blockedSeatIds)).sort((a, b) => a - b);
+  }
+
+  canPasteBlockedSeats(): boolean {
+    if (this.mode !== 'reservation') return false;
+    const venueId = this.getCurrentVenueIdForClipboard();
+    if (!venueId) return false;
+    const clipboard = this.readBlockedSeatsClipboard();
+    if (!clipboard) return false;
+    return clipboard.venueId === venueId && clipboard.seatIds.length > 0;
+  }
+
+  copyBlockedSeats(): void {
+    if (this.mode !== 'reservation') return;
+
+    const venueId = this.getCurrentVenueIdForClipboard();
+    if (!venueId) {
+      this.snackBar.open('Cannot copy blocked seats: venue context is missing.', this.translate.instant('BUTTON.CLOSE'), {
+        duration: 2500,
+        horizontalPosition: 'center',
+        verticalPosition: 'top'
+      });
+      return;
+    }
+
+    const blockedSeatIds = this.getBlockedSeatIdsFromCurrentMap();
+    if (blockedSeatIds.length === 0) {
+      this.snackBar.open('There are no blocked seats to copy.', this.translate.instant('BUTTON.CLOSE'), {
+        duration: 2000,
+        horizontalPosition: 'center',
+        verticalPosition: 'top'
+      });
+      return;
+    }
+
+    try {
+      const payload = {
+        venueId,
+        seatIds: blockedSeatIds,
+        copiedAt: Date.now()
+      };
+      localStorage.setItem(this.blockedSeatsClipboardStorageKey, JSON.stringify(payload));
+      this.snackBar.open(`Copied ${blockedSeatIds.length} blocked seat${blockedSeatIds.length === 1 ? '' : 's'}.`, this.translate.instant('BUTTON.CLOSE'), {
+        duration: 2500,
+        horizontalPosition: 'center',
+        verticalPosition: 'top'
+      });
+    } catch {
+      this.snackBar.open('Failed to copy blocked seats.', this.translate.instant('BUTTON.CLOSE'), {
+        duration: 2500,
+        horizontalPosition: 'center',
+        verticalPosition: 'top'
+      });
+    }
+  }
+
+  pasteBlockedSeats(): void {
+    if (this.mode !== 'reservation') return;
+
+    const eventId = this.eventData?.eventId ?? this.eventId();
+    if (!eventId) {
+      this.snackBar.open(this.translate.instant('VENUES.MAP.SNACKBAR.NO_EVENT_CONTEXT'), this.translate.instant('BUTTON.CLOSE'), {
+        duration: 2500,
+        horizontalPosition: 'center',
+        verticalPosition: 'top'
+      });
+      return;
+    }
+
+    const venueId = this.getCurrentVenueIdForClipboard();
+    const clipboard = this.readBlockedSeatsClipboard();
+    if (!venueId || !clipboard) {
+      this.snackBar.open('No blocked-seat copy is available.', this.translate.instant('BUTTON.CLOSE'), {
+        duration: 2200,
+        horizontalPosition: 'center',
+        verticalPosition: 'top'
+      });
+      return;
+    }
+
+    if (clipboard.venueId !== venueId) {
+      this.snackBar.open('Blocked seats can only be pasted within the same venue.', this.translate.instant('BUTTON.CLOSE'), {
+        duration: 2800,
+        horizontalPosition: 'center',
+        verticalPosition: 'top'
+      });
+      return;
+    }
+
+    const seatsById = new Map<number, Konva.Circle>();
+    this.sectorSeats.forEach(seats => {
+      seats.forEach(seat => {
+        const seatId = seat.getAttr('seatId') as number | undefined;
+        if (!seatId) return;
+        seatsById.set(seatId, seat);
+      });
+    });
+
+    let changedCount = 0;
+    let missingCount = 0;
+
+    for (const seatId of clipboard.seatIds) {
+      const seat = seatsById.get(seatId);
+      if (!seat) {
+        missingCount++;
+        continue;
+      }
+
+      const currentPid = this.getEffectiveParticipantIdForSeat(seat);
+      if (currentPid === this.BLOCKED_PARTICIPANT_ID) {
+        continue;
+      }
+
+      seat.setAttr('participantId', this.BLOCKED_PARTICIPANT_ID);
+      this.updateSeatAppearance(seat, this.BLOCKED_PARTICIPANT_ID);
+
+      const originalPid = seat.getAttr('originalParticipantId') as number | null | undefined;
+      let reservationId: number | undefined;
+      if (originalPid) reservationId = this.findReservationIdForParticipantSeat(originalPid, seatId);
+      if (!reservationId && currentPid) reservationId = this.findReservationIdForParticipantSeat(currentPid, seatId);
+      if (!reservationId) reservationId = this.findReservationIdForSeat(seatId);
+
+      this.addPendingReservationChange({
+        id: reservationId,
+        eventId,
+        participantId: this.BLOCKED_PARTICIPANT_ID,
+        seatId,
+        oldParticipantId: originalPid ?? currentPid ?? undefined
+      }, { skipRefresh: true });
+
+      changedCount++;
+    }
+
+    if (changedCount > 0) {
+      this.refreshSectorAllocationLabels();
+      this.layer?.batchDraw();
+      this.hasReservationChanges.set(true);
+      this.pendingCountSignal.set(this.pendingReservationChanges.length);
+      try { this.createAllocationOverlays(); } catch { /* ignore */ }
+
+      const missingSuffix = missingCount > 0 ? ` ${missingCount} seat${missingCount === 1 ? '' : 's'} were not found in this map.` : '';
+      this.snackBar.open(`Pasted blocked status to ${changedCount} seat${changedCount === 1 ? '' : 's'}.${missingSuffix}`, this.translate.instant('BUTTON.CLOSE'), {
+        duration: 3200,
+        horizontalPosition: 'center',
+        verticalPosition: 'top'
+      });
+      return;
+    }
+
+    if (missingCount > 0) {
+      this.snackBar.open('Copied seats are not present in this map.', this.translate.instant('BUTTON.CLOSE'), {
+        duration: 2500,
+        horizontalPosition: 'center',
+        verticalPosition: 'top'
+      });
+      return;
+    }
+
+    this.snackBar.open('All copied blocked seats are already blocked.', this.translate.instant('BUTTON.CLOSE'), {
+      duration: 2200,
+      horizontalPosition: 'center',
+      verticalPosition: 'top'
+    });
   }
 }
 

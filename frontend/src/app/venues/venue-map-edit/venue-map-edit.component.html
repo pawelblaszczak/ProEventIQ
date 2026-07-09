@@ -486,6 +486,25 @@
                   {{ getBlockedSeatsCount() }}
                 </div>
               </div>
+
+                <div style="display:flex; gap:0.1rem; justify-content:flex-start; margin-top:-0.2rem; margin-bottom:0.05rem;">
+                <button mat-icon-button
+                  style="width:26px; height:26px; display:inline-flex; align-items:center; justify-content:center; padding:0;"
+                        (click)="copyBlockedSeats()"
+                        [disabled]="getBlockedSeatsCount() === 0"
+                        [matTooltip]="'Copy blocked seats'"
+                        aria-label="Copy blocked seats">
+                <mat-icon style="font-size:16px; width:16px; height:16px; line-height:1; display:block;">content_copy</mat-icon>
+                </button>
+                <button mat-icon-button
+                  style="width:26px; height:26px; display:inline-flex; align-items:center; justify-content:center; padding:0;"
+                        (click)="pasteBlockedSeats()"
+                        [disabled]="!canPasteBlockedSeats()"
+                        [matTooltip]="'Paste blocked seats'"
+                        aria-label="Paste blocked seats">
+                <mat-icon style="font-size:16px; width:16px; height:16px; line-height:1; display:block;">content_paste</mat-icon>
+                </button>
+              </div>
             </div>
           }
           </mat-card-content>

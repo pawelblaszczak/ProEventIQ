@@ -336,11 +336,11 @@ public class ReportService {
                 }
 
                 // --- Calculate Font Size ---
-                int currentFontSize = 11;
-                float currentLineHeight = 15;
+                int currentFontSize = 18;
+                float currentLineHeight = 18 * 1.3f;
                 float footerHeight = 215f;
     
-                float safetyGap = 20;
+                float safetyGap = 6;
                 float contentWidth = pageWidth - 2 * margin;
 
                 // Max available vertical space for content (excluding footer)
@@ -353,9 +353,9 @@ public class ReportService {
                  final float seatsTopPaddingFactor = 0.3f;
                  final float seatsBlockTrailingGapFactor = 0.5f;
 
-                 // Try sizes 11 down to 6
-                for (int size = 11; size >= 6; size--) {
-                     float lh = (size == 11) ? 15 : (size * 1.4f); // heuristic
+                 // Try sizes 18 down to 6
+                for (int size = 18; size >= 6; size--) {
+                     float lh = size * 1.3f; // keep measurement and rendering aligned
                      
                      float usedHeight = lh * 2; // "Szanowni Państwo" (using dynamic lineHeight spacing)
                      
@@ -386,7 +386,7 @@ public class ReportService {
                      // If still doesn't fit at 6, we use 6 and let it span pages
                      if (size == 6) {
                          currentFontSize = 6;
-                         currentLineHeight = 6 * 1.4f;
+                         currentLineHeight = 6 * 1.3f;
                      }
                 }
                 
@@ -394,6 +394,40 @@ public class ReportService {
                 float yPosition = pageHeight - margin;
                 float lineHeight = currentLineHeight;
                 int fontSize = currentFontSize;
+                int descriptionFontSize = fontSize;
+
+                // Keep seats/table sizing stable, but allow description text to grow if there is
+                // still free vertical space above the docked seats block.
+                float seatsBlockHeight = calculateSeatsBlockHeight(grouped, bodyFont, lineHeight, pageWidth - 40, fontSize);
+                float totalBlockHeight = seatsBlockHeight + (lineHeight * seatsBlockTrailingGapFactor);
+                float targetTopYForSeatsBlock = footerHeight + 2 + totalBlockHeight;
+                float availableTopHeight = (pageHeight - margin) - targetTopYForSeatsBlock;
+
+                if (availableTopHeight > 0) {
+                    final int maxDescriptionFontSize = 26;
+                    while (descriptionFontSize < maxDescriptionFontSize) {
+                        int candidateDescriptionSize = descriptionFontSize + 1;
+                        float topUsed = lineHeight * 2;
+                        topUsed += calculateHtmlTicketDescriptionHeight(ticketDescription,
+                                                                        serifFont,
+                                                                        serifBoldFont,
+                                                                        serifFont,
+                                                                        contentWidth,
+                                                                        candidateDescriptionSize);
+                        topUsed += Math.max(4f, lineHeight * descriptionToNotesGapFactor);
+                        for (String note : footerNotes) {
+                            topUsed += calculateTextHeight(note, contentWidth, serifFont, fontSize, lineHeight);
+                        }
+                        topUsed += Math.max(2f, lineHeight * notesToThanksGapFactor);
+                        topUsed += lineHeight * thanksToSeatsGapFactor;
+
+                        if (topUsed <= availableTopHeight) {
+                            descriptionFontSize = candidateDescriptionSize;
+                        } else {
+                            break;
+                        }
+                    }
+                }
 
                 // --- 1. Top Description Text ---
                 
@@ -410,7 +444,7 @@ public class ReportService {
                 // Content Font - Render HTML ticket description with formatting support
                 yPosition = renderHtmlTicketDescription(contentStream, ticketDescription, 
                                                        serifFont, serifBoldFont, serifFont,
-                                                       margin, pageWidth - 2 * margin, yPosition, fontSize);
+                                                       margin, pageWidth - 2 * margin, yPosition, descriptionFontSize);
                 
                 yPosition -= Math.max(4f, lineHeight * descriptionToNotesGapFactor);
                 
@@ -437,10 +471,10 @@ public class ReportService {
                 yPosition -= lineHeight * thanksToSeatsGapFactor; // Reduced spacing
                 
                 // Calculate required height for seats block
-                float seatsBlockHeight = calculateSeatsBlockHeight(grouped, bodyFont, lineHeight, pageWidth - 40, fontSize); 
-                float totalBlockHeight = seatsBlockHeight + (lineHeight * seatsBlockTrailingGapFactor);
+                seatsBlockHeight = calculateSeatsBlockHeight(grouped, bodyFont, lineHeight, pageWidth - 40, fontSize); 
+                totalBlockHeight = seatsBlockHeight + (lineHeight * seatsBlockTrailingGapFactor);
                 
-                float requiredSpace = totalBlockHeight + footerHeight + 10; // Total needed: content + footer + small gap
+                float requiredSpace = totalBlockHeight + footerHeight + 2; // Total needed: content + footer + tiny safety gap
                 
                 // Check if everything fits on current page
                 if (yPosition > requiredSpace) {

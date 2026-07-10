@@ -359,7 +359,12 @@ public class ReportService {
                      
                      float usedHeight = lh * 2; // "Szanowni Państwo" (using dynamic lineHeight spacing)
                      
-                     usedHeight += calculateTextHeight(ticketDescription, contentWidth, serifFont, size, lh);
+                     usedHeight += calculateHtmlTicketDescriptionHeight(ticketDescription,
+                                                                        serifFont,
+                                                                        serifBoldFont,
+                                                                        serifFont,
+                                                                        contentWidth,
+                                                                        size);
                      usedHeight += Math.max(4f, lh * descriptionToNotesGapFactor); // Spacing before footer notes
                      
                      for(String note : footerNotes) {
@@ -2386,9 +2391,29 @@ public class ReportService {
      * Renders HTML-formatted ticket description in the PDF, preserving paragraphs,
      * line breaks, colors, bold/italic and Quill font sizes.
      */
-    private float renderHtmlTicketDescription(PDPageContentStream contentStream, String htmlContent, 
+    private float renderHtmlTicketDescription(PDPageContentStream contentStream, String htmlContent,
                                              PDFont regularFont, PDFont boldFont, PDFont italicFont,
                                              float margin, float maxWidth, float yPosition, int fontSize) throws IOException {
+        return renderHtmlTicketDescriptionInternal(contentStream, htmlContent, regularFont, boldFont, italicFont,
+                                                   margin, maxWidth, yPosition, fontSize, false);
+    }
+
+    private float calculateHtmlTicketDescriptionHeight(String htmlContent,
+                                                       PDFont regularFont,
+                                                       PDFont boldFont,
+                                                       PDFont italicFont,
+                                                       float maxWidth,
+                                                       int fontSize) throws IOException {
+        float startY = 0f;
+        float endY = renderHtmlTicketDescriptionInternal(null, htmlContent, regularFont, boldFont, italicFont,
+                                                         0f, maxWidth, startY, fontSize, true);
+        return startY - endY;
+    }
+
+    private float renderHtmlTicketDescriptionInternal(PDPageContentStream contentStream, String htmlContent,
+                                                     PDFont regularFont, PDFont boldFont, PDFont italicFont,
+                                                     float margin, float maxWidth, float yPosition, int fontSize,
+                                                     boolean dryRun) throws IOException {
         if (htmlContent == null || htmlContent.isEmpty()) {
             return yPosition;
         }
@@ -2397,17 +2422,19 @@ public class ReportService {
             Document doc = Jsoup.parse(htmlContent);
             for (Element block : doc.body().children()) {
                 yPosition = renderHtmlBlock(contentStream, block, regularFont, boldFont, italicFont,
-                                            margin, maxWidth, yPosition, fontSize, new HtmlStyle());
+                                            margin, maxWidth, yPosition, fontSize, new HtmlStyle(), dryRun);
             }
         } catch (Exception e) {
             log.warn("Error rendering HTML ticket description, falling back to plain text: {}", e.getMessage());
             String plainText = htmlContent.replaceAll("<[^>]*>", " ").replaceAll("\\s+", " ").trim();
             for (String line : wrapText(plainText, maxWidth, regularFont, fontSize)) {
-                contentStream.setFont(regularFont, fontSize);
-                contentStream.beginText();
-                contentStream.newLineAtOffset(margin, yPosition);
-                safeShowText(contentStream, line);
-                contentStream.endText();
+                if (!dryRun && contentStream != null) {
+                    contentStream.setFont(regularFont, fontSize);
+                    contentStream.beginText();
+                    contentStream.newLineAtOffset(margin, yPosition);
+                    safeShowText(contentStream, line);
+                    contentStream.endText();
+                }
                 yPosition -= fontSize + 2;
             }
         }
@@ -2467,7 +2494,7 @@ public class ReportService {
     private float renderHtmlBlock(PDPageContentStream contentStream, Element block,
                                   PDFont regularFont, PDFont boldFont, PDFont italicFont,
                                   float margin, float maxWidth, float yPosition, int fontSize,
-                                  HtmlStyle inherited) throws IOException {
+                                  HtmlStyle inherited, boolean dryRun) throws IOException {
         String tag = block.tagName().toLowerCase();
 
         // Lists render each item as its own line with a bullet/number
@@ -2479,7 +2506,8 @@ public class ReportService {
                 runs.add(new TextRun(bullet, inherited, false));
                 collectRuns(li, new HtmlStyle(inherited), runs);
                 yPosition = renderRuns(contentStream, runs, regularFont, boldFont, italicFont,
-                                       margin + 15, maxWidth - 15, yPosition, fontSize, resolveBlockAlignment(block));
+                                       margin + 15, maxWidth - 15, yPosition, fontSize,
+                                       resolveBlockAlignment(block), dryRun);
                 num++;
             }
             return yPosition - 3;
@@ -2505,7 +2533,7 @@ public class ReportService {
         }
 
         yPosition = renderRuns(contentStream, runs, regularFont, boldFont, italicFont,
-                               margin, maxWidth, yPosition, fontSize, alignment);
+                               margin, maxWidth, yPosition, fontSize, alignment, dryRun);
         return yPosition - 3;
     }
 
@@ -2592,7 +2620,7 @@ public class ReportService {
     private float renderRuns(PDPageContentStream contentStream, java.util.List<TextRun> runs,
                              PDFont regularFont, PDFont boldFont, PDFont italicFont,
                              float margin, float maxWidth, float yPosition, int fontSize,
-                             TextAlign alignment) throws IOException {
+                             TextAlign alignment, boolean dryRun) throws IOException {
         java.util.List<RenderLine> lines = new java.util.ArrayList<>();
         RenderLine currentLine = new RenderLine();
 
@@ -2633,7 +2661,9 @@ public class ReportService {
 
         // If nothing to render, keep cursor unchanged.
         if (lines.isEmpty()) {
-            contentStream.setNonStrokingColor(0f, 0f, 0f);
+            if (!dryRun && contentStream != null) {
+                contentStream.setNonStrokingColor(0f, 0f, 0f);
+            }
             return yPosition;
         }
 
@@ -2666,6 +2696,11 @@ public class ReportService {
                 justifyExtra = Math.max(0f, (maxWidth - line.width) / gapCount);
             }
 
+            if (dryRun || contentStream == null) {
+                yPosition -= lineHeight;
+                continue;
+            }
+
             for (int i = 0; i < line.runs.size(); i++) {
                 TextRun run = line.runs.get(i);
                 PDFont font = run.bold ? boldFont : (run.italic ? italicFont : regularFont);
@@ -2693,7 +2728,9 @@ public class ReportService {
             yPosition -= lineHeight;
         }
 
-        contentStream.setNonStrokingColor(0f, 0f, 0f);
+        if (!dryRun && contentStream != null) {
+            contentStream.setNonStrokingColor(0f, 0f, 0f);
+        }
         return yPosition;
     }
 

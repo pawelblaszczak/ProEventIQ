@@ -9,16 +9,16 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { TranslateModule } from '@ngx-translate/core';
 
-export interface TicketFontDialogData {
+export interface ReportGenerationDialogData {
   defaultScale?: number;
 }
 
-export interface TicketFontDialogResult {
+export interface ReportGenerationDialogResult {
   fontScale: number | null;
 }
 
 @Component({
-  selector: 'app-ticket-font-dialog',
+  selector: 'app-report-generation-dialog',
   standalone: true,
   imports: [
     CommonModule,
@@ -31,12 +31,12 @@ export interface TicketFontDialogResult {
     MatInputModule,
     TranslateModule
   ],
-  templateUrl: './ticket-font-dialog.component.html',
-  styleUrls: ['./ticket-font-dialog.component.scss']
+  templateUrl: './report-generation-dialog.component.html',
+  styleUrls: ['./report-generation-dialog.component.scss']
 })
-export class TicketFontDialogComponent {
-  private readonly dialogRef = inject(MatDialogRef<TicketFontDialogComponent, TicketFontDialogResult | undefined>);
-  public readonly data = inject<TicketFontDialogData>(MAT_DIALOG_DATA);
+export class ReportGenerationDialogComponent {
+  private readonly dialogRef = inject(MatDialogRef<ReportGenerationDialogComponent, ReportGenerationDialogResult | undefined>);
+  public readonly data = inject<ReportGenerationDialogData>(MAT_DIALOG_DATA);
 
   public readonly minScale = 0.5;
   public readonly maxScale = 3.0;

@@ -26,7 +26,7 @@ import { forkJoin } from 'rxjs';
 import { VenueMapEditComponent } from '../../venues/venue-map-edit/venue-map-edit.component';
 import { EventService } from '../event.service';
 import { ColorPickerDialogComponent } from './color-picker-dialog/color-picker-dialog.component';
-import { TicketFontDialogComponent } from './ticket-font-dialog/ticket-font-dialog.component';
+import { ReportGenerationDialogComponent } from './report-generation-dialog/report-generation-dialog.component';
 
 @Component({
   selector: 'app-event-detail',
@@ -306,7 +306,7 @@ export class EventDetailComponent implements OnInit {
     const eventId = this.eventId();
     if (!eventId) return;
 
-    const dialogRef = this.dialog.open(TicketFontDialogComponent, {
+    const dialogRef = this.dialog.open(ReportGenerationDialogComponent, {
       width: '460px',
       data: { defaultScale: 1.0 }
     });

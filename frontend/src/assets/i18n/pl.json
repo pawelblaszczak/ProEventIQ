@@ -651,6 +651,14 @@
             "SCALE_LABEL": "Współczynnik czcionki",
             "MANUAL_NOTE": "Przy ustawieniu ręcznym bilet może zajmować więcej niż jedną stronę."
           },
+          "REPORT_GENERATION_DIALOG": {
+            "TITLE": "Generowanie biletu PDF",
+            "DESCRIPTION": "Wybierz sposób skalowania czcionki na bilecie.",
+            "AUTO": "Automatycznie (zalecane)",
+            "MANUAL": "Ręcznie (współczynnik)",
+            "SCALE_LABEL": "Współczynnik czcionki",
+            "MANUAL_NOTE": "Przy ustawieniu ręcznym bilet może zajmować więcej niż jedną stronę."
+          },
             "TITLE": "Uczestnicy",
             "ADD_BUTTON": "DODAJ UCZESTNIKA",
             "TICKETS_BUTTON": "BILETY",

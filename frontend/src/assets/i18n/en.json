@@ -655,6 +655,14 @@
             "SCALE_LABEL": "Font scale",
             "MANUAL_NOTE": "With manual scaling, the ticket may span more than one page."
           },
+          "REPORT_GENERATION_DIALOG": {
+            "TITLE": "Generate PDF Ticket",
+            "DESCRIPTION": "Choose how ticket font scaling should be applied.",
+            "AUTO": "Automatic (recommended)",
+            "MANUAL": "Manual (scale factor)",
+            "SCALE_LABEL": "Font scale",
+            "MANUAL_NOTE": "With manual scaling, the ticket may span more than one page."
+          },
             "TITLE": "Participants",
             "ADD_BUTTON": "ADD PARTICIPANT",
             "TICKETS_BUTTON": "TICKETS",

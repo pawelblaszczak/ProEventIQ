@@ -646,7 +646,7 @@
           "TICKET_FONT_DIALOG": {
             "TITLE": "Generowanie biletu PDF",
             "DESCRIPTION": "Wybierz sposób skalowania czcionki na bilecie.",
-            "AUTO": "Automatycznie (zalecane)",
+            "AUTO": "Automatycznie",
             "MANUAL": "Ręcznie (współczynnik)",
             "SCALE_LABEL": "Współczynnik czcionki",
             "MANUAL_NOTE": "Przy ustawieniu ręcznym bilet może zajmować więcej niż jedną stronę."
@@ -654,10 +654,14 @@
           "REPORT_GENERATION_DIALOG": {
             "TITLE": "Generowanie biletu PDF",
             "DESCRIPTION": "Wybierz sposób skalowania czcionki na bilecie.",
-            "AUTO": "Automatycznie (zalecane)",
+            "AUTO": "Automatycznie",
             "MANUAL": "Ręcznie (współczynnik)",
             "SCALE_LABEL": "Współczynnik czcionki",
-            "MANUAL_NOTE": "Przy ustawieniu ręcznym bilet może zajmować więcej niż jedną stronę."
+            "MANUAL_NOTE": "Przy ustawieniu ręcznym bilet może zajmować więcej niż jedną stronę.",
+            "LAYOUT_SECTION": "Opcje układu",
+            "SEAT_COLUMNS_LABEL": "Liczba kolumn miejsc",
+            "MAX_ROWS_LABEL": "Maks. wierszy w kolumnie",
+            "NO_LIMIT": "Bez limitu"
           },
             "TITLE": "Uczestnicy",
             "ADD_BUTTON": "DODAJ UCZESTNIKA",

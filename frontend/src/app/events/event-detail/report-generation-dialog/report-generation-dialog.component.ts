@@ -7,6 +7,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatDividerModule } from '@angular/material/divider';
 import { TranslateModule } from '@ngx-translate/core';
 
 export interface ReportGenerationDialogData {
@@ -15,6 +17,8 @@ export interface ReportGenerationDialogData {
 
 export interface ReportGenerationDialogResult {
   fontScale: number | null;
+  seatColumns: number;
+  maxRowsPerColumn: number | null;
 }
 
 @Component({
@@ -29,6 +33,8 @@ export interface ReportGenerationDialogResult {
     MatRadioModule,
     MatFormFieldModule,
     MatInputModule,
+    MatSelectModule,
+    MatDividerModule,
     TranslateModule
   ],
   templateUrl: './report-generation-dialog.component.html',
@@ -41,8 +47,15 @@ export class ReportGenerationDialogComponent {
   public readonly minScale = 0.5;
   public readonly maxScale = 3.0;
   public readonly scaleStep = 0.01;
+  // Allow selecting 1-6 columns (default 4)
+  public readonly seatColumnOptions: number[] = Array.from({ length: 6 }, (_, i) => i + 1);
+  public readonly maxRowsOptions: number[] = Array.from({ length: 30 }, (_, i) => i + 1);
+
   public mode: 'auto' | 'manual' = 'auto';
   public selectedScale: number;
+  public selectedSeatColumns = 4;
+  // Use -1 as a sentinel to represent "No limit" so mat-select shows it reliably
+  public selectedMaxRows: number = -1;
 
   constructor() {
     this.selectedScale = this.data.defaultScale ?? 1.0;
@@ -55,7 +68,9 @@ export class ReportGenerationDialogComponent {
     const roundedScale = Math.round(clampedScale * 100) / 100;
 
     this.dialogRef.close({
-      fontScale: this.mode === 'manual' ? roundedScale : null
+      fontScale: this.mode === 'manual' ? roundedScale : null,
+      seatColumns: this.selectedSeatColumns,
+      maxRowsPerColumn: this.selectedMaxRows === -1 ? null : this.selectedMaxRows
     });
   }
 

@@ -317,10 +317,12 @@ export class EventDetailComponent implements OnInit {
       }
 
       const selectedFontScale = result.fontScale ?? undefined;
+      const selectedSeatColumns = result.seatColumns;
+      const selectedMaxRows = result.maxRowsPerColumn ?? undefined;
 
-      console.log('Generating ticket for participant:', participantId, 'fontScale:', selectedFontScale ?? 'auto');
+      console.log('Generating ticket for participant:', participantId, 'fontScale:', selectedFontScale ?? 'auto', 'seatColumns:', selectedSeatColumns, 'maxRowsPerColumn:', selectedMaxRows ?? 'no limit');
 
-      this.eventApi.eventsEventIdParticipantsParticipantIdTicketGet(eventId, participantId, selectedFontScale, 'response').subscribe({
+      this.eventApi.eventsEventIdParticipantsParticipantIdTicketGet(eventId, participantId, selectedFontScale, selectedSeatColumns, selectedMaxRows, 'response').subscribe({
       next: (response: any) => {
         // Extract filename from Content-Disposition header
         const filename = this.getFilenameFromContentDisposition(response) || `participant_ticket_${participantId}.pdf`;

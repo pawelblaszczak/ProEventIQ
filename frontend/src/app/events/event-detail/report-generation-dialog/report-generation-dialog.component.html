@@ -33,6 +33,31 @@
       </mat-form-field>
       <p class="manual-note">{{ 'EVENTS.DETAIL.PARTICIPANTS.REPORT_GENERATION_DIALOG.MANUAL_NOTE' | translate }}</p>
     </div>
+
+    <mat-divider></mat-divider>
+
+    <div class="layout-controls">
+      <p class="section-label">{{ 'EVENTS.DETAIL.PARTICIPANTS.REPORT_GENERATION_DIALOG.LAYOUT_SECTION' | translate }}</p>
+
+      <mat-form-field appearance="outline" class="seat-columns-field">
+        <mat-label>{{ 'EVENTS.DETAIL.PARTICIPANTS.REPORT_GENERATION_DIALOG.SEAT_COLUMNS_LABEL' | translate }}</mat-label>
+        <mat-select [(ngModel)]="selectedSeatColumns">
+          <mat-option *ngFor="let col of seatColumnOptions" [value]="col">{{ col }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="max-rows-field">
+        <mat-label>{{ 'EVENTS.DETAIL.PARTICIPANTS.REPORT_GENERATION_DIALOG.MAX_ROWS_LABEL' | translate }}</mat-label>
+        <mat-select [(ngModel)]="selectedMaxRows">
+          <mat-select-trigger>
+            {{ selectedMaxRows === -1 ? ('EVENTS.DETAIL.PARTICIPANTS.REPORT_GENERATION_DIALOG.NO_LIMIT' | translate) : (selectedMaxRows) }}
+          </mat-select-trigger>
+          <mat-option [value]="-1">{{ 'EVENTS.DETAIL.PARTICIPANTS.REPORT_GENERATION_DIALOG.NO_LIMIT' | translate }}</mat-option>
+          <mat-option *ngFor="let n of maxRowsOptions" [value]="n">{{ n }}</mat-option>
+
+        </mat-select>
+      </mat-form-field>
+    </div>
   </mat-dialog-content>
 
   <mat-dialog-actions class="dialog-actions" align="end">

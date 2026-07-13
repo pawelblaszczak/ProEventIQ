@@ -661,7 +661,11 @@
             "AUTO": "Automatic (recommended)",
             "MANUAL": "Manual (scale factor)",
             "SCALE_LABEL": "Font scale",
-            "MANUAL_NOTE": "With manual scaling, the ticket may span more than one page."
+            "MANUAL_NOTE": "With manual scaling, the ticket may span more than one page.",
+            "LAYOUT_SECTION": "Layout options",
+            "SEAT_COLUMNS_LABEL": "Number of seat columns",
+            "MAX_ROWS_LABEL": "Max rows per column",
+            "NO_LIMIT": "No limit"
           },
             "TITLE": "Participants",
             "ADD_BUTTON": "ADD PARTICIPANT",

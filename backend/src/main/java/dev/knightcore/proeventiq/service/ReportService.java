@@ -192,11 +192,16 @@ public class ReportService {
     
     @Transactional(readOnly = true)
     public Optional<byte[]> generateParticipantTicket(Long eventId, Long participantId) {
-        return generateParticipantTicket(eventId, participantId, null);
+        return generateParticipantTicket(eventId, participantId, null, null, null);
     }
 
     @Transactional(readOnly = true)
     public Optional<byte[]> generateParticipantTicket(Long eventId, Long participantId, Double fontScale) {
+        return generateParticipantTicket(eventId, participantId, fontScale, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<byte[]> generateParticipantTicket(Long eventId, Long participantId, Double fontScale, Integer seatColumns, Integer maxRowsPerColumn) {
         log.info("Generating PDF ticket for participant {} in event {}", participantId, eventId);
         
         try {
@@ -239,7 +244,7 @@ public class ReportService {
             
             // Generate PDF
             Double normalizedFontScale = normalizeFontScale(fontScale);
-            byte[] pdfBytes = createPdfTicket(event, participant, show, venue, organizer, normalizedFontScale);
+            byte[] pdfBytes = createPdfTicket(event, participant, show, venue, organizer, normalizedFontScale, seatColumns, maxRowsPerColumn);
             return Optional.of(pdfBytes);
             
         } catch (Exception e) {
@@ -275,7 +280,8 @@ public class ReportService {
         return totalHeight;
     }
 
-    private byte[] createPdfTicket(EventEntity event, ParticipantEntity participant, ShowEntity show, VenueEntity venue, UserEntity organizer, Double fontScale) throws IOException {
+    private byte[] createPdfTicket(EventEntity event, ParticipantEntity participant, ShowEntity show, VenueEntity venue, UserEntity organizer, Double fontScale, Integer seatColumns, Integer maxRowsPerColumn) throws IOException {
+        final int effectiveSeatColumns = (seatColumns != null && seatColumns >= 4 && seatColumns <= 6) ? seatColumns : 4;
         try (PDDocument document = new PDDocument()) {
             PDPage page = new PDPage(PDRectangle.A4);
             document.addPage(page);
@@ -335,7 +341,7 @@ public class ReportService {
                     seatRepository.findById(res.getSeatId()).ifPresent(s -> seatMap.put(s.getSeatId(), s));
                 }
                 
-                java.util.Map<String, java.util.Map<RowKey, java.util.List<SeatNumberInfo>>> grouped = new java.util.TreeMap<>();
+                java.util.Map<String, java.util.Map<RowKey, java.util.List<SeatNumberInfo>>> rawGrouped = new java.util.TreeMap<>();
                 java.util.Set<String> sectorNames = new java.util.TreeSet<>();
                 for (var seat : seatMap.values()) {
                     var row = seat.getSeatRow();
@@ -349,10 +355,13 @@ public class ReportService {
                     Integer rowOrder = (row != null) ? row.getOrderNumber() : null;
                     RowKey rowKey = new RowKey(rowNameStr, rowOrder);
                     
-                    grouped.computeIfAbsent(sectorName, k -> new java.util.TreeMap<>());
+                    rawGrouped.computeIfAbsent(sectorName, k -> new java.util.TreeMap<>());
                     String displayLabel = (seat.getSeatLabel() != null) ? seat.getSeatLabel() : String.valueOf(seat.getOrderNumber());
-                    grouped.get(sectorName).computeIfAbsent(rowKey, k -> new java.util.ArrayList<>()).add(new SeatNumberInfo(displayLabel, seat.getOrderNumber()));
+                    rawGrouped.get(sectorName).computeIfAbsent(rowKey, k -> new java.util.ArrayList<>()).add(new SeatNumberInfo(displayLabel, seat.getOrderNumber()));
                 }
+
+                // Apply maxRowsPerColumn: split sectors that have more rows than the limit
+                java.util.Map<String, java.util.Map<RowKey, java.util.List<SeatNumberInfo>>> grouped = splitSectorsByMaxRows(rawGrouped, maxRowsPerColumn);
 
                 // --- Calculate Font Size ---
                 int currentFontSize = 18;
@@ -393,7 +402,7 @@ public class ReportService {
                      usedHeight += lh * thanksToSeatsGapFactor; // "Dziękujemy"
                      
                      // Seats
-                     float seatsH = calculateSeatsBlockHeight(grouped, bodyFont, lh, pageWidth - 40, size);
+                     float seatsH = calculateSeatsBlockHeight(grouped, bodyFont, lh, pageWidth - 40, size, effectiveSeatColumns);
                      usedHeight += seatsH + (lh * seatsBlockTrailingGapFactor); // + spacing
                      
                      if (usedHeight <= maxContentHeight) {
@@ -421,7 +430,7 @@ public class ReportService {
 
                 // Keep seats/table sizing stable, but allow description text to grow if there is
                 // still free vertical space above the docked seats block.
-                float seatsBlockHeight = calculateSeatsBlockHeight(grouped, bodyFont, lineHeight, pageWidth - 40, layoutFontSize);
+                float seatsBlockHeight = calculateSeatsBlockHeight(grouped, bodyFont, lineHeight, pageWidth - 40, layoutFontSize, effectiveSeatColumns);
                 float totalBlockHeight = seatsBlockHeight + (lineHeight * seatsBlockTrailingGapFactor);
                 float targetTopYForSeatsBlock = footerHeight + 2 + totalBlockHeight;
                 float availableTopHeight = (pageHeight - margin) - targetTopYForSeatsBlock;
@@ -502,7 +511,7 @@ public class ReportService {
                 yPosition -= lineHeight * thanksToSeatsGapFactor; // Reduced spacing
                 
                 // Calculate required height for seats block
-                seatsBlockHeight = calculateSeatsBlockHeight(grouped, bodyFont, lineHeight, pageWidth - 40, layoutFontSize); 
+                seatsBlockHeight = calculateSeatsBlockHeight(grouped, bodyFont, lineHeight, pageWidth - 40, layoutFontSize, effectiveSeatColumns); 
                 totalBlockHeight = seatsBlockHeight + (lineHeight * seatsBlockTrailingGapFactor);
                 
                 float requiredSpace = totalBlockHeight + footerHeight + 2; // Total needed: content + footer + tiny safety gap
@@ -520,7 +529,7 @@ public class ReportService {
                 // --- 2. Seats Section ---
                 PageState currentState = new PageState(page, contentStream, yPosition);
                 // Call addSeatsSection (which now takes grouped map)
-                currentState = addSeatsSection(document, currentState.page, currentState.contentStream, serifBoldFont, bodyFont, margin, currentState.yPosition, lineHeight, grouped, layoutFontSize);
+                currentState = addSeatsSection(document, currentState.page, currentState.contentStream, serifBoldFont, bodyFont, margin, currentState.yPosition, lineHeight, grouped, layoutFontSize, effectiveSeatColumns);
                 
                 page = currentState.page;
                 contentStream = currentState.contentStream;
@@ -741,23 +750,56 @@ public class ReportService {
 
     private PageState addSeatsSection(PDDocument document, PDPage page, PDPageContentStream contentStream, PDFont headerFont, PDFont bodyFont,
                                   float margin, float yPosition, float lineHeight,
-                                  java.util.Map<String, java.util.Map<RowKey, java.util.List<SeatNumberInfo>>> grouped, int fontSize) throws IOException {
-        LayoutResult result = layoutSeatsSection(document, page, contentStream, bodyFont, lineHeight, grouped, false, yPosition, fontSize);
+                                  java.util.Map<String, java.util.Map<RowKey, java.util.List<SeatNumberInfo>>> grouped, int fontSize, int seatColumns) throws IOException {
+        LayoutResult result = layoutSeatsSection(document, page, contentStream, bodyFont, lineHeight, grouped, false, yPosition, fontSize, seatColumns);
         return result.pageState;
     }
 
-    private float calculateSeatsBlockHeight(java.util.Map<String, java.util.Map<RowKey, java.util.List<SeatNumberInfo>>> grouped, PDFont bodyFont, float lineHeight, float tableWidth, int fontSize) {
-        // Create dummy document/page for metric calculation context if needed, but mostly we just need font metrics.
-        // We pass tableWidth via a hack or just assume layoutSeatsSection calculates width from page size.
-        // layoutSeatsSection uses page.getMediaBox().
-        // We can create a dummy PDPage with the correct width.
+    private float calculateSeatsBlockHeight(java.util.Map<String, java.util.Map<RowKey, java.util.List<SeatNumberInfo>>> grouped, PDFont bodyFont, float lineHeight, float tableWidth, int fontSize, int seatColumns) {
         PDPage dummyPage = new PDPage(new PDRectangle(tableWidth + 40, 842)); // 40 = 2*20 margins
         try {
-            LayoutResult result = layoutSeatsSection(null, dummyPage, null, bodyFont, lineHeight, grouped, true, 800, fontSize);
+            LayoutResult result = layoutSeatsSection(null, dummyPage, null, bodyFont, lineHeight, grouped, true, 800, fontSize, seatColumns);
             return result.totalHeight;
         } catch (IOException e) {
             return 0f;
         }
+    }
+
+    /**
+     * Splits sectors with more rows than maxRowsPerColumn into multiple virtual sector entries.
+     * Example: sector with 8 rows and maxRowsPerColumn=5 becomes "sektor A" (5 rows) + "sektor A (2)" (3 rows).
+     */
+    private java.util.Map<String, java.util.Map<RowKey, java.util.List<SeatNumberInfo>>> splitSectorsByMaxRows(
+            java.util.Map<String, java.util.Map<RowKey, java.util.List<SeatNumberInfo>>> grouped,
+            Integer maxRowsPerColumn) {
+        if (maxRowsPerColumn == null) return grouped;
+        java.util.Map<String, java.util.Map<RowKey, java.util.List<SeatNumberInfo>>> result = new java.util.LinkedHashMap<>();
+        for (var sectorEntry : grouped.entrySet()) {
+            String sectorName = sectorEntry.getKey();
+            java.util.List<java.util.Map.Entry<RowKey, java.util.List<SeatNumberInfo>>> rowList =
+                    new java.util.ArrayList<>(sectorEntry.getValue().entrySet());
+            int totalRows = rowList.size();
+            int part = 1;
+            for (int i = 0; i < totalRows; i += maxRowsPerColumn) {
+                int end = Math.min(i + maxRowsPerColumn, totalRows);
+                java.util.Map<RowKey, java.util.List<SeatNumberInfo>> chunk = new java.util.TreeMap<>();
+                for (int j = i; j < end; j++) {
+                    chunk.put(rowList.get(j).getKey(), rowList.get(j).getValue());
+                }
+                // Use an internal unique key for chunks when splitting, but mark it with a non-display suffix
+                // so we can render the header label without the "(x)" part while keeping keys unique.
+                String chunkName;
+                if (totalRows > maxRowsPerColumn) {
+                    // embed a marker that we'll strip when rendering: "|part:<n>"
+                    chunkName = sectorName + "|part:" + part;
+                } else {
+                    chunkName = sectorName;
+                }
+                result.put(chunkName, chunk);
+                part++;
+            }
+        }
+        return result;
     }
 
     private static class SeatRenderLine {
@@ -783,15 +825,14 @@ public class ReportService {
     private LayoutResult layoutSeatsSection(PDDocument document, PDPage page, PDPageContentStream contentStream, 
                                           PDFont bodyFont, float lineHeight,
                                           java.util.Map<String, java.util.Map<RowKey, java.util.List<SeatNumberInfo>>> grouped,
-                                          boolean dryRun, float startY, int fontSize) throws IOException {
+                                          boolean dryRun, float startY, int fontSize, int seatColumns) throws IOException {
         
         float currentY = startY;
         float sideMargin = 20;
         final float finalPageWidth = page.getMediaBox().getWidth();
-        // float tableWidth = finalPageWidth - 2 * sideMargin;
 
-        // Determine Columns (Fixed 4 columns width logic as requested)
-        int maxCols = 4;
+        // Determine Columns
+        int maxCols = seatColumns;
         float colGap = 5f;
         float availableWidth = finalPageWidth - (2 * sideMargin);
         float colWidth = (availableWidth - (maxCols - 1) * colGap) / maxCols;
@@ -868,8 +909,14 @@ public class ReportService {
                             float drawX = sideMargin + c * (colWidth + colGap);
                             
                             if (item.highlight) {
+                                // For split sectors we keep an internal unique key like "sektor A|part:2".
+                                // Strip the marker for display so headers don't show "(2)".
+                                String displayText = item.text;
+                                int markerIdx = item.text.indexOf("|part:");
+                                if (markerIdx != -1) displayText = item.text.substring(0, markerIdx);
+
                                 // Draw Box (Full Column Width)
-                                float textWidth = bodyFont.getStringWidth(item.text) / 1000f * fontSize;
+                                float textWidth = bodyFont.getStringWidth(displayText) / 1000f * fontSize;
                                 float boxW = colWidth;
                                 
                                 contentStream.setNonStrokingColor(230/255f, 200/255f, 230/255f); 
@@ -883,7 +930,7 @@ public class ReportService {
                                 contentStream.beginText();
                                 contentStream.setFont(bodyFont, fontSize);
                                 contentStream.newLineAtOffset(centeredX, currentY); 
-                                safeShowText(contentStream, item.text);
+                                safeShowText(contentStream, displayText);
                                 contentStream.endText();
                             } else {
                                 contentStream.beginText();

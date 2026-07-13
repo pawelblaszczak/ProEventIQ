@@ -221,10 +221,10 @@ public class EventController implements EventsApi {
         }
     }
 
-    public ResponseEntity<org.springframework.core.io.Resource> eventsEventIdParticipantsParticipantIdTicketGet(Long eventId, Long participantId, Double fontScale) {
-        log.info("Generating participant ticket for participant {} in event ID: {} (fontScale: {})", participantId, eventId, fontScale);
+    public ResponseEntity<org.springframework.core.io.Resource> eventsEventIdParticipantsParticipantIdTicketGet(Long eventId, Long participantId, Double fontScale, Integer seatColumns, Integer maxRowsPerColumn) {
+        log.info("Generating participant ticket for participant {} in event ID: {} (fontScale: {}, seatColumns: {}, maxRowsPerColumn: {})", participantId, eventId, fontScale, seatColumns, maxRowsPerColumn);
         try {
-            return reportService.generateParticipantTicket(eventId, participantId, fontScale)
+            return reportService.generateParticipantTicket(eventId, participantId, fontScale, seatColumns, maxRowsPerColumn)
                     .map(ticketBytes -> {
                         HttpHeaders headers = new HttpHeaders();
                         headers.setContentType(MediaType.APPLICATION_PDF);

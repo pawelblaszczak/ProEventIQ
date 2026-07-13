@@ -646,6 +646,15 @@
         "PARTICIPANTS": {
             "GENERATE_TICKET": "Generate PDF ticket",
             "GENERATE_MAP": "Generate PDF map",
+            "GENERATE": "Generate",
+          "TICKET_FONT_DIALOG": {
+            "TITLE": "Generate PDF Ticket",
+            "DESCRIPTION": "Choose how ticket font scaling should be applied.",
+            "AUTO": "Automatic (recommended)",
+            "MANUAL": "Manual (scale factor)",
+            "SCALE_LABEL": "Font scale",
+            "MANUAL_NOTE": "With manual scaling, the ticket may span more than one page."
+          },
             "TITLE": "Participants",
             "ADD_BUTTON": "ADD PARTICIPANT",
             "TICKETS_BUTTON": "TICKETS",
@@ -769,6 +778,7 @@
     "SAVE": "Save",
     "SAVING": "Saving...",
     "SAVE_CHANGES": "Save Changes",
+    "CONFIRM": "Confirm",
     "BACK": "Back",
     "CLOSE": "Close"  }
 }

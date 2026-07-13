@@ -642,6 +642,15 @@
         "PARTICIPANTS": {
             "GENERATE_TICKET": "Generuj bilet PDF",
             "GENERATE_MAP": "Generuj mapę PDF",
+            "GENERATE": "Generuj",
+          "TICKET_FONT_DIALOG": {
+            "TITLE": "Generowanie biletu PDF",
+            "DESCRIPTION": "Wybierz sposób skalowania czcionki na bilecie.",
+            "AUTO": "Automatycznie (zalecane)",
+            "MANUAL": "Ręcznie (współczynnik)",
+            "SCALE_LABEL": "Współczynnik czcionki",
+            "MANUAL_NOTE": "Przy ustawieniu ręcznym bilet może zajmować więcej niż jedną stronę."
+          },
             "TITLE": "Uczestnicy",
             "ADD_BUTTON": "DODAJ UCZESTNIKA",
             "TICKETS_BUTTON": "BILETY",
@@ -794,6 +803,7 @@
     "SAVE": "Zapisz",
     "SAVING": "Zapisywanie...",
     "SAVE_CHANGES": "Zapisz zmiany",
+    "CONFIRM": "Potwierdź",
     "BACK": "Wróć",
     "CLOSE": "Zamknij"  }
 }

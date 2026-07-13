@@ -26,6 +26,7 @@ import { forkJoin } from 'rxjs';
 import { VenueMapEditComponent } from '../../venues/venue-map-edit/venue-map-edit.component';
 import { EventService } from '../event.service';
 import { ColorPickerDialogComponent } from './color-picker-dialog/color-picker-dialog.component';
+import { TicketFontDialogComponent } from './ticket-font-dialog/ticket-font-dialog.component';
 
 @Component({
   selector: 'app-event-detail',
@@ -305,10 +306,21 @@ export class EventDetailComponent implements OnInit {
     const eventId = this.eventId();
     if (!eventId) return;
 
-    // Show loading state or disable button
-    console.log('Generating ticket for participant:', participantId);
+    const dialogRef = this.dialog.open(TicketFontDialogComponent, {
+      width: '460px',
+      data: { defaultScale: 1.0 }
+    });
 
-    this.eventApi.eventsEventIdParticipantsParticipantIdTicketGet(eventId, participantId, 'response').subscribe({
+    dialogRef.afterClosed().subscribe(result => {
+      if (!result) {
+        return;
+      }
+
+      const selectedFontScale = result.fontScale ?? undefined;
+
+      console.log('Generating ticket for participant:', participantId, 'fontScale:', selectedFontScale ?? 'auto');
+
+      this.eventApi.eventsEventIdParticipantsParticipantIdTicketGet(eventId, participantId, selectedFontScale, 'response').subscribe({
       next: (response: any) => {
         // Extract filename from Content-Disposition header
         const filename = this.getFilenameFromContentDisposition(response) || `participant_ticket_${participantId}.pdf`;
@@ -344,6 +356,7 @@ export class EventDetailComponent implements OnInit {
         console.error('User-friendly error:', errorMessage);
         alert(errorMessage); // Temporary - should be replaced with proper UI notification
       }
+    });
     });
   }
 

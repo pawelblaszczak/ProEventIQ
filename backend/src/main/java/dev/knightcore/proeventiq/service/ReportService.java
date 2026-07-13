@@ -73,6 +73,8 @@ public class ReportService {
     private static final Logger log = LoggerFactory.getLogger(ReportService.class);
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final ZoneId DISPLAY_ZONE = ZoneId.of("Europe/Warsaw");
+    private static final double MIN_FONT_SCALE = 0.5d;
+    private static final double MAX_FONT_SCALE = 3.0d;
 
     /** Dates are stored as UTC LocalDateTime. Convert to Warsaw time for display in reports. */
     private static LocalDateTime toDisplayDateTime(LocalDateTime utcDateTime) {
@@ -190,6 +192,11 @@ public class ReportService {
     
     @Transactional(readOnly = true)
     public Optional<byte[]> generateParticipantTicket(Long eventId, Long participantId) {
+        return generateParticipantTicket(eventId, participantId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<byte[]> generateParticipantTicket(Long eventId, Long participantId, Double fontScale) {
         log.info("Generating PDF ticket for participant {} in event {}", participantId, eventId);
         
         try {
@@ -231,7 +238,8 @@ public class ReportService {
             }
             
             // Generate PDF
-            byte[] pdfBytes = createPdfTicket(event, participant, show, venue, organizer);
+            Double normalizedFontScale = normalizeFontScale(fontScale);
+            byte[] pdfBytes = createPdfTicket(event, participant, show, venue, organizer, normalizedFontScale);
             return Optional.of(pdfBytes);
             
         } catch (Exception e) {
@@ -239,9 +247,20 @@ public class ReportService {
             return Optional.empty();
         }
     }
+
+    private Double normalizeFontScale(Double fontScale) {
+        if (fontScale == null) {
+            return null;
+        }
+        if (fontScale < MIN_FONT_SCALE || fontScale > MAX_FONT_SCALE) {
+            log.warn("Ignoring out-of-range fontScale {}. Allowed range is {}..{}", fontScale, MIN_FONT_SCALE, MAX_FONT_SCALE);
+            return null;
+        }
+        return fontScale;
+    }
     
 
-    private float calculateTextHeight(String text, float width, PDFont font, int fontSize, float lineHeight) {
+    private float calculateTextHeight(String text, float width, PDFont font, float fontSize, float lineHeight) {
         if (text == null) return 0;
         String[] paragraphs = text.split("\\r?\\n");
         float totalHeight = 0;
@@ -256,7 +275,7 @@ public class ReportService {
         return totalHeight;
     }
 
-    private byte[] createPdfTicket(EventEntity event, ParticipantEntity participant, ShowEntity show, VenueEntity venue, UserEntity organizer) throws IOException {
+    private byte[] createPdfTicket(EventEntity event, ParticipantEntity participant, ShowEntity show, VenueEntity venue, UserEntity organizer, Double fontScale) throws IOException {
         try (PDDocument document = new PDDocument()) {
             PDPage page = new PDPage(PDRectangle.A4);
             document.addPage(page);
@@ -393,20 +412,24 @@ public class ReportService {
                 // --- Render with Calculated Font ---
                 float yPosition = pageHeight - margin;
                 float lineHeight = currentLineHeight;
-                int fontSize = currentFontSize;
-                int descriptionFontSize = fontSize;
+                float textFontSize = currentFontSize;
+                float descriptionFontSize = textFontSize;
+                final boolean manualScaleSelected = fontScale != null;
+                final float manualScale = manualScaleSelected ? fontScale.floatValue() : 1f;
+                float headingFontSize = 14f;
+                int layoutFontSize = currentFontSize;
 
                 // Keep seats/table sizing stable, but allow description text to grow if there is
                 // still free vertical space above the docked seats block.
-                float seatsBlockHeight = calculateSeatsBlockHeight(grouped, bodyFont, lineHeight, pageWidth - 40, fontSize);
+                float seatsBlockHeight = calculateSeatsBlockHeight(grouped, bodyFont, lineHeight, pageWidth - 40, layoutFontSize);
                 float totalBlockHeight = seatsBlockHeight + (lineHeight * seatsBlockTrailingGapFactor);
                 float targetTopYForSeatsBlock = footerHeight + 2 + totalBlockHeight;
                 float availableTopHeight = (pageHeight - margin) - targetTopYForSeatsBlock;
 
-                if (availableTopHeight > 0) {
+                if (!manualScaleSelected && availableTopHeight > 0) {
                     final int maxDescriptionFontSize = 26;
                     while (descriptionFontSize < maxDescriptionFontSize) {
-                        int candidateDescriptionSize = descriptionFontSize + 1;
+                        float candidateDescriptionSize = descriptionFontSize + 1;
                         float topUsed = lineHeight * 2;
                         topUsed += calculateHtmlTicketDescriptionHeight(ticketDescription,
                                                                         serifFont,
@@ -416,7 +439,7 @@ public class ReportService {
                                                                         candidateDescriptionSize);
                         topUsed += Math.max(4f, lineHeight * descriptionToNotesGapFactor);
                         for (String note : footerNotes) {
-                            topUsed += calculateTextHeight(note, contentWidth, serifFont, fontSize, lineHeight);
+                            topUsed += calculateTextHeight(note, contentWidth, serifFont, textFontSize, lineHeight);
                         }
                         topUsed += Math.max(2f, lineHeight * notesToThanksGapFactor);
                         topUsed += lineHeight * thanksToSeatsGapFactor;
@@ -429,11 +452,19 @@ public class ReportService {
                     }
                 }
 
+                if (manualScaleSelected) {
+                    textFontSize = Math.max(6f, textFontSize * manualScale);
+                    lineHeight = lineHeight * manualScale;
+                    descriptionFontSize = Math.max(6f, descriptionFontSize * manualScale);
+                    headingFontSize = Math.max(10f, headingFontSize * manualScale);
+                    layoutFontSize = Math.max(6, Math.round(layoutFontSize * manualScale));
+                }
+
                 // --- 1. Top Description Text ---
                 
-                contentStream.setFont(serifFont, 14); // Header
+                contentStream.setFont(serifFont, headingFontSize); // Header
                 // Center "Szanowni Państwo"
-                float szanHeaderWidth = serifFont.getStringWidth("Szanowni Państwo") / 1000f * 14;
+                float szanHeaderWidth = serifFont.getStringWidth("Szanowni Państwo") / 1000f * headingFontSize;
                 float szanHeaderX = (pageWidth - szanHeaderWidth) / 2;
                 contentStream.beginText();
                 contentStream.newLineAtOffset(szanHeaderX, yPosition);
@@ -448,9 +479,9 @@ public class ReportService {
                 
                 yPosition -= Math.max(4f, lineHeight * descriptionToNotesGapFactor);
                 
-                 contentStream.setFont(serifFont, fontSize);
+                 contentStream.setFont(serifFont, textFontSize);
                  for (String note : footerNotes) {
-                     for(String line : wrapText(note, pageWidth - 2 * margin, serifFont, fontSize)) {
+                     for(String line : wrapText(note, pageWidth - 2 * margin, serifFont, textFontSize)) {
                         contentStream.beginText();
                         contentStream.newLineAtOffset(margin, yPosition);
                         safeShowText(contentStream, line);
@@ -462,8 +493,8 @@ public class ReportService {
                 yPosition -= Math.max(2f, lineHeight * notesToThanksGapFactor);
                 
                 // "Dziękujemy" - Center
-                contentStream.setFont(serifFont, 14);
-                float dziekWidth = serifFont.getStringWidth("Dziękujemy") / 1000f * 14;
+                contentStream.setFont(serifFont, headingFontSize);
+                float dziekWidth = serifFont.getStringWidth("Dziękujemy") / 1000f * headingFontSize;
                 contentStream.beginText();
                 contentStream.newLineAtOffset((pageWidth - dziekWidth)/2, yPosition);
                 safeShowText(contentStream, "Dziękujemy");
@@ -471,7 +502,7 @@ public class ReportService {
                 yPosition -= lineHeight * thanksToSeatsGapFactor; // Reduced spacing
                 
                 // Calculate required height for seats block
-                seatsBlockHeight = calculateSeatsBlockHeight(grouped, bodyFont, lineHeight, pageWidth - 40, fontSize); 
+                seatsBlockHeight = calculateSeatsBlockHeight(grouped, bodyFont, lineHeight, pageWidth - 40, layoutFontSize); 
                 totalBlockHeight = seatsBlockHeight + (lineHeight * seatsBlockTrailingGapFactor);
                 
                 float requiredSpace = totalBlockHeight + footerHeight + 2; // Total needed: content + footer + tiny safety gap
@@ -489,7 +520,7 @@ public class ReportService {
                 // --- 2. Seats Section ---
                 PageState currentState = new PageState(page, contentStream, yPosition);
                 // Call addSeatsSection (which now takes grouped map)
-                currentState = addSeatsSection(document, currentState.page, currentState.contentStream, serifBoldFont, bodyFont, margin, currentState.yPosition, lineHeight, grouped, fontSize);
+                currentState = addSeatsSection(document, currentState.page, currentState.contentStream, serifBoldFont, bodyFont, margin, currentState.yPosition, lineHeight, grouped, layoutFontSize);
                 
                 page = currentState.page;
                 contentStream = currentState.contentStream;
@@ -1117,7 +1148,7 @@ public class ReportService {
         }
     }
     
-    private String[] wrapText(String text, float maxWidth, PDFont font, int fontSize) {
+    private String[] wrapText(String text, float maxWidth, PDFont font, float fontSize) {
         if (text == null || text.isEmpty()) {
             return new String[]{"No description available"};
         }
@@ -2427,7 +2458,7 @@ public class ReportService {
      */
     private float renderHtmlTicketDescription(PDPageContentStream contentStream, String htmlContent,
                                              PDFont regularFont, PDFont boldFont, PDFont italicFont,
-                                             float margin, float maxWidth, float yPosition, int fontSize) throws IOException {
+                                             float margin, float maxWidth, float yPosition, float fontSize) throws IOException {
         return renderHtmlTicketDescriptionInternal(contentStream, htmlContent, regularFont, boldFont, italicFont,
                                                    margin, maxWidth, yPosition, fontSize, false);
     }
@@ -2437,7 +2468,7 @@ public class ReportService {
                                                        PDFont boldFont,
                                                        PDFont italicFont,
                                                        float maxWidth,
-                                                       int fontSize) throws IOException {
+                                                       float fontSize) throws IOException {
         float startY = 0f;
         float endY = renderHtmlTicketDescriptionInternal(null, htmlContent, regularFont, boldFont, italicFont,
                                                          0f, maxWidth, startY, fontSize, true);
@@ -2446,7 +2477,7 @@ public class ReportService {
 
     private float renderHtmlTicketDescriptionInternal(PDPageContentStream contentStream, String htmlContent,
                                                      PDFont regularFont, PDFont boldFont, PDFont italicFont,
-                                                     float margin, float maxWidth, float yPosition, int fontSize,
+                                                     float margin, float maxWidth, float yPosition, float fontSize,
                                                      boolean dryRun) throws IOException {
         if (htmlContent == null || htmlContent.isEmpty()) {
             return yPosition;
@@ -2527,7 +2558,7 @@ public class ReportService {
 
     private float renderHtmlBlock(PDPageContentStream contentStream, Element block,
                                   PDFont regularFont, PDFont boldFont, PDFont italicFont,
-                                  float margin, float maxWidth, float yPosition, int fontSize,
+                                  float margin, float maxWidth, float yPosition, float fontSize,
                                   HtmlStyle inherited, boolean dryRun) throws IOException {
         String tag = block.tagName().toLowerCase();
 
@@ -2653,7 +2684,7 @@ public class ReportService {
     /** Render a list of styled runs with word-wrapping and explicit line breaks. */
     private float renderRuns(PDPageContentStream contentStream, java.util.List<TextRun> runs,
                              PDFont regularFont, PDFont boldFont, PDFont italicFont,
-                             float margin, float maxWidth, float yPosition, int fontSize,
+                             float margin, float maxWidth, float yPosition, float fontSize,
                              TextAlign alignment, boolean dryRun) throws IOException {
         java.util.List<RenderLine> lines = new java.util.ArrayList<>();
         RenderLine currentLine = new RenderLine();

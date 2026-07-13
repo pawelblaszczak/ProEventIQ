@@ -168,6 +168,15 @@ participantTicket:
           type: integer
           format: int64
         description: ID of the participant
+      - name: fontScale
+        in: query
+        required: false
+        schema:
+          type: number
+          format: double
+          minimum: 0.5
+          maximum: 3.0
+        description: Optional manual font scale multiplier for ticket content. If omitted, automatic fitting is used.
     responses:
       '200':
         description: PDF ticket generated successfully

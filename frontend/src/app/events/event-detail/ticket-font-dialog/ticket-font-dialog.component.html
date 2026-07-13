@@ -1,0 +1,55 @@
+<div class="ticket-font-dialog">
+  <div class="dialog-header">
+    <div class="dialog-icon">
+      <mat-icon color="primary">text_fields</mat-icon>
+    </div>
+    <h2 mat-dialog-title class="dialog-title">{{ 'EVENTS.DETAIL.PARTICIPANTS.TICKET_FONT_DIALOG.TITLE' | translate }}</h2>
+  </div>
+
+  <mat-dialog-content class="dialog-content">
+    <p class="dialog-description">{{ 'EVENTS.DETAIL.PARTICIPANTS.TICKET_FONT_DIALOG.DESCRIPTION' | translate }}</p>
+
+    <mat-radio-group [(ngModel)]="mode" class="mode-group">
+      <mat-radio-button value="auto">
+        {{ 'EVENTS.DETAIL.PARTICIPANTS.TICKET_FONT_DIALOG.AUTO' | translate }}
+      </mat-radio-button>
+
+      <mat-radio-button value="manual">
+        {{ 'EVENTS.DETAIL.PARTICIPANTS.TICKET_FONT_DIALOG.MANUAL' | translate }}
+      </mat-radio-button>
+    </mat-radio-group>
+
+    <div class="manual-controls" *ngIf="mode === 'manual'">
+      <mat-form-field appearance="outline" class="scale-field">
+        <mat-label>{{ 'EVENTS.DETAIL.PARTICIPANTS.TICKET_FONT_DIALOG.SCALE_LABEL' | translate }}</mat-label>
+        <input
+          matInput
+          type="number"
+          [(ngModel)]="selectedScale"
+          [min]="minScale"
+          [max]="maxScale"
+          [step]="scaleStep"
+          inputmode="decimal">
+      </mat-form-field>
+      <p class="manual-note">{{ 'EVENTS.DETAIL.PARTICIPANTS.TICKET_FONT_DIALOG.MANUAL_NOTE' | translate }}</p>
+    </div>
+  </mat-dialog-content>
+
+  <mat-dialog-actions class="dialog-actions" align="end">
+    <button mat-stroked-button 
+            type="button" 
+            (click)="onCancel()" 
+            class="cancel-button">
+      <mat-icon>close</mat-icon>
+      {{ 'BUTTON.CANCEL' | translate }}
+    </button>
+    <button mat-raised-button 
+            color="primary" 
+            type="button" 
+            (click)="onConfirm()" 
+            class="confirm-button">
+      <mat-icon>check</mat-icon>
+      {{ 'EVENTS.DETAIL.PARTICIPANTS.GENERATE' | translate }}
+    </button>
+  </mat-dialog-actions>
+</div>

@@ -405,8 +405,20 @@
         "ROW_DELETED": "Rząd \"{{name}}\" usunięty",
         "NO_SECTOR": "Brak dostępnego sektora",
         "ADD_ROWS_FIRST": "Najpierw dodaj rzędy przed dodaniem miejsc",
-        "PASTE_JSON": "Proszę wkleić JSON z układem sektora",        "ROW_NAME_UPDATED": "Zaktualizowano nazwę rzędu na \"{{rowName}}\"",
-        "SEAT_LABEL_CHANGED": "Etykieta miejsca zmieniona"
+        "PASTE_JSON": "Proszę wkleić JSON z układem sektora",
+        "ROW_NAME_UPDATED": "Zaktualizowano nazwę rzędu na \"{{rowName}}\"",
+        "SEAT_LABEL_CHANGED": "Etykieta miejsca zmieniona",
+        "INVALID_JSON": "Nieprawidłowy format JSON. Sprawdź poprawność danych.",
+        "JSON_NO_ROWS": "JSON musi zawierać rzędy z miejscami do importu.",
+        "NO_SECTOR_LOADED": "Brak wczytanego sektora do zaaplikowania zaimportowanego układu.",
+        "IMPORT_SUCCESS": "Układ miejsc sektora zaimportowany. Pamiętaj o zapisaniu zmian.",
+        "SAVE_SUCCESS": "Zmiany zapisane pomyślnie",
+        "SAVE_ERROR": "Błąd zapisu zmian: {{error}}",
+        "ROW_UPDATED": "Nazwa rzędu zaktualizowana na \"{{name}}\"",
+        "ROWS_ADDED_SINGLE": "Dodano 1 rząd z {{seats}} miejscami",
+        "ROWS_ADDED_MULTIPLE": "Dodano {{rows}} rzędy z {{seats}} miejscami każdy",
+        "SEATS_ADDED_SINGLE": "Dodano 1 miejsce do rzędu {{row}}",
+        "SEATS_ADDED_MULTIPLE": "Dodano {{count}} miejsc do rzędu {{row}}"
       },
       "INSTRUCTIONS": {
         "TITLE": "Jak edytować miejsca",
@@ -517,20 +529,9 @@
         "PRICE_CATEGORY_LABEL": "Kategoria cenowa",
         "STATUS_LABEL": "Status"
       },
-        "INVALID_JSON": "Nieprawidłowy format JSON. Sprawdź poprawność danych.",
-        "JSON_NO_ROWS": "JSON musi zawierać rzędy z miejscami do importu.",
-        "NO_SECTOR_LOADED": "Brak wczytanego sektora do zaaplikowania zaimportowanego układu.",
-        "IMPORT_SUCCESS": "Układ miejsc sektora zaimportowany. Pamiętaj o zapisaniu zmian.",
-        "SAVE_SUCCESS": "Zmiany zapisane pomyślnie",
-        "SAVE_ERROR": "Błąd zapisu zmian: {{error}}",
-        "ROW_UPDATED": "Nazwa rzędu zaktualizowana na \"{{name}}\"",
-        "ROWS_ADDED_SINGLE": "Dodano 1 rząd z {{seats}} miejscami",
-        "ROWS_ADDED_MULTIPLE": "Dodano {{rows}} rzędy z {{seats}} miejscami każdy",
-        "SEATS_ADDED_SINGLE": "Dodano 1 miejsce do rzędu {{row}}",
-        "SEATS_ADDED_MULTIPLE": "Dodano {{count}} miejsc do rzędu {{row}}"
-      },
       "RETRY": "Spróbuj ponownie"
-    },
+    }
+  },
   "SHOWS": {
     "LIST": {
       "TITLE": "Zarządzaj swoimi spektaklami",

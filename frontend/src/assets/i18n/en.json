@@ -409,7 +409,18 @@
         "ADD_ROWS_FIRST": "Please add rows first before adding seats",
         "PASTE_JSON": "Please paste sector layout JSON first",
         "ROW_NAME_UPDATED": "Row name updated to \"{{rowName}}\"",
-        "SEAT_LABEL_CHANGED": "Seat label changed"
+        "SEAT_LABEL_CHANGED": "Seat label changed",
+        "INVALID_JSON": "Invalid JSON format. Please check your input.",
+        "JSON_NO_ROWS": "JSON must contain rows with seats to import.",
+        "NO_SECTOR_LOADED": "No sector loaded to apply imported layout.",
+        "IMPORT_SUCCESS": "Sector seat layout imported. Remember to save changes.",
+        "SAVE_SUCCESS": "Changes saved successfully",
+        "SAVE_ERROR": "Error saving changes: {{error}}",
+        "ROW_UPDATED": "Row name updated to \"{{name}}\"",
+        "ROWS_ADDED_SINGLE": "1 row added with {{seats}} seats",
+        "ROWS_ADDED_MULTIPLE": "{{rows}} rows added with {{seats}} seats each",
+        "SEATS_ADDED_SINGLE": "1 seat added to {{row}}",
+        "SEATS_ADDED_MULTIPLE": "{{count}} seats added to {{row}}"
       },
       "INSTRUCTIONS": {
         "TITLE": "How to Edit Seats",
@@ -520,21 +531,9 @@
         "PRICE_CATEGORY_LABEL": "Price Category",
         "STATUS_LABEL": "Status"
       },
-
-        "INVALID_JSON": "Invalid JSON format. Please check your input.",
-        "JSON_NO_ROWS": "JSON must contain rows with seats to import.",
-        "NO_SECTOR_LOADED": "No sector loaded to apply imported layout.",
-        "IMPORT_SUCCESS": "Sector seat layout imported. Remember to save changes.",
-        "SAVE_SUCCESS": "Changes saved successfully",
-        "SAVE_ERROR": "Error saving changes: {{error}}",
-        "ROW_UPDATED": "Row name updated to \"{{name}}\"",
-        "ROWS_ADDED_SINGLE": "1 row added with {{seats}} seats",
-        "ROWS_ADDED_MULTIPLE": "{{rows}} rows added with {{seats}} seats each",
-        "SEATS_ADDED_SINGLE": "1 seat added to {{row}}",
-        "SEATS_ADDED_MULTIPLE": "{{count}} seats added to {{row}}"
-      },
       "RETRY": "Retry"
-    },
+    }
+  },
   "SHOWS": {
     "LIST": {
       "TITLE": "Manage Your Shows",

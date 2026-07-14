@@ -281,7 +281,7 @@ public class ReportService {
     }
 
     private byte[] createPdfTicket(EventEntity event, ParticipantEntity participant, ShowEntity show, VenueEntity venue, UserEntity organizer, Double fontScale, Integer seatColumns, Integer maxRowsPerColumn) throws IOException {
-        final int effectiveSeatColumns = (seatColumns != null && seatColumns >= 4 && seatColumns <= 6) ? seatColumns : 4;
+        final int effectiveSeatColumns = (seatColumns != null && seatColumns >= 1 && seatColumns <= 6) ? seatColumns : 4;
         try (PDDocument document = new PDDocument()) {
             PDPage page = new PDPage(PDRectangle.A4);
             document.addPage(page);
@@ -832,7 +832,7 @@ public class ReportService {
         final float finalPageWidth = page.getMediaBox().getWidth();
 
         // Determine Columns
-        int maxCols = seatColumns;
+        int maxCols = Math.max(1, Math.min(seatColumns, 6));
         float colGap = 5f;
         float availableWidth = finalPageWidth - (2 * sideMargin);
         float colWidth = (availableWidth - (maxCols - 1) * colGap) / maxCols;

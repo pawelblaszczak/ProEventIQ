@@ -15,7 +15,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 @Service
@@ -55,31 +59,39 @@ public class SeatService {
         
         List<SeatRowEntity> existingRows = seatRowRepository.findBySector_SectorId(sector.getSectorId());
         logger.debug("Found {} existing rows", existingRows.size());
+
+        List<SeatRowInput> safeRowInputs = rowInputs != null ? rowInputs : List.of();
         
         // First, handle potential conflicts by temporarily updating order numbers
-        handleOrderNumberConflicts(existingRows, rowInputs);
+        handleOrderNumberConflicts(existingRows, safeRowInputs);
+
+        Set<Long> matchedRowIds = new HashSet<>();
+        boolean payloadContainsRowIds = safeRowInputs.stream().anyMatch(input -> input.getSeatRowId() != null);
         
         // Update or create rows
-        for (SeatRowInput rowInput : rowInputs) {
-            SeatRowEntity existingRow = findExistingRowByNameAndSector(existingRows, rowInput, sector);
+        for (SeatRowInput rowInput : safeRowInputs) {
+            SeatRowEntity existingRow = findExistingRow(existingRows, rowInput, sector);
             
             if (existingRow != null) {
                 logger.debug("Updating existing row: {} (order: {})", rowInput.getName(), rowInput.getOrderNumber());
                 updateExistingRow(existingRow, rowInput);
+                matchedRowIds.add(existingRow.getSeatRowId());
             } else {
                 logger.debug("Creating new row: {} (order: {})", rowInput.getName(), rowInput.getOrderNumber());
-                createNewRow(sector, rowInput);
+                SeatRowEntity newRow = createNewRow(sector, rowInput);
+                matchedRowIds.add(newRow.getSeatRowId());
             }
         }
         
         // Remove rows that are no longer in the input
-        removeObsoleteRows(existingRows, rowInputs);
+        removeObsoleteRows(existingRows, matchedRowIds, payloadContainsRowIds, safeRowInputs);
     }
 
     private void handleOrderNumberConflicts(List<SeatRowEntity> existingRows, List<SeatRowInput> rowInputs) {
         // Create a map of desired order numbers from input
         Set<Integer> desiredOrderNumbers = rowInputs.stream()
                 .map(SeatRowInput::getOrderNumber)
+                .filter(Objects::nonNull)
                 .collect(java.util.stream.Collectors.toSet());
         
         // Temporarily assign negative order numbers to existing rows that would conflict
@@ -88,10 +100,16 @@ public class SeatService {
             if (currentOrder != null && desiredOrderNumbers.contains(currentOrder)) {
                 // Check if this existing row should keep this order number
                 boolean shouldKeepOrder = rowInputs.stream()
-                        .anyMatch(input -> 
-                            input.getOrderNumber().equals(currentOrder) &&
-                            input.getName().equals(existingRow.getName())
-                        );
+                    .anyMatch(input -> input.getSeatRowId() != null
+                        && input.getSeatRowId().equals(existingRow.getSeatRowId()));
+
+                if (!shouldKeepOrder) {
+                    // Legacy fallback for clients without row IDs: treat same name as the same row.
+                    shouldKeepOrder = rowInputs.stream()
+                        .anyMatch(input -> input.getSeatRowId() == null
+                            && currentOrder.equals(input.getOrderNumber())
+                            && Objects.equals(input.getName(), existingRow.getName()));
+                }
                 
                 if (!shouldKeepOrder) {
                     // Temporarily assign a negative order number to avoid conflicts
@@ -104,12 +122,43 @@ public class SeatService {
         entityManager.flush();
     }
 
-    private SeatRowEntity findExistingRowByNameAndSector(List<SeatRowEntity> existingRows, SeatRowInput rowInput, SectorEntity sector) {
-        // Find by name within the same sector
-        return existingRows.stream()
-                .filter(row -> rowInput.getName().equals(row.getName()) && row.getSector().equals(sector))
-                .findFirst()
-                .orElse(null);
+    private SeatRowEntity findExistingRow(List<SeatRowEntity> existingRows, SeatRowInput rowInput, SectorEntity sector) {
+        // Match by row ID whenever available to preserve row identity across renumbering.
+        if (rowInput.getSeatRowId() != null) {
+            SeatRowEntity rowById = existingRows.stream()
+                    .filter(row -> rowInput.getSeatRowId().equals(row.getSeatRowId()))
+                    .findFirst()
+                    .orElse(null);
+            if (rowById != null) {
+                return rowById;
+            }
+        }
+
+        // Fallback to name for legacy payloads.
+        if (rowInput.getName() != null) {
+            SeatRowEntity rowByName = existingRows.stream()
+                    .filter(row -> row.getSector().equals(sector)
+                            && rowInput.getName().equals(row.getName()))
+                    .findFirst()
+                    .orElse(null);
+            if (rowByName != null) {
+                return rowByName;
+            }
+        }
+
+        // Last resort: order number.
+        if (rowInput.getOrderNumber() != null) {
+            SeatRowEntity rowByOrder = existingRows.stream()
+                    .filter(row -> row.getSector().equals(sector)
+                            && rowInput.getOrderNumber().equals(row.getOrderNumber()))
+                    .findFirst()
+                    .orElse(null);
+            if (rowByOrder != null) {
+                return rowByOrder;
+            }
+        }
+
+        return null;
     }
 
     private void updateExistingRow(SeatRowEntity existingRow, SeatRowInput rowInput) {
@@ -123,18 +172,26 @@ public class SeatService {
         mergeSeatsForRow(existingRow, rowInput.getSeats());
     }
 
-    private void createNewRow(SectorEntity sector, SeatRowInput rowInput) {
+    private SeatRowEntity createNewRow(SectorEntity sector, SeatRowInput rowInput) {
         SeatRowEntity rowEntity = createSeatRow(sector, rowInput);
         createSeatsForRow(rowEntity, rowInput.getSeats());
+        return rowEntity;
     }
 
-    private void removeObsoleteRows(List<SeatRowEntity> existingRows, List<SeatRowInput> rowInputs) {
+    private void removeObsoleteRows(List<SeatRowEntity> existingRows,
+                                    Set<Long> matchedRowIds,
+                                    boolean payloadContainsRowIds,
+                                    List<SeatRowInput> safeRowInputs) {
+        Set<Integer> desiredOrders = safeRowInputs.stream()
+                .map(SeatRowInput::getOrderNumber)
+                .filter(Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+
         for (SeatRowEntity existingRow : existingRows) {
-            boolean stillExists = rowInputs.stream()
-                    .anyMatch(input -> 
-                        input.getOrderNumber().equals(existingRow.getOrderNumber()) 
-                        && input.getName().equals(existingRow.getName())
-                    );
+            boolean stillExists = matchedRowIds.contains(existingRow.getSeatRowId())
+                    || (!payloadContainsRowIds
+                    && existingRow.getOrderNumber() != null
+                    && desiredOrders.contains(existingRow.getOrderNumber()));
             
             if (!stillExists) {
                 // Delete all seats in this row first
@@ -151,27 +208,86 @@ public class SeatService {
         // Get existing seats for this row
         List<SeatEntity> existingSeats = seatRepository.findBySeatRow_SeatRowId(rowEntity.getSeatRowId());
         logger.debug("Found {} existing seats in row", existingSeats.size());
-        
-        // Clear existing seats first, but do it properly
-        if (!existingSeats.isEmpty()) {
-            logger.debug("Deleting {} existing seats before creating new ones", existingSeats.size());
-            // Delete seats individually to avoid constraint issues
-            for (SeatEntity existingSeat : existingSeats) {
-                seatRepository.delete(existingSeat);
+
+        List<SeatInput> safeSeatInputs = seatInputs != null ? seatInputs : List.of();
+        normalizeSeatOrderNumbers(safeSeatInputs);
+        boolean payloadContainsSeatIds = safeSeatInputs.stream().anyMatch(input -> input.getSeatId() != null);
+
+        Map<Long, SeatEntity> existingSeatsById = new HashMap<>();
+        Map<Integer, SeatEntity> existingSeatsByOrder = new HashMap<>();
+        for (SeatEntity existingSeat : existingSeats) {
+            if (existingSeat.getSeatId() != null) {
+                existingSeatsById.put(existingSeat.getSeatId(), existingSeat);
             }
-            // Force flush to ensure deletions are committed before insertions
-            entityManager.flush();
-            logger.debug("Flushed deletions to database");
+            if (existingSeat.getOrderNumber() != null) {
+                existingSeatsByOrder.put(existingSeat.getOrderNumber(), existingSeat);
+            }
+        }
+
+        Set<Long> matchedSeatIds = new HashSet<>();
+        Set<Integer> desiredOrders = new HashSet<>();
+        Map<SeatEntity, SeatInput> matchedSeatUpdates = new HashMap<>();
+        List<SeatInput> seatsToCreate = new java.util.ArrayList<>();
+
+        for (SeatInput seatInput : safeSeatInputs) {
+            Integer desiredOrder = seatInput.getOrderNumber();
+            if (desiredOrder == null) {
+                continue;
+            }
+
+            desiredOrders.add(desiredOrder);
+            SeatEntity existingSeat = null;
+            if (seatInput.getSeatId() != null) {
+                existingSeat = existingSeatsById.get(seatInput.getSeatId());
+            }
+            if (existingSeat == null) {
+                existingSeat = existingSeatsByOrder.get(desiredOrder);
+            }
+
+            if (existingSeat != null) {
+                matchedSeatIds.add(existingSeat.getSeatId());
+                matchedSeatUpdates.put(existingSeat, seatInput);
+            } else {
+                seatsToCreate.add(seatInput);
+            }
         }
         
-        // Validate and normalize seat order numbers to ensure uniqueness
-        if (seatInputs != null && !seatInputs.isEmpty()) {
-            normalizeSeatOrderNumbers(seatInputs);
-            
-            logger.debug("Creating {} new seats", seatInputs.size());
-            for (SeatInput seatInput : seatInputs) {
-                createSeat(rowEntity, seatInput);
+        // Delete only seats removed from payload.
+        for (SeatEntity existingSeat : existingSeats) {
+            Integer existingOrder = existingSeat.getOrderNumber();
+            boolean shouldDelete = !matchedSeatIds.contains(existingSeat.getSeatId());
+            if (!payloadContainsSeatIds) {
+                shouldDelete = existingOrder == null || !desiredOrders.contains(existingOrder);
             }
+
+            if (shouldDelete) {
+                seatRepository.delete(existingSeat);
+            }
+        }
+
+        entityManager.flush();
+
+        // To avoid unique key collisions during in-row renumbering,
+        // first move changed seats to temporary negative order numbers.
+        int temporaryOrder = -1;
+        for (Map.Entry<SeatEntity, SeatInput> updateEntry : matchedSeatUpdates.entrySet()) {
+            SeatEntity existingSeat = updateEntry.getKey();
+            Integer targetOrder = updateEntry.getValue().getOrderNumber();
+            if (targetOrder != null && !targetOrder.equals(existingSeat.getOrderNumber())) {
+                existingSeat.setOrderNumber(temporaryOrder--);
+                seatRepository.save(existingSeat);
+            }
+        }
+
+        entityManager.flush();
+
+        for (Map.Entry<SeatEntity, SeatInput> updateEntry : matchedSeatUpdates.entrySet()) {
+            updateSeat(updateEntry.getKey(), rowEntity, updateEntry.getValue());
+            seatRepository.save(updateEntry.getKey());
+        }
+
+        for (SeatInput seatInput : seatsToCreate) {
+            createSeat(rowEntity, seatInput);
         }
     }
 
@@ -204,6 +320,14 @@ public class SeatService {
                     seatInput.getOrderNumber(), rowEntity.getName());
         
         SeatEntity seatEntity = new SeatEntity();
+        updateSeat(seatEntity, rowEntity, seatInput);
+        seatRepository.save(seatEntity);
+        
+        logger.debug("Successfully created seat with ID {} for row {}", 
+                    seatEntity.getSeatId(), rowEntity.getName());
+    }
+
+    private void updateSeat(SeatEntity seatEntity, SeatRowEntity rowEntity, SeatInput seatInput) {
         seatEntity.setOrderNumber(seatInput.getOrderNumber());
         seatEntity.setSeatLabel(seatInput.getSeatLabel().orElse(null));
         seatEntity.setPriceCategory(seatInput.getPriceCategory());
@@ -211,10 +335,6 @@ public class SeatService {
         seatEntity.setSeatRow(rowEntity);
         
         setSeatPosition(seatEntity, seatInput);
-        seatRepository.save(seatEntity);
-        
-        logger.debug("Successfully created seat with ID {} for row {}", 
-                    seatEntity.getSeatId(), rowEntity.getName());
     }
 
     private void setSeatPosition(SeatEntity seatEntity, SeatInput seatInput) {

@@ -1,6 +1,9 @@
 SeatInput:
   type: object
   properties:
+    seatId:
+      type: integer
+      format: int64
     orderNumber:
       type: integer
     seatLabel:

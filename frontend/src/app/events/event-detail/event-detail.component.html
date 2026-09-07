@@ -103,6 +103,13 @@
             <span style="font-size: 0.8em; font-weight: normal; color: #666; text-transform: none;">
               {{ showTicketDescription() ? ('EVENTS.DETAIL.CLICK_TO_HIDE' | translate) : ('EVENTS.DETAIL.CLICK_TO_SHOW' | translate) }}
             </span>
+            <button mat-icon-button
+                    class="icon-btn-sm"
+                    type="button" (click)="$event.stopPropagation(); onCopyTicketDescription()"
+                    [matTooltip]="'EVENTS.DETAIL.TICKET_DESCRIPTION_COPY' | translate"
+                    [attr.aria-label]="'EVENTS.DETAIL.TICKET_DESCRIPTION_COPY' | translate">
+              <mat-icon class="icon-btn-sm-icon">content_copy</mat-icon>
+            </button>
           </div>
           <div class="info-value animate-fade-in quill-content" *ngIf="showTicketDescription()" [innerHTML]="getSafeHtml(event()?.ticketDescription)" style="margin-top: 0.5rem;"></div>
         </div>

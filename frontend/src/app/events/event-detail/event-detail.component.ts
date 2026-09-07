@@ -18,7 +18,7 @@ import { Event as ApiEvent } from '../../api/model/event';
 import { Show } from '../../api/model/show';
 import { Venue } from '../../api/model/venue';
 import { ProEventIQService } from '../../api/api/pro-event-iq.service';
-import { ConfirmationDialogService, ColorService } from '../../shared';
+import { ConfirmationDialogService, ColorService, TicketDescriptionClipboardService } from '../../shared';
 import { Participant } from '../../api/model/participant';
 import { Reservation } from '../../api/model/reservation';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
@@ -62,6 +62,7 @@ export class EventDetailComponent implements OnInit {
   private readonly colorService = inject(ColorService);
   private readonly sanitizer = inject(DomSanitizer);
   public readonly translate = inject(TranslateService);
+  public readonly ticketDescriptionClipboard = inject(TicketDescriptionClipboardService);
 
   private readonly eventId = signal<number | null>(null);
   public event = signal<ApiEvent | null>(null);
@@ -85,6 +86,14 @@ export class EventDetailComponent implements OnInit {
   public getSafeHtml(html: string | null | undefined): SafeHtml {
     if (!html) return this.sanitizer.sanitize(1, '') || '';
     return this.sanitizer.bypassSecurityTrustHtml(html);
+  }
+
+  /** Copies the current event's ticket description (HTML) to the shared clipboard */
+  public onCopyTicketDescription(): void {
+    const html = this.event()?.ticketDescription;
+    if (html) {
+      this.ticketDescriptionClipboard.copy(html);
+    }
   }
 
   /** Returns how many seats are currently allocated for a participant (based on reservations) */

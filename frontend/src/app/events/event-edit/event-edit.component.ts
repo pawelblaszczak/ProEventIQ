@@ -10,12 +10,14 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { QuillEditorComponent } from 'ngx-quill';
 import { ProEventIQService } from '../../api/api/pro-event-iq.service';
 import { EventInput } from '../../api/model/event-input';
 import { ShowOption } from '../../api/model/show-option';
 import { VenueOption } from '../../api/model/venue-option';
+import { TicketDescriptionClipboardService } from '../../shared';
 
 @Component({
   selector: 'app-event-edit',
@@ -32,6 +34,7 @@ import { VenueOption } from '../../api/model/venue-option';
     MatProgressSpinnerModule,
     MatSelectModule,
     MatAutocompleteModule,
+    MatTooltipModule,
     TranslateModule,
     QuillEditorComponent
   ],
@@ -45,6 +48,7 @@ export class EventEditComponent {
   private readonly eventApi = inject(ProEventIQService);
   private readonly translate = inject(TranslateService);
   private readonly cdr = inject(ChangeDetectorRef);
+  public readonly ticketDescriptionClipboard = inject(TicketDescriptionClipboardService);
 
   form: FormGroup;
   eventId: number | null = null;
@@ -161,6 +165,16 @@ export class EventEditComponent {
       setTimeout(() => {
         quill.root.innerHTML = ticketDescControl.value;
       }, 0);
+    }
+  }
+
+  /** Pastes the previously copied ticket description (HTML) into the editor */
+  onPasteTicketDescription() {
+    const html = this.ticketDescriptionClipboard.get();
+    if (!html) return;
+    this.form.get('ticketDescription')?.setValue(html);
+    if (this.quillEditorInstance) {
+      this.quillEditorInstance.root.innerHTML = html;
     }
   }
 

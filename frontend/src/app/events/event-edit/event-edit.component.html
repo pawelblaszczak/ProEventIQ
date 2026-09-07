@@ -65,7 +65,17 @@
           
           <!-- Ticket Description with Quill WYSIWYG Editor -->
           <div class="full-width quill-container">
-            <label class="quill-label">{{ 'EVENTS.EDIT.TICKET_DESC_LABEL' | translate }}</label>
+            <div class="quill-label-row" style="display: flex; align-items: center; gap: 0.5rem;">
+              <label class="quill-label">{{ 'EVENTS.EDIT.TICKET_DESC_LABEL' | translate }}</label>
+              <button mat-icon-button
+                      class="icon-btn-sm"
+                      type="button" (click)="onPasteTicketDescription()"
+                      [disabled]="!ticketDescriptionClipboard.hasContent()"
+                      [matTooltip]="'EVENTS.EDIT.TICKET_DESC_PASTE_TOOLTIP' | translate"
+                      [attr.aria-label]="'EVENTS.EDIT.TICKET_DESC_PASTE' | translate">
+                <mat-icon class="icon-btn-sm-icon">content_paste</mat-icon>
+              </button>
+            </div>
             <quill-editor 
               #quillRef
               formControlName="ticketDescription" 

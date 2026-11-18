@@ -149,11 +149,16 @@ public class EventService {
             .orElseThrow(() -> new IllegalStateException("User not authenticated"));
         LocalDateTime localDateFrom = dateFrom != null ? dateFrom.toLocalDateTime() : null;
         LocalDateTime localDateTo = dateTo != null ? dateTo.toLocalDateTime() : null;
+        log.info("Loading events for username '{}' with converted date range {} - {}", currentUsername, localDateFrom, localDateTo);
         Page<EventEntity> page = eventRepository.findByFiltersPaginated(showId, venueId, localDateFrom, localDateTo, search, pageable);
+        log.info("Event query returned {} records (totalElements: {}, totalPages: {}, pageNumber: {})",
+                page.getNumberOfElements(), page.getTotalElements(), page.getTotalPages(), page.getNumber());
         List<Event> filtered = page.getContent().stream()
             .filter(e -> currentUsername.equals(e.getUserName()))
             .map(this::toDto)
             .toList();
+        log.info("Event ownership filter for username '{}' returned {} of {} records",
+                currentUsername, filtered.size(), page.getNumberOfElements());
         return new org.springframework.data.domain.PageImpl<>(filtered, pageable, filtered.size());
     }
 

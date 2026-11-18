@@ -18,56 +18,29 @@
   },
   "HOME": {
     "HERO": {
-      "FEATURE1": "Venue & event management",
-      "FEATURE2": "Occupancy & sales analytics",
-      "FEATURE3": "Reservations & seating",
-      "SUBTITLE": "End-to-end venue, event and reservation management",
-      "CTA": "Explore Venues"
+      "EYEBROW": "Event management",
+      "SUBTITLE": "Everything you need to organize events and manage seat reservations."
     },
-    "FEATURES": {
-      "TITLE": "Why Choose ProEventIQ?",
-      "SUBTITLE": "Discover the power of intelligent event management"
-    },
-    "STATS": {
-      "HIGH": "High",
-      "SATISFACTION": "Customer Satisfaction",
-      "IMPROVED": "Improved",
-      "EFFICIENCY": "Operational Efficiency",
-      "REDUCED": "Reduced",
-      "COSTS": "Costs",
-      "ACTIVE": "Active",
-      "SECURITY": "Security Monitoring"
-    },
-    "FEATURE_CARDS": {
-      "1": {
-        "TITLE": "Smart Seating Management",
-        "DESCRIPTION": "Optimize your venue with intelligent seating arrangements and capacity management",
-        "BENEFIT1": "Dynamic seat allocation",
-        "BENEFIT2": "Availability tracking",
-        "BENEFIT3": "Accessibility compliance",
-        "BENEFIT4": "Revenue optimization"
+    "CAPABILITIES": {
+      "EYEBROW": "What ProEventIQ offers",
+      "TITLE": "Event organization in one place",
+      "SUBTITLE": "Venue preparation, event scheduling and reservation management.",
+      "VENUES": {
+        "TITLE": "Venues and seats",
+        "DESCRIPTION": "Creating venues, sectors and seats and arranging them on a map."
       },
-      "2": {
-        "TITLE": "Advanced Scheduling",
-        "DESCRIPTION": "Streamline your event scheduling with our intuitive calendar and automated booking system",
-        "BENEFIT1": "Conflict-free scheduling",
-        "BENEFIT2": "Automated notifications",
-        "BENEFIT3": "Resource management",
-        "BENEFIT4": "Multi-venue coordination"
+      "EVENTS": {
+        "TITLE": "Shows and events",
+        "DESCRIPTION": "Adding shows and setting the location and date of each event."
       },
-      "3": {
-        "TITLE": "Powerful Analytics",
-        "DESCRIPTION": "Make data-driven decisions with comprehensive analytics and detailed reporting tools",
-        "BENEFIT1": "Comprehensive reporting",
-        "BENEFIT2": "Performance metrics",
-        "BENEFIT3": "Predictive insights",
-        "BENEFIT4": "Custom reports"
+      "RESERVATIONS": {
+        "TITLE": "Seat reservations",
+        "DESCRIPTION": "Selecting and reserving seats on the map and printing the seating plan."
       }
     },
-    "CTA_SECTION": {
-      "TITLE": "Ready to Elevate Your Event Management?",
-      "SUBTITLE": "Used by event teams to manage venues, shows, reservations and seat assignments",
-      "BUTTON": "Get Started Now"
+    "SUMMARY": {
+      "TITLE": "Complete event management",
+      "DESCRIPTION": "One system for managing venues, shows, dates and seat reservations."
     }
   },
   "AUTH": {

@@ -18,56 +18,29 @@
   },
   "HOME": {
     "HERO": {
-      "FEATURE1": "Zarządzanie obiektami i wydarzeniami",
-      "FEATURE2": "Analityka zajętości i sprzedaży",
-      "FEATURE3": "Rezerwacje i miejsca",
-      "SUBTITLE": "Kompleksowe zarządzanie obiektami, wydarzeniami i rezerwacjami",
-      "CTA": "Przeglądaj obiekty"
+      "EYEBROW": "Zarządzanie wydarzeniami",
+      "SUBTITLE": "Wszystko, czego potrzebujesz do organizacji wydarzeń i rezerwacji miejsc."
     },
-    "FEATURES": {
-      "TITLE": "Dlaczego warto wybrać ProEventIQ?",
-      "SUBTITLE": "Odkryj moc inteligentnego zarządzania wydarzeniami"
-    },
-    "STATS": {
-      "HIGH": "Wysoka",
-      "SATISFACTION": "Satysfakcja klientów",
-      "IMPROVED": "Poprawiona",
-      "EFFICIENCY": "Wydajność operacyjna",
-      "REDUCED": "Zredukowane",
-      "COSTS": "Koszty",
-      "ACTIVE": "Aktywny",
-      "SECURITY": "Monitoring bezpieczeństwa"
-    },
-    "FEATURE_CARDS": {
-      "1": {
-        "TITLE": "Inteligentne zarządzanie miejscami",
-        "DESCRIPTION": "Zoptymalizuj swój obiekt dzięki inteligentnym układom miejsc i zarządzaniu pojemnością",
-        "BENEFIT1": "Dynamiczne przydzielanie miejsc",
-        "BENEFIT2": "Śledzenie dostępności",
-        "BENEFIT3": "Zgodność z dostępnością",
-        "BENEFIT4": "Optymalizacja przychodów"
+    "CAPABILITIES": {
+      "EYEBROW": "Co oferuje ProEventIQ",
+      "TITLE": "Organizacja wydarzeń w jednym miejscu",
+      "SUBTITLE": "Przygotowanie sali, planowanie wydarzeń i zarządzanie rezerwacjami.",
+      "VENUES": {
+        "TITLE": "Sale i miejsca",
+        "DESCRIPTION": "Tworzenie sal, sektorów i miejsc oraz rozmieszczanie ich na mapie."
       },
-      "2": {
-        "TITLE": "Zaawansowane planowanie",
-        "DESCRIPTION": "Usprawnij planowanie wydarzeń dzięki intuicyjnemu kalendarzowi i zautomatyzowanemu systemowi rezerwacji",
-        "BENEFIT1": "Planowanie bez konfliktów",
-        "BENEFIT2": "Automatyczne powiadomienia",
-        "BENEFIT3": "Zarządzanie zasobami",
-        "BENEFIT4": "Koordynacja wielu obiektów"
+      "EVENTS": {
+        "TITLE": "Spektakle i wydarzenia",
+        "DESCRIPTION": "Dodawanie spektakli oraz ustalanie miejsca i terminu wydarzenia."
       },
-      "3": {
-        "TITLE": "Potężna analityka",
-        "DESCRIPTION": "Podejmuj decyzje oparte na danych dzięki kompleksowej analityce i szczegółowym raportom",
-        "BENEFIT1": "Kompleksowe raportowanie",
-        "BENEFIT2": "Wskaźniki wydajności",
-        "BENEFIT3": "Wnioski predykcyjne",
-        "BENEFIT4": "Niestandardowe raporty"
+      "RESERVATIONS": {
+        "TITLE": "Rezerwacje miejsc",
+        "DESCRIPTION": "Wybór i rezerwacja miejsc na mapie oraz drukowanie planu sali."
       }
     },
-    "CTA_SECTION": {
-      "TITLE": "Gotowy, aby ulepszyć zarządzanie wydarzeniami?",
-      "SUBTITLE": "Używane przez zespoły organizujące wydarzenia do zarządzania obiektami, pokazami, rezerwacjami i przydziałem miejsc",
-      "BUTTON": "Zacznij teraz"
+    "SUMMARY": {
+      "TITLE": "Kompleksowa obsługa wydarzeń",
+      "DESCRIPTION": "Jeden system do zarządzania salami, spektaklami, terminami i rezerwacjami miejsc."
     }
   },
   "AUTH": {

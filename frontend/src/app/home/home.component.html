@@ -1,119 +1,43 @@
-<section class="home-container">  <!-- Hero Section -->
-  <div class="hero-section">
-      <div class="hero-features-list">
-      <div class="feature-item">
-        <mat-icon>check_circle</mat-icon>
-        <span>{{ 'HOME.HERO.FEATURE1' | translate }}</span>
-      </div>
-      <div class="feature-item">
-        <mat-icon>check_circle</mat-icon>
-        <span>{{ 'HOME.HERO.FEATURE2' | translate }}</span>
-      </div>
-      <div class="feature-item">
-        <mat-icon>check_circle</mat-icon>
-        <span>{{ 'HOME.HERO.FEATURE3' | translate }}</span>
-      </div>
+<section class="home">
+  <header class="hero">
+    <div class="hero-text">
+      <p class="hero-eyebrow">{{ 'HOME.HERO.EYEBROW' | translate }}</p>
+      <h1 class="hero-title">Pro<span>Event</span>IQ</h1>
+      <p class="hero-subtitle">{{ 'HOME.HERO.SUBTITLE' | translate }}</p>
     </div>
-    <div class="hero-content">
-      <h1 class="hero-title">
-        <span class="title-primary">Pro</span><span class="title-accent">Event</span><span class="title-secondary">IQ</span>
-      </h1>
-  <p class="hero-subtitle">{{ 'HOME.HERO.SUBTITLE' | translate }}</p>
-      <div class="action-buttons">
-        <button mat-raised-button color="primary" class="primary-cta" (click)="navigateToVenues()">
-          <mat-icon>explore</mat-icon>
-          {{ 'HOME.HERO.CTA' | translate }}
-        </button>
-      </div>
+    <div class="hero-visual" aria-hidden="true">
+      <div class="orb orb-1"><mat-icon>stadium</mat-icon></div>
+      <div class="orb orb-2"><mat-icon>theater_comedy</mat-icon></div>
+      <div class="orb orb-3"><mat-icon>event_seat</mat-icon></div>
+      <div class="orb orb-main"><mat-icon>event_available</mat-icon></div>
     </div>
-    <div class="hero-app-icon">
-      <div class="app-icon-container">
-        <mat-icon class="app-icon">event_available</mat-icon>
-      </div>
-    </div>
-  </div>
+  </header>
 
-  <!-- Features Section -->
-  <div class="features-section">
-    <div class="section-header">
-      <h2>{{ 'HOME.FEATURES.TITLE' | translate }}</h2>
-      <p class="section-subtitle">{{ 'HOME.FEATURES.SUBTITLE' | translate }}</p>
+  <section class="capabilities" aria-labelledby="capabilities-title">
+    <div class="section-heading">
+      <p>{{ 'HOME.CAPABILITIES.EYEBROW' | translate }}</p>
+      <h2 id="capabilities-title">{{ 'HOME.CAPABILITIES.TITLE' | translate }}</h2>
+      <span>{{ 'HOME.CAPABILITIES.SUBTITLE' | translate }}</span>
     </div>
-    
-    <div class="feature-cards">
-      <mat-card class="feature-card" [class]="'card-' + (i + 1)" *ngFor="let feature of features; let i = index">
-        <div class="card-icon">
-          <mat-icon>{{feature.icon}}</mat-icon>
-        </div>
-        <mat-card-content>
-          <h3 class="card-title">{{feature.title | translate}}</h3>
-          <p class="card-description">{{feature.description | translate}}</p>
-          <div class="card-benefits">
-            <div class="benefit-item" *ngFor="let benefit of feature.benefits">
-              <mat-icon class="benefit-icon">check_circle</mat-icon>
-              <span>{{benefit | translate}}</span>
-            </div>
-          </div>
-        </mat-card-content>
-      </mat-card>
-    </div>
-  </div>
 
-  <!-- Stats Section -->
-  <div class="stats-section">
-    <div class="stats-container">
-      <div class="stat-card">
-        <div class="stat-icon">
-          <mat-icon>trending_up</mat-icon>
-        </div>
-        <div class="stat-content">
-          <span class="stat-number">{{ 'HOME.STATS.HIGH' | translate }}</span>
-          <span class="stat-label">{{ 'HOME.STATS.SATISFACTION' | translate }}</span>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">
-          <mat-icon>speed</mat-icon>
-        </div>
-        <div class="stat-content">
-          <span class="stat-number">{{ 'HOME.STATS.IMPROVED' | translate }}</span>
-          <span class="stat-label">{{ 'HOME.STATS.EFFICIENCY' | translate }}</span>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">
-          <mat-icon>savings</mat-icon>
-        </div>
-        <div class="stat-content">
-          <span class="stat-number">{{ 'HOME.STATS.REDUCED' | translate }}</span>
-          <span class="stat-label">{{ 'HOME.STATS.COSTS' | translate }}</span>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">
-          <mat-icon>security</mat-icon>
-        </div>
-        <div class="stat-content">
-          <span class="stat-number">{{ 'HOME.STATS.ACTIVE' | translate }}</span>
-          <span class="stat-label">{{ 'HOME.STATS.SECURITY' | translate }}</span>
-        </div>
-      </div>
+    <div class="capability-grid">
+      @for (capability of capabilities; track capability.key) {
+        <article class="capability-card">
+          <span class="icon-box"><mat-icon>{{ capability.icon }}</mat-icon></span>
+          <h3>{{ 'HOME.CAPABILITIES.' + capability.key + '.TITLE' | translate }}</h3>
+          <p>{{ 'HOME.CAPABILITIES.' + capability.key + '.DESCRIPTION' | translate }}</p>
+        </article>
+      }
     </div>
-  </div>
+  </section>
 
-  <!-- CTA Section -->
-  <div class="cta-section">
-    <div class="cta-background"></div>
-    <div class="cta-content">
-      <mat-icon class="cta-icon">rocket_launch</mat-icon>
-      <h2>{{ 'HOME.CTA_SECTION.TITLE' | translate }}</h2>
-      <p>{{ 'HOME.CTA_SECTION.SUBTITLE' | translate }}</p>
-      <div class="cta-buttons">
-        <button mat-raised-button color="accent" class="cta-primary" (click)="navigateToVenues()">
-          <mat-icon>arrow_forward</mat-icon>
-          {{ 'HOME.CTA_SECTION.BUTTON' | translate }}
-        </button>
-      </div>
+  <section class="product-summary">
+    <div class="summary-icon" aria-hidden="true">
+      <mat-icon>account_tree</mat-icon>
     </div>
-  </div>
+    <div>
+      <h2>{{ 'HOME.SUMMARY.TITLE' | translate }}</h2>
+      <p>{{ 'HOME.SUMMARY.DESCRIPTION' | translate }}</p>
+    </div>
+  </section>
 </section>

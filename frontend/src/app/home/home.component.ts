@@ -18,7 +18,10 @@ interface ProductCapability {
 export class HomeComponent {
   public readonly capabilities: ProductCapability[] = [
     { icon: 'stadium', key: 'VENUES' },
+    { icon: 'theater_comedy', key: 'SHOWS' },
     { icon: 'event', key: 'EVENTS' },
-    { icon: 'event_seat', key: 'RESERVATIONS' }
+    { icon: 'event_seat', key: 'RESERVATIONS' },
+    { icon: 'confirmation_number', key: 'TICKETS' },
+    { icon: 'bar_chart', key: 'STATISTICS' }
   ];
 }

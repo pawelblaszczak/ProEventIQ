@@ -133,7 +133,11 @@ mat-icon {
   background: #fff;
   border: 1px solid rgba($primary, 0.12);
 
-  h3 { margin: 8px 0 0; font-size: 20px; }
+  h3 {
+    margin: 8px 0 0;
+    font-size: 20px;
+    line-height: 1.2;
+  }
   p { margin: 0; color: $muted; line-height: 1.6; }
 }
 
@@ -176,6 +180,10 @@ mat-icon {
   mat-icon { width: 32px; height: 32px; font-size: 32px; line-height: 32px; }
 }
 
+@media (max-width: 1000px) {
+  .capability-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 @media (max-width: 800px) {
   .hero {
     grid-template-columns: 1fr;
@@ -183,12 +191,12 @@ mat-icon {
   }
   .hero-visual { display: none; }
   .hero-title { font-size: 42px; }
-  .capability-grid { grid-template-columns: 1fr; }
   .product-summary { align-items: flex-start; }
 }
 
 @media (max-width: 480px) {
   .home { padding: 16px; }
   .hero { padding: 24px; }
+  .capability-grid { grid-template-columns: 1fr; }
   .product-summary { flex-direction: column; padding: 24px; }
 }

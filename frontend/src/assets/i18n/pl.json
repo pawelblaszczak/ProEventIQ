@@ -29,18 +29,30 @@
         "TITLE": "Sale i miejsca",
         "DESCRIPTION": "Tworzenie sal, sektorów i miejsc oraz rozmieszczanie ich na mapie."
       },
+      "SHOWS": {
+        "TITLE": "Spektakle",
+        "DESCRIPTION": "Dodawanie spektakli wraz z informacjami potrzebnymi do planowania wydarzeń."
+      },
       "EVENTS": {
-        "TITLE": "Spektakle i wydarzenia",
-        "DESCRIPTION": "Dodawanie spektakli oraz ustalanie miejsca i terminu wydarzenia."
+        "TITLE": "Wydarzenia",
+        "DESCRIPTION": "Planowanie wydarzeń i monitorowanie zajętości sali."
       },
       "RESERVATIONS": {
         "TITLE": "Rezerwacje miejsc",
-        "DESCRIPTION": "Wybór i rezerwacja miejsc na mapie oraz drukowanie planu sali."
+        "DESCRIPTION": "Wybór miejsc na mapie oraz wykrywanie błędów w ich przydziale."
+      },
+      "TICKETS": {
+        "TITLE": "Dokumenty PDF",
+        "DESCRIPTION": "Generowanie biletów oraz planów sali w formacie PDF."
+      },
+      "STATISTICS": {
+        "TITLE": "Statystyki",
+        "DESCRIPTION": "Czytelne podsumowania dotyczące wydarzeń i frekwencji."
       }
     },
     "SUMMARY": {
       "TITLE": "Kompleksowa obsługa wydarzeń",
-      "DESCRIPTION": "Jeden system do zarządzania salami, spektaklami, terminami i rezerwacjami miejsc."
+      "DESCRIPTION": "Jeden system do zarządzania salami, spektaklami, terminami, rezerwacjami miejsc i biletami."
     }
   },
   "AUTH": {

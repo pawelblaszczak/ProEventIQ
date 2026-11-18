@@ -29,18 +29,30 @@
         "TITLE": "Venues and seats",
         "DESCRIPTION": "Creating venues, sectors and seats and arranging them on a map."
       },
+      "SHOWS": {
+        "TITLE": "Shows",
+        "DESCRIPTION": "Adding shows with the information needed for event planning."
+      },
       "EVENTS": {
-        "TITLE": "Shows and events",
-        "DESCRIPTION": "Adding shows and setting the location and date of each event."
+        "TITLE": "Events",
+        "DESCRIPTION": "Event planning and venue occupancy monitoring."
       },
       "RESERVATIONS": {
         "TITLE": "Seat reservations",
-        "DESCRIPTION": "Selecting and reserving seats on the map and printing the seating plan."
+        "DESCRIPTION": "Selecting seats on the map and detecting assignment errors."
+      },
+      "TICKETS": {
+        "TITLE": "PDF documents",
+        "DESCRIPTION": "Generating tickets and seating plans in PDF format."
+      },
+      "STATISTICS": {
+        "TITLE": "Statistics",
+        "DESCRIPTION": "Clear summaries of events and attendance."
       }
     },
     "SUMMARY": {
       "TITLE": "Complete event management",
-      "DESCRIPTION": "One system for managing venues, shows, dates and seat reservations."
+      "DESCRIPTION": "One system for managing venues, shows, dates, seat reservations and tickets."
     }
   },
   "AUTH": {

@@ -8,10 +8,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>${msg("errorTitle")!"Error"} - ProEventIQ</title>
     <link rel="stylesheet" href="${url.resourcesPath}/css/style.css" />
-    <meta name="description" content="ProEventIQ - End-to-end venue, event and reservation management" />
+    <meta name="description" content="ProEventIQ" />
 </head>
 <body>
-    <!-- ProEventIQ Header with Logo -->
     <div class="brand">
         <span class="title-primary">Pro</span><span class="title-accent">Event</span><span class="title-secondary">IQ</span>
     </div>
@@ -42,13 +41,11 @@
         </div>
     </div>
     
-    <!-- Footer -->
     <footer class="kc-footer">
         <span>Powered by </span>
         <strong>
             <span class="title-primary">Pro</span><span class="title-accent">Event</span><span class="title-secondary">IQ</span>
         </strong>
-        <span> - End-to-end venue, event and reservation management</span>
     </footer>
 </body>
 </html>

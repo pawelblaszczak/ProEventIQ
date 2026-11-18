@@ -35,6 +35,8 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: ${{ env.BACKEND_IMAGE }}:latest
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
 
       - name: Build & Push Frontend
         uses: docker/build-push-action@v5

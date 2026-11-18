@@ -44,6 +44,7 @@ public interface EventRepository extends JpaRepository<EventEntity, Long> {
            "LEFT JOIN FETCH e.venue v " +
            "WHERE (:showId IS NULL OR e.showId = :showId) AND " +
            "(:venueId IS NULL OR e.venueId = :venueId) AND " +
+           "e.userName = :userName AND " +
            "(:dateFrom IS NULL OR e.dateTime >= :dateFrom) AND " +
            "(:dateTo IS NULL OR e.dateTime <= :dateTo) AND " +
            "(:search IS NULL OR :search = '' OR " +
@@ -53,6 +54,7 @@ public interface EventRepository extends JpaRepository<EventEntity, Long> {
            "ORDER BY e.dateTime ASC")
     Page<EventEntity> findByFiltersPaginated(@Param("showId") Long showId,
                                              @Param("venueId") Long venueId,
+                                             @Param("userName") String userName,
                                              @Param("dateFrom") LocalDateTime dateFrom,
                                              @Param("dateTo") LocalDateTime dateTo,
                                              @Param("search") String search,

@@ -38,11 +38,6 @@
 
     <div class="login-section">
       <div class="login-card">
-        <div class="login-heading">
-          <h2>${msg("loginTitle")!"Sign in"}</h2>
-          <p>${msg("loginSubtitle")!"Access the ProEventIQ application"}</p>
-        </div>
-
         <#-- Show global/auth messages (errors, info) -->
         <#if message?has_content>
           <div class="message ${message.type!}" aria-live="polite" role="alert">

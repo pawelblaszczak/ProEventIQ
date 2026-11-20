@@ -176,6 +176,7 @@ body {
   background: #fff;
 }
 .login-card {
+  font-family: "Poppins", "Montserrat", "Segoe UI", sans-serif;
   width: 100%;
   max-width: 360px;
   padding: 0;
@@ -198,8 +199,8 @@ body {
 .login-card .subtitle {
   margin: 0;
   color: var(--muted);
-  font-size: 0.95rem;
-  font-weight: 550;
+  font-size: 0.8rem;
+  font-weight: 400;
 }
 
 form {

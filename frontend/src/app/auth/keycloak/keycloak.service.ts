@@ -53,6 +53,10 @@ export class KeycloakAuthService {
     return this.keycloak!.login(options);
   }
 
+  register(): Promise<void> {
+    return this.keycloak!.register();
+  }
+
   logout(): Promise<void> {
     return this.keycloak!.logout({ redirectUri: window.location.origin });
   }

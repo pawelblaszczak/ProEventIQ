@@ -82,6 +82,10 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     this.auth.login();
   }
 
+  register(): void {
+    this.auth.register();
+  }
+
   logout(): void {
     this.auth.logout();
   }

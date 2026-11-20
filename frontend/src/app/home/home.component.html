@@ -4,12 +4,12 @@
       <p class="hero-eyebrow">{{ 'HOME.HERO.EYEBROW' | translate }}</p>
       <h1 class="hero-title">Pro<span>Event</span>IQ</h1>
       <p class="hero-subtitle">{{ 'HOME.HERO.SUBTITLE' | translate }}</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="mailto:biuro@proeventiq.pl">{{ 'HOME.HERO.CONTACT' | translate }}</a>
+      </div>
     </div>
     <div class="hero-visual" aria-hidden="true">
-      <div class="orb orb-1"><mat-icon>stadium</mat-icon></div>
-      <div class="orb orb-2"><mat-icon>theater_comedy</mat-icon></div>
-      <div class="orb orb-3"><mat-icon>event_seat</mat-icon></div>
-      <div class="orb orb-main"><mat-icon>event_available</mat-icon></div>
+      <img src="assets/home-preview/hero-preview.png" alt="" />
     </div>
   </header>
 
@@ -23,7 +23,7 @@
     <div class="capability-grid">
       @for (capability of capabilities; track capability.key) {
         <article class="capability-card">
-          <span class="icon-box"><mat-icon>{{ capability.icon }}</mat-icon></span>
+          <span class="icon-box {{ capability.color }}"><mat-icon>{{ capability.icon }}</mat-icon></span>
           <h3>{{ 'HOME.CAPABILITIES.' + capability.key + '.TITLE' | translate }}</h3>
           <p>{{ 'HOME.CAPABILITIES.' + capability.key + '.DESCRIPTION' | translate }}</p>
         </article>

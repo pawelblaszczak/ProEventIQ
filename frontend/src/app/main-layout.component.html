@@ -1,25 +1,20 @@
 <mat-toolbar color="primary" class="toolbar">
   <button mat-icon-button (click)="toggleSideNav()" *ngIf="authenticated()">
     <mat-icon>menu</mat-icon>
-  </button>  <div class="logo-container">
-    <span class="material-icons-outlined logo-icon">event_available</span>
-    <span class="app-title">{{ 'HEADER.APP_TITLE' | translate }}</span>
-  </div>
-  <span class="toolbar-spacer"></span>
-  <button mat-icon-button [matMenuTriggerFor]="languageMenu" [matTooltip]="'HEADER.CHANGE_LANGUAGE' | translate" class="language-btn" type="button" [attr.aria-label]="'HEADER.CHANGE_LANGUAGE' | translate">
-    <span class="lang-label">{{ currentLanguage() | uppercase }}</span>
   </button>
-  <mat-menu #languageMenu="matMenu">
-    <button mat-menu-item (click)="changeLanguage('en')" [class.active-lang]="currentLanguage() === 'en'">
-      <span class="menu-lang-code">EN</span>
-      <span>English</span>
-    </button>
-    <button mat-menu-item (click)="changeLanguage('pl')" [class.active-lang]="currentLanguage() === 'pl'">
-      <span class="menu-lang-code">PL</span>
-      <span>Polski</span>
-    </button>
-  </mat-menu>
-  <button mat-button *ngIf="!authenticated()" (click)="login()">{{ 'HEADER.LOGIN' | translate }}</button>
+  <a class="logo-container" [routerLink]="authenticated() ? '/events' : '/home'">
+    <span class="app-title">ProEvent<span>IQ</span></span>
+  </a>
+  <span class="toolbar-spacer"></span>
+  <div class="lang-switch" role="group" [attr.aria-label]="'HEADER.CHANGE_LANGUAGE' | translate">
+    <mat-icon class="lang-globe" aria-hidden="true">language</mat-icon>
+    <button type="button" class="lang-option" (click)="changeLanguage('pl')" [class.active-lang-option]="currentLanguage() === 'pl'">PL</button>
+    <span class="lang-divider" aria-hidden="true">|</span>
+    <button type="button" class="lang-option" (click)="changeLanguage('en')" [class.active-lang-option]="currentLanguage() === 'en'">EN</button>
+  </div>
+  @if (!authenticated()) {
+    <button type="button" class="nav-btn nav-btn-outline" (click)="login()">{{ 'HEADER.LOGIN' | translate }}</button>
+  }
   <div *ngIf="authenticated()" class="user-info" [matMenuTriggerFor]="userMenu">
     <span class="user-name" aria-label="Logged in user">{{ displayName() }}</span>
     <mat-icon aria-hidden="true">account_circle</mat-icon>
@@ -42,17 +37,7 @@
       <span>{{ 'SIDENAV.TITLE' | translate }}</span>
     </div>
     
-    <mat-nav-list><a mat-list-item routerLink="/home" routerLinkActive="active"
-         [matTooltip]="!isExpanded() ? ('SIDENAV.HOME' | translate) : ''" 
-         matTooltipPosition="right"
-         [matTooltipDisabled]="isExpanded()">
-        <div class="menu-item-content">
-          <div class="menu-icon-container">
-            <mat-icon>home</mat-icon>
-          </div>
-          <span class="menu-item-text" *ngIf="isExpanded()">{{ 'SIDENAV.HOME' | translate }}</span>
-        </div>
-      </a>
+    <mat-nav-list>
       <a mat-list-item routerLink="/venues" routerLinkActive="active"
          [matTooltip]="!isExpanded() ? ('SIDENAV.VENUES' | translate) : ''" 
          matTooltipPosition="right"

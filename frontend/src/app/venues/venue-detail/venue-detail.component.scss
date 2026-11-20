@@ -746,7 +746,7 @@ mat-card-content p {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background-color: $primary-color;
+    background-color: #22bfcf;
     color: white;
     box-shadow: 0 2px 8px rgba(25, 118, 210, 0.08);
     transition: $transition-standard;
@@ -757,8 +757,8 @@ mat-card-content p {
       width: 1.2rem;
     }
     &:hover:not(:disabled) {
-      background-color: darken($primary-color, 10%);
-      box-shadow: 0 4px 12px rgba($primary-color, 0.18);
+      background-color: #1aa9b8;
+      box-shadow: 0 4px 12px rgba(34, 191, 207, 0.3);
     }
   }
 }

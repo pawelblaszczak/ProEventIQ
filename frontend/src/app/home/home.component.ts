@@ -5,6 +5,7 @@ import { TranslateModule } from '@ngx-translate/core';
 interface ProductCapability {
   icon: string;
   key: string;
+  color: string;
 }
 
 @Component({
@@ -17,11 +18,11 @@ interface ProductCapability {
 })
 export class HomeComponent {
   public readonly capabilities: ProductCapability[] = [
-    { icon: 'stadium', key: 'VENUES' },
-    { icon: 'theater_comedy', key: 'SHOWS' },
-    { icon: 'event', key: 'EVENTS' },
-    { icon: 'event_seat', key: 'RESERVATIONS' },
-    { icon: 'confirmation_number', key: 'TICKETS' },
-    { icon: 'bar_chart', key: 'STATISTICS' }
+    { icon: 'stadium', key: 'VENUES', color: 'slate' },
+    { icon: 'theater_comedy', key: 'SHOWS', color: 'purple' },
+    { icon: 'event', key: 'EVENTS', color: 'green' },
+    { icon: 'event_seat', key: 'RESERVATIONS', color: 'slate' },
+    { icon: 'confirmation_number', key: 'TICKETS', color: 'blue' },
+    { icon: 'bar_chart', key: 'STATISTICS', color: 'teal' }
   ];
 }

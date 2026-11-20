@@ -8,8 +8,42 @@
 // Include the common styles for Angular Material
 @include mat.core();
 
+// Primary palette based on #3f5fd0
+$brand-palette: (
+  50: #e8ecfa,
+  100: #c5cef2,
+  200: #9fafe9,
+  300: #788fe0,
+  400: #5b77d8,
+  500: #3f5fd0,
+  600: #3956c9,
+  700: #314bc0,
+  800: #2941b8,
+  900: #1b30a9,
+  A100: #dfe4ff,
+  A200: #acb9ff,
+  A400: #798eff,
+  A700: #6078ff,
+  contrast: (
+    50: rgba(0, 0, 0, 0.87),
+    100: rgba(0, 0, 0, 0.87),
+    200: rgba(0, 0, 0, 0.87),
+    300: rgba(0, 0, 0, 0.87),
+    400: #fff,
+    500: #fff,
+    600: #fff,
+    700: #fff,
+    800: #fff,
+    900: #fff,
+    A100: rgba(0, 0, 0, 0.87),
+    A200: rgba(0, 0, 0, 0.87),
+    A400: #fff,
+    A700: #fff,
+  )
+);
+
 // Define the palettes
-$primary-palette: mat.define-palette(mat.$indigo-palette);
+$primary-palette: mat.define-palette($brand-palette);
 $accent-palette: mat.define-palette(mat.$cyan-palette, A200, A100, A400);
 $warn-palette: mat.define-palette(mat.$red-palette);
 

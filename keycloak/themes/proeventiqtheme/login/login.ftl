@@ -13,13 +13,14 @@
 <body>
   <main class="login-shell">
     <div class="hero-header">
-      <div class="hero-content">
-        <p class="hero-eyebrow">${msg("productEyebrow")!"Event management"}</p>
-        <h1 class="hero-title">
-          <span class="title-primary">Pro</span><span class="title-accent">Event</span><span class="title-secondary">IQ</span>
-        </h1>
-        <p class="hero-subtitle">${msg("productSummary")!"Everything you need to organize events and manage seat reservations."}</p>
-      </div>
+      <#if locale?? && locale.supported?? && (locale.supported?size > 1)>
+        <div class="locale-switch" aria-label="Language">
+          <span class="material-icons" aria-hidden="true">language</span>
+          <#list locale.supported as l>
+            <a href="${l.url}" class="<#if l.languageTag == lang>active</#if>">${l.languageTag?upper_case}</a><#sep><span class="locale-sep">|</span>
+          </#list>
+        </div>
+      </#if>
       <div class="hero-icon">
         <div class="satellite-icon satellite-icon-venue">
           <span class="material-icons" aria-hidden="true">stadium</span>
@@ -34,6 +35,7 @@
           <span class="material-icons calendar-icon" aria-hidden="true">event_available</span>
         </div>
       </div>
+      <h1 class="hero-title">Pro<span>Event</span>IQ</h1>
     </div>
 
     <div class="login-section">
@@ -45,6 +47,11 @@
           </div>
         </#if>
       
+        <div class="login-heading">
+          <h2>${msg("loginHeading")!"Sign in to the system"}</h2>
+          <p>${msg("loginIntro")!"Enter your details to manage events"}</p>
+        </div>
+
         <form id="kc-form-login" action="${url.loginAction}" method="post" novalidate>
           <div class="form-group">
             <label for="username">${msg("username")!"Username"}</label>

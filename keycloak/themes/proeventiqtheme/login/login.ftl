@@ -13,34 +13,21 @@
 </head>
 <body>
   <main class="login-shell">
-    <div class="hero-header">
-      <#if locale?? && locale.supported?? && (locale.supported?size > 1)>
-        <div class="locale-switch" aria-label="Language">
-          <span class="material-icons" aria-hidden="true">language</span>
-          <#list locale.supported as l>
-            <a href="${l.url}" class="<#if l.languageTag == lang>active</#if>">${l.languageTag?upper_case}</a><#sep><span class="locale-sep">|</span>
-          </#list>
-        </div>
-      </#if>
-      <div class="hero-icon">
-        <div class="satellite-icon satellite-icon-venue">
-          <span class="material-icons" aria-hidden="true">stadium</span>
-        </div>
-        <div class="satellite-icon satellite-icon-show">
-          <span class="material-icons" aria-hidden="true">theater_comedy</span>
-        </div>
-        <div class="satellite-icon satellite-icon-seat">
-          <span class="material-icons" aria-hidden="true">event_seat</span>
-        </div>
-        <div class="icon-container">
-          <span class="material-icons calendar-icon" aria-hidden="true">event_available</span>
-        </div>
-      </div>
-      <h1 class="hero-title">Pro<span>Event</span>IQ</h1>
-    </div>
-
     <div class="login-section">
       <div class="login-card">
+        <#if locale?? && locale.supported?? && (locale.supported?size > 1)>
+          <div class="locale-switch" aria-label="Language">
+            <span class="material-icons" aria-hidden="true">language</span>
+            <#list locale.supported as l>
+              <a href="${l.url}" class="<#if l.languageTag == lang>active</#if>">${l.languageTag?upper_case}</a><#sep><span class="locale-sep">|</span>
+            </#list>
+          </div>
+        </#if>
+        <div class="brand-block">
+          <span class="material-icons calendar-icon" aria-hidden="true">event_available</span>
+          <div class="hero-title">Pro<span class="title-event">Event</span><span class="title-iq">IQ</span></div>
+        </div>
+
         <#-- Show global/auth messages (errors, info) -->
         <#if message?has_content>
           <div class="message ${message.type!}" aria-live="polite" role="alert">
@@ -49,7 +36,6 @@
         </#if>
       
         <div class="login-heading">
-          <h2>${msg("loginHeading")!"Sign in to the system"}</h2>
           <p>${msg("loginIntro")!"Enter your details to manage events"}</p>
         </div>
 
@@ -69,14 +55,20 @@
 
           <div class="form-group">
             <label for="password">${msg("password")!"Password"}</label>
-            <input 
-              id="password" 
-              name="password" 
-              type="password" 
-              autocomplete="current-password" 
-              required
-              placeholder="${msg("passwordPlaceholder")!"Enter your password"}"
-            />
+            <div class="password-wrap">
+              <input 
+                id="password" 
+                name="password" 
+                type="password" 
+                autocomplete="current-password" 
+                required
+                placeholder="${msg("passwordPlaceholder")!"Enter your password"}"
+              />
+              <button type="button" class="toggle-password" aria-label="${msg("password")!"Password"}"
+                onclick="var i=document.getElementById('password');var s=i.type==='password';i.type=s?'text':'password';this.firstElementChild.textContent=s?'visibility':'visibility_off';">
+                <span class="material-icons" aria-hidden="true">visibility_off</span>
+              </button>
+            </div>
           </div>
 
           <input type="hidden" name="credentialId" value="${credentialId!""}" />

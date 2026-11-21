@@ -366,6 +366,107 @@ input[type="submit"]:hover,
   text-align: center;
 }
 
+/* Single centered card layout */
+body {
+  font-family: "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  background: linear-gradient(135deg, #f4f8fc 0%, #eef5fa 100%);
+}
+
+.login-shell {
+  display: flex;
+  justify-content: center;
+  width: min(520px, 100%);
+  min-height: 0;
+  border: 0;
+  border-radius: 16px;
+  box-shadow: 0 20px 50px rgba(31, 37, 71, 0.12);
+}
+
+.login-shell .login-section {
+  width: 100%;
+  padding: 56px 56px 64px;
+}
+
+.login-shell .login-card {
+  position: relative;
+  max-width: 100%;
+}
+
+.login-shell .locale-switch {
+  position: absolute;
+  top: -36px;
+  right: -32px;
+  font-size: 0.75rem;
+}
+
+.login-shell .locale-switch a { color: #9aa0b5; }
+.login-shell .locale-switch a.active { color: #1f2547; font-weight: 600; }
+
+.brand-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 32px;
+}
+
+.brand-block .calendar-icon {
+  font-size: 56px;
+  color: #3f5fd0;
+}
+
+.brand-block .hero-title {
+  font-size: 2.25rem;
+  color: #1f2547;
+}
+
+.brand-block .hero-title .title-iq { color: #3f5fd0; }
+
+.login-heading { text-align: center; margin-bottom: 28px; }
+.login-heading h2 { color: #1f2547; font-size: 1.6rem; }
+.login-heading p { color: #1f2547; font-size: 0.85rem; }
+
+input[type="text"],
+input[type="password"] {
+  border-color: #e3e6ee;
+  box-shadow: 0 1px 3px rgba(31, 37, 71, 0.06);
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus {
+  border-color: #3f5fd0;
+  box-shadow: 0 0 0 3px rgba(63, 95, 208, 0.15);
+}
+
+.password-wrap { position: relative; }
+.password-wrap input { padding-right: 48px; }
+
+.toggle-password,
+.toggle-password:hover {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  display: flex;
+  min-height: 0;
+  padding: 4px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  box-shadow: none;
+  color: #5c6280;
+  transform: translateY(-50%);
+}
+
+.toggle-password .material-icons { font-size: 20px; }
+
+.login-btn:hover,
+button[type="submit"]:hover,
+input[type="submit"]:hover {
+  background: #303f9f;
+}
+
+.forgot-password { color: #3f5fd0; }
+
 @media (max-width: 800px) {
   .login-shell {
     grid-template-columns: 1fr;
@@ -392,7 +493,11 @@ input[type="submit"]:hover,
     border-radius: 18px;
   }
 
-  .login-section {
-    padding: 28px 22px;
+  .login-shell .login-section {
+    padding: 56px 22px 36px;
+  }
+
+  .login-shell .locale-switch {
+    right: -4px;
   }
 }

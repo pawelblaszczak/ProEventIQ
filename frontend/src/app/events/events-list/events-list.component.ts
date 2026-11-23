@@ -15,6 +15,19 @@ import { Subject } from 'rxjs';
 import { ErrorDisplayComponent } from '../../shared/components/error-display';
 import { EventService } from '../event.service';
 
+// Filters kept in memory so they survive navigating to an event and back.
+const savedFilters = {
+  search: '',
+  showId: null as number | null,
+  venueId: null as number | null,
+  dateFrom: null as string | null,
+  dateTo: '',
+  page: 1,
+  pageSize: 10,
+  showInputValue: '',
+  venueInputValue: ''
+};
+
 @Component({
   selector: 'app-events-list',
   standalone: true,
@@ -34,22 +47,22 @@ export class EventsListComponent implements OnInit {
   error = signal<string | null>(null);
   shows = signal<ShowOption[]>([]);
   venues = signal<VenueOption[]>([]);
-  showInputValue = '';
-  venueInputValue = '';
+  showInputValue = savedFilters.showInputValue;
+  venueInputValue = savedFilters.venueInputValue;
   filteredShows = signal<ShowOption[]>([]);
   filteredVenues = signal<VenueOption[]>([]);
 
   public today = new Date().toISOString().slice(0, 10); // yyyy-MM-dd
   // Filter state as signals
-  public search = signal('');
-  public selectedShowId = signal<number | null>(null);
-  public selectedVenueId = signal<number | null>(null);
-  public dateFrom = signal<string>(this.today);
-  public dateTo = signal<string>('');
+  public search = signal(savedFilters.search);
+  public selectedShowId = signal<number | null>(savedFilters.showId);
+  public selectedVenueId = signal<number | null>(savedFilters.venueId);
+  public dateFrom = signal<string>(savedFilters.dateFrom ?? this.today);
+  public dateTo = signal<string>(savedFilters.dateTo);
 
   // Pagination state
-  public page = signal(1); // 1-based
-  public pageSize = signal(10); // Set default page size to match backend
+  public page = signal(savedFilters.page); // 1-based
+  public pageSize = signal(savedFilters.pageSize);
   public totalItems = signal(0);
 
   // Debounce subject for search
@@ -68,14 +81,19 @@ export class EventsListComponent implements OnInit {
     const _to = this.dateTo();
     const _page = this.page();
     const _size = this.pageSize();
+    savedFilters.search = _search;
+    savedFilters.showId = _show;
+    savedFilters.venueId = _venue;
+    savedFilters.dateFrom = _from;
+    savedFilters.dateTo = _to;
+    savedFilters.page = _page;
+    savedFilters.pageSize = _size;
     queueMicrotask(() => this.loadEvents(_page, _size));
   });
 
   ngOnInit() {
     this.loadShows();
     this.loadVenues();
-    this.filteredShows.set([]);
-    this.filteredVenues.set([]);
     // Debounce search
     this.searchSubject.pipe(debounceTime(400)).subscribe((value) => {
       this.search.set(value);
@@ -187,6 +205,7 @@ export class EventsListComponent implements OnInit {
     const value = event.option?.value ?? '';
     this.selectedShowId.set(value ?? null);
     this.showInputValue = value ? this.shows().find(s => s.showId === value)?.name ?? '' : '';
+    savedFilters.showInputValue = this.showInputValue;
     this.page.set(1);
     // Removed direct this.loadEvents() call; effect will handle API request
   }
@@ -195,6 +214,7 @@ export class EventsListComponent implements OnInit {
     const value = event.option?.value ?? '';
     this.selectedVenueId.set(value ?? null);
     this.venueInputValue = value ? this.venues().find(v => v.venueId === value)?.name ?? '' : '';
+    savedFilters.venueInputValue = this.venueInputValue;
     this.page.set(1);
     // Removed direct this.loadEvents() call; effect will handle API request
   }
@@ -215,6 +235,10 @@ export class EventsListComponent implements OnInit {
     this.selectedVenueId.set(null);
     this.dateFrom.set(this.today);
     this.dateTo.set('');
+    this.showInputValue = '';
+    this.venueInputValue = '';
+    savedFilters.showInputValue = '';
+    savedFilters.venueInputValue = '';
     this.page.set(1);
     this.loadEvents();
   }

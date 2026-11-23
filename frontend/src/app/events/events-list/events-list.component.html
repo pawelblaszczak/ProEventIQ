@@ -18,19 +18,19 @@
         <div class="filter-row" style="display: flex; gap: 16px;">
           <mat-form-field appearance="outline" class="search-field" style="flex: 1; min-width: 0;">
             <mat-label>{{ 'EVENTS.LIST.SEARCH_LABEL' | translate }}</mat-label>
-            <input matInput (input)="applyFilter($event)" [placeholder]="'EVENTS.LIST.SEARCH_PLACEHOLDER' | translate">
+            <input matInput [value]="search()" (input)="applyFilter($event)" [placeholder]="'EVENTS.LIST.SEARCH_PLACEHOLDER' | translate">
             <mat-icon matSuffix>search</mat-icon>
           </mat-form-field>
           <div style="display: flex; flex: 1; min-width: 0; gap: 16px;">
             <mat-form-field appearance="outline" class="filter-field" style="flex: 1; min-width: 0;">
               <mat-label>{{ 'EVENTS.LIST.FILTER_DATE_FROM' | translate }}</mat-label>
-              <input matInput type="date" [placeholder]="'EVENTS.LIST.FILTER_DATE_FROM_PLACEHOLDER' | translate" (input)="filterByDateFrom($event)" [value]="today">
-              <mat-icon matSuffix>event</mat-icon>
+              <input #dateFromInput matInput type="date" [placeholder]="'EVENTS.LIST.FILTER_DATE_FROM_PLACEHOLDER' | translate" (input)="filterByDateFrom($event)" [value]="dateFrom()">
+              <mat-icon matSuffix class="calendar-icon" style="cursor: pointer;" (click)="dateFromInput.showPicker()">event</mat-icon>
             </mat-form-field>
             <mat-form-field appearance="outline" class="filter-field" style="flex: 1; min-width: 0;">
               <mat-label>{{ 'EVENTS.LIST.FILTER_DATE_TO' | translate }}</mat-label>
-              <input matInput type="date" [placeholder]="'EVENTS.LIST.FILTER_DATE_TO_PLACEHOLDER' | translate" (input)="filterByDateTo($event)">
-              <mat-icon matSuffix>event</mat-icon>
+              <input #dateToInput matInput type="date" [placeholder]="'EVENTS.LIST.FILTER_DATE_TO_PLACEHOLDER' | translate" (input)="filterByDateTo($event)" [value]="dateTo()">
+              <mat-icon matSuffix class="calendar-icon" style="cursor: pointer;" (click)="dateToInput.showPicker()">event</mat-icon>
             </mat-form-field>
           </div>
         </div>

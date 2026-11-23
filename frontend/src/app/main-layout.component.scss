@@ -135,6 +135,7 @@
 .logo-container {
   display: flex;
   align-items: center;
+  gap: 8px;
   margin-left: 24px;
   text-decoration: none;
 }
@@ -146,6 +147,13 @@
   color: #1f2547;
 
   span { color: #3f5fd0; }
+}
+
+.logo-calendar {
+  width: 24px;
+  height: 24px;
+  font-size: 24px;
+  color: #000;
 }
 
 .sidenav-container {

@@ -4,6 +4,7 @@
   </button>
   <a class="logo-container" [routerLink]="authenticated() ? '/events' : '/home'">
     <span class="app-title">ProEvent<span>IQ</span></span>
+    <mat-icon class="logo-calendar" aria-hidden="true">event_available</mat-icon>
   </a>
   <span class="toolbar-spacer"></span>
   <div class="lang-switch" role="group" [attr.aria-label]="'HEADER.CHANGE_LANGUAGE' | translate">

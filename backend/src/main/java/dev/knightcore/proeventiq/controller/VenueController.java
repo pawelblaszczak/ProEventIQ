@@ -95,10 +95,10 @@ public class VenueController implements VenuesApi {
     }
 
     @Override
-    public ResponseEntity<PaginatedVenues> listVenues(String name, String country, String city, Integer page, Integer size, String search) {
+    public ResponseEntity<PaginatedVenues> listVenues(String name, String country, String city, Integer page, Integer size, String search, Integer minSeats) {
         int pageNum = (page != null && page > 0) ? page - 1 : 0;
         int pageSize = (size != null && size > 0) ? size : 20;
-        Page<Venue> venuePage = venueService.listVenuesPaginated(name, country, city, search, PageRequest.of(pageNum, pageSize));
+        Page<Venue> venuePage = venueService.listVenuesPaginated(name, country, city, search, minSeats, PageRequest.of(pageNum, pageSize));
         PaginatedVenues result = new PaginatedVenues()
             .items(venuePage.getContent())
             .page(pageNum + 1)

@@ -455,21 +455,17 @@ public class VenueService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Venue> listVenuesPaginated(String name, String country, String city, String search, Pageable pageable) {
+    public Page<Venue> listVenuesPaginated(String name, String country, String city, String search, Integer minSeats, Pageable pageable) {
         String currentUsername = keycloakUserService.getCurrentUsername()
             .orElseThrow(() -> new IllegalStateException("User not authenticated"));
-        String nameFilter = (name != null) ? name : "";
-        String countryFilter = (country != null) ? country : "";
-        String cityFilter = (city != null) ? city : "";
-        String searchFilter = (search != null) ? search : "";
-        // If search is provided, override other filters for a broad search
-        if (!searchFilter.isEmpty()) {
-            return venueRepository.findByUserNameAndNameContainingIgnoreCaseOrCityContainingIgnoreCaseOrCountryContainingIgnoreCaseOrderByNameAsc(
-                currentUsername, searchFilter, searchFilter, searchFilter, pageable
-            ).map(entity -> toDto(entity, false));
-        }
-        return venueRepository.findByUserNameAndNameContainingIgnoreCaseAndCountryContainingIgnoreCaseAndCityContainingIgnoreCaseOrderByNameAsc(
-            currentUsername, nameFilter, countryFilter, cityFilter, pageable
+        return venueRepository.searchVenues(
+            currentUsername,
+            name != null ? name : "",
+            country != null ? country : "",
+            city != null ? city : "",
+            search != null ? search : "",
+            minSeats != null ? minSeats : 0,
+            pageable
         ).map(entity -> toDto(entity, false));
     }
 }

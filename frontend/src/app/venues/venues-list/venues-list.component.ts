@@ -1,4 +1,4 @@
-import { Component, signal, effect, inject, OnInit, OnDestroy } from '@angular/core';
+import { Component, signal, computed, effect, inject, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MaterialModule } from '../../material.module';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -37,6 +37,10 @@ export class VenuesListComponent implements OnInit, OnDestroy {
   city = signal('');
   minSeats = signal<number | null>(null);
 
+  filtersOpen = signal(false);
+  activeFiltersCount = computed(() =>
+    [this.country(), this.city(), this.minSeats()].filter(v => v !== '' && v !== null).length
+  );
   // Debounce subjects for filters
   private readonly searchSubject = new Subject<string>();
   private readonly countrySubject = new Subject<string>();
@@ -96,12 +100,13 @@ export class VenuesListComponent implements OnInit, OnDestroy {
     const city = this.city();
     const minSeats = this.minSeats();
     this.apiService.listVenues(
-      search,
+      undefined,
       country,
       city,
       page,
       size,
-      minSeats != null ? String(minSeats) : undefined
+      search,
+      minSeats ?? undefined
     ).subscribe({
       next: (response: any) => {
         const venues = response?.items ?? response?.content ?? response ?? [];
@@ -134,6 +139,15 @@ export class VenuesListComponent implements OnInit, OnDestroy {
   filterByMinSeats(event: Event): void {
     const val = (event.target as HTMLInputElement).value;
     this.minSeatsSubject.next(val ? parseInt(val, 10) : null);
+  }
+
+  clearFilter(name: 'search' | 'country' | 'city' | 'minSeats'): void {
+    if (name === 'minSeats') {
+      this.minSeats.set(null);
+    } else {
+      this[name].set('');
+    }
+    this.page.set(1);
   }
 
   resetFilters(): void {

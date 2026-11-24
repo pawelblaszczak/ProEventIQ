@@ -146,6 +146,8 @@
       "TITLE": "Manage Your Venues",
       "SUBTITLE": "Add, edit, and organize the venues for your events",
       "ADD_BUTTON": "ADD VENUE",
+      "FILTERS": "Filters",
+      "FOUND": "Found: {{count}} venues",
       "SEARCH_LABEL": "Search Venues",
       "SEARCH_PLACEHOLDER": "Search by name, city, etc.",
       "FILTER_COUNTRY": "Country",

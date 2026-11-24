@@ -41,6 +41,12 @@ venues:
         schema:
           type: string
         description: Filter venues by search text (name, city, etc.)
+      - in: query
+        name: minSeats
+        schema:
+          type: integer
+          minimum: 0
+        description: Minimum number of seats in the venue
     responses:
       '200':
         description: Paginated list of venues

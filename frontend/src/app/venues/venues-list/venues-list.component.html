@@ -15,29 +15,53 @@
   <mat-card class="filter-card">
     <mat-card-content>
       <div class="filter-container">
-        <mat-form-field appearance="outline" class="search-field">
-          <mat-label>{{ 'VENUES.LIST.SEARCH_LABEL' | translate }}</mat-label>
-          <input matInput (input)="applyFilter($event)" [placeholder]="'VENUES.LIST.SEARCH_PLACEHOLDER' | translate">
-          <mat-icon matSuffix>search</mat-icon>
-        </mat-form-field>
+        <div class="search-row">
+          <mat-form-field appearance="outline" class="search-field" subscriptSizing="dynamic">
+            <mat-label>{{ 'VENUES.LIST.SEARCH_LABEL' | translate }}</mat-label>
+            <input #searchInput matInput [value]="search()" (input)="applyFilter($event)" [placeholder]="'VENUES.LIST.SEARCH_PLACEHOLDER' | translate">
+            @if (search()) {
+              <button mat-icon-button matSuffix type="button" aria-label="Clear" (click)="searchInput.value = ''; clearFilter('search')"><mat-icon>close</mat-icon></button>
+            }
+            <mat-icon matSuffix>search</mat-icon>
+          </mat-form-field>
+          <button mat-stroked-button class="filters-toggle" (click)="filtersOpen.set(!filtersOpen())" [attr.aria-expanded]="filtersOpen()">
+            <mat-icon>tune</mat-icon>
+            {{ 'VENUES.LIST.FILTERS' | translate }}
+            @if (activeFiltersCount() > 0) {
+              <span class="filters-count">{{ activeFiltersCount() }}</span>
+            }
+          </button>
+          <span class="results-count">{{ 'VENUES.LIST.FOUND' | translate: { count: totalItems() } }}</span>
+        </div>
         
+        @if (filtersOpen()) {
         <div class="advanced-filters">
           <mat-form-field appearance="outline" class="filter-field">
             <mat-label>{{ 'VENUES.LIST.FILTER_COUNTRY' | translate }}</mat-label>
-            <input matInput [placeholder]="'VENUES.LIST.FILTER_COUNTRY_PLACEHOLDER' | translate" (input)="filterByCountry($event)">
+            <input #countryInput matInput [value]="country()" [placeholder]="'VENUES.LIST.FILTER_COUNTRY_PLACEHOLDER' | translate" (input)="filterByCountry($event)">
+            @if (country()) {
+              <button mat-icon-button matSuffix type="button" aria-label="Clear" (click)="countryInput.value = ''; clearFilter('country')"><mat-icon>close</mat-icon></button>
+            }
             <mat-icon matSuffix>public</mat-icon>
           </mat-form-field>
           <mat-form-field appearance="outline" class="filter-field">
             <mat-label>{{ 'VENUES.LIST.FILTER_CITY' | translate }}</mat-label>
-            <input matInput [placeholder]="'VENUES.LIST.FILTER_CITY_PLACEHOLDER' | translate" (input)="filterByCity($event)">
+            <input #cityInput matInput [value]="city()" [placeholder]="'VENUES.LIST.FILTER_CITY_PLACEHOLDER' | translate" (input)="filterByCity($event)">
+            @if (city()) {
+              <button mat-icon-button matSuffix type="button" aria-label="Clear" (click)="cityInput.value = ''; clearFilter('city')"><mat-icon>close</mat-icon></button>
+            }
             <mat-icon matSuffix>location_city</mat-icon>
           </mat-form-field>
           <mat-form-field appearance="outline" class="filter-field">
             <mat-label>{{ 'VENUES.LIST.FILTER_SEATS' | translate }}</mat-label>
-            <input matInput type="number" [placeholder]="'VENUES.LIST.FILTER_SEATS_PLACEHOLDER' | translate" (input)="filterByMinSeats($event)">
+            <input #seatsInput matInput type="number" [value]="minSeats() ?? ''" [placeholder]="'VENUES.LIST.FILTER_SEATS_PLACEHOLDER' | translate" (input)="filterByMinSeats($event)">
+            @if (minSeats() !== null) {
+              <button mat-icon-button matSuffix type="button" aria-label="Clear" (click)="seatsInput.value = ''; clearFilter('minSeats')"><mat-icon>close</mat-icon></button>
+            }
             <mat-icon matSuffix>event_seat</mat-icon>
           </mat-form-field>
         </div>
+        }
       </div>
     </mat-card-content>
   </mat-card>

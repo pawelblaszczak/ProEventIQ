@@ -146,6 +146,8 @@
       "TITLE": "Zarządzaj obiektami",
       "SUBTITLE": "Dodawaj, edytuj i organizuj obiekty dla swoich wydarzeń",
       "ADD_BUTTON": "DODAJ OBIEKT",
+      "FILTERS": "Filtry",
+      "FOUND": "Znaleziono: {{count}} obiektów",
       "SEARCH_LABEL": "Szukaj obiektów",
       "SEARCH_PLACEHOLDER": "Szukaj po nazwie, mieście itp.",
       "FILTER_COUNTRY": "Kraj",

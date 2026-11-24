@@ -528,6 +528,8 @@
       "ADD_BUTTON": "DODAJ SPEKTAKL",
       "SEARCH_LABEL": "Szukaj spektakli",
       "SEARCH_PLACEHOLDER": "Szukaj po nazwie, opisie itp.",
+      "FILTERS": "Filtry",
+      "FOUND": "Znaleziono: {{count}} spektakli",
       "AGE_FROM_LABEL": "Wiek od",
       "AGE_FROM_PLACEHOLDER": "Min wiek",
       "AGE_TO_LABEL": "Wiek do",

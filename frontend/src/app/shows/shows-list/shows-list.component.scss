@@ -54,12 +54,45 @@
   .filter-container {
     display: flex;
     flex-direction: column;
-    gap: 24px;
-    
-    .search-field {
-      width: 100%;
+    gap: 16px;
+
+    .search-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+
+      .search-field {
+        flex: 1;
+      }
+
+      .filters-toggle {
+        border-radius: 8px;
+        background: #e8ecfb;
+        border-color: #3f51b5;
+        color: #3f51b5;
+
+        .filters-count {
+          margin-left: 8px;
+          min-width: 20px;
+          height: 20px;
+          padding: 0 6px;
+          box-sizing: border-box;
+          border-radius: 10px;
+          background: #3f51b5;
+          color: #fff;
+          font-size: 12px;
+          line-height: 20px;
+          text-align: center;
+        }
+      }
+
+      .results-count {
+        color: rgba(0, 0, 0, 0.6);
+        font-size: 14px;
+        white-space: nowrap;
+      }
     }
-    
+
     .advanced-filters {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));

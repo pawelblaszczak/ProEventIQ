@@ -1,4 +1,4 @@
-import { Component, signal, inject, OnInit, effect } from '@angular/core';
+import { Component, signal, computed, inject, OnInit, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MaterialModule } from '../../material.module';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -32,6 +32,11 @@ export class ShowsListComponent implements OnInit {
   public ageFrom = signal<number | null>(null); // was 'age'
   public ageTo = signal<number | null>(null);   // was 'minAge'
 
+  public filtersOpen = signal(false);
+  public activeFiltersCount = computed(() =>
+    [this.ageFrom(), this.ageTo()].filter(v => v !== null).length
+  );
+
   // Pagination state
   public page = signal(1); // 1-based
   public pageSize = signal(10); // Default page size
@@ -56,16 +61,19 @@ export class ShowsListComponent implements OnInit {
     // Debounce search
     this.searchSubject.pipe(debounceTime(400)).subscribe((value) => {
       this.search.set(value);
+      this.page.set(1);
     });
     // Debounce ageFrom
     this.ageFromSubject.pipe(debounceTime(400)).subscribe((value) => {
       const parsed = parseInt(value);
       this.ageFrom.set(isNaN(parsed) ? null : parsed);
+      this.page.set(1);
     });
     // Debounce ageTo
     this.ageToSubject.pipe(debounceTime(400)).subscribe((value) => {
       const parsed = parseInt(value);
       this.ageTo.set(isNaN(parsed) ? null : parsed);
+      this.page.set(1);
     });
     // Removed direct initial loadShows() call; effect will handle initial API call
   }
@@ -124,11 +132,20 @@ export class ShowsListComponent implements OnInit {
     this.ageToSubject.next(value);
   }
 
+  clearFilter(name: 'search' | 'ageFrom' | 'ageTo'): void {
+    if (name === 'search') {
+      this.search.set('');
+    } else {
+      this[name].set(null);
+    }
+    this.page.set(1);
+  }
+
   resetFilters(): void {
     this.search.set('');
     this.ageFrom.set(null);
     this.ageTo.set(null);
-    this.loadShows();
+    this.page.set(1);
   }
 
   addShow(): void {

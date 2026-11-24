@@ -530,6 +530,8 @@
       "ADD_BUTTON": "ADD SHOW",
       "SEARCH_LABEL": "Search Shows",
       "SEARCH_PLACEHOLDER": "Search by name, description, etc.",
+      "FILTERS": "Filters",
+      "FOUND": "Found: {{count}} shows",
       "AGE_FROM_LABEL": "Age from",
       "AGE_FROM_PLACEHOLDER": "Minimum age",
       "AGE_TO_LABEL": "Age to",

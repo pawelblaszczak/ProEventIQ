@@ -15,24 +15,45 @@
   <mat-card class="filter-card">
     <mat-card-content>
       <div class="filter-container">
-        <mat-form-field appearance="outline" class="search-field">
-          <mat-label>{{ 'SHOWS.LIST.SEARCH_LABEL' | translate }}</mat-label>
-          <input matInput (keyup)="applyFilter($event)" [placeholder]="'SHOWS.LIST.SEARCH_PLACEHOLDER' | translate">
-          <mat-icon matSuffix>search</mat-icon>
-        </mat-form-field>
-        
+        <div class="search-row">
+          <mat-form-field appearance="outline" class="search-field" subscriptSizing="dynamic">
+            <mat-label>{{ 'SHOWS.LIST.SEARCH_LABEL' | translate }}</mat-label>
+            <input #searchInput matInput [value]="search()" (input)="applyFilter($event)" [placeholder]="'SHOWS.LIST.SEARCH_PLACEHOLDER' | translate">
+            @if (search()) {
+              <button mat-icon-button matSuffix type="button" aria-label="Clear" (click)="searchInput.value = ''; clearFilter('search')"><mat-icon>close</mat-icon></button>
+            }
+            <mat-icon matSuffix>search</mat-icon>
+          </mat-form-field>
+          <button mat-stroked-button class="filters-toggle" (click)="filtersOpen.set(!filtersOpen())" [attr.aria-expanded]="filtersOpen()">
+            <mat-icon>tune</mat-icon>
+            {{ 'SHOWS.LIST.FILTERS' | translate }}
+            @if (activeFiltersCount() > 0) {
+              <span class="filters-count">{{ activeFiltersCount() }}</span>
+            }
+          </button>
+          <span class="results-count">{{ 'SHOWS.LIST.FOUND' | translate: { count: totalItems() } }}</span>
+        </div>
+
+        @if (filtersOpen()) {
         <div class="advanced-filters">
           <mat-form-field appearance="outline" class="filter-field">
             <mat-label>{{ 'SHOWS.LIST.AGE_FROM_LABEL' | translate }}</mat-label>
-            <input matInput type="number" [placeholder]="'SHOWS.LIST.AGE_FROM_PLACEHOLDER' | translate" (input)="filterByAgeRange($event)">
+            <input #ageFromInput matInput type="number" [value]="ageFrom() ?? ''" [placeholder]="'SHOWS.LIST.AGE_FROM_PLACEHOLDER' | translate" (input)="filterByAgeRange($event)">
+            @if (ageFrom() !== null) {
+              <button mat-icon-button matSuffix type="button" aria-label="Clear" (click)="ageFromInput.value = ''; clearFilter('ageFrom')"><mat-icon>close</mat-icon></button>
+            }
             <mat-icon matSuffix>cake</mat-icon>
           </mat-form-field>
           <mat-form-field appearance="outline" class="filter-field">
             <mat-label>{{ 'SHOWS.LIST.AGE_TO_LABEL' | translate }}</mat-label>
-            <input matInput type="number" [placeholder]="'SHOWS.LIST.AGE_TO_PLACEHOLDER' | translate" (input)="filterByMinAge($event)">
+            <input #ageToInput matInput type="number" [value]="ageTo() ?? ''" [placeholder]="'SHOWS.LIST.AGE_TO_PLACEHOLDER' | translate" (input)="filterByMinAge($event)">
+            @if (ageTo() !== null) {
+              <button mat-icon-button matSuffix type="button" aria-label="Clear" (click)="ageToInput.value = ''; clearFilter('ageTo')"><mat-icon>close</mat-icon></button>
+            }
             <mat-icon matSuffix>child_care</mat-icon>
           </mat-form-field>
         </div>
+        }
       </div>
     </mat-card-content>
   </mat-card>

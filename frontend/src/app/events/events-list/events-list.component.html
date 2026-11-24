@@ -15,29 +15,52 @@
   <mat-card class="filter-card">
     <mat-card-content>
       <div class="filter-container">
-        <div class="filter-row" style="display: flex; gap: 16px;">
-          <mat-form-field appearance="outline" class="search-field" style="flex: 1; min-width: 0;">
+        <div class="search-row">
+          <mat-form-field appearance="outline" class="search-field" subscriptSizing="dynamic">
             <mat-label>{{ 'EVENTS.LIST.SEARCH_LABEL' | translate }}</mat-label>
-            <input matInput [value]="search()" (input)="applyFilter($event)" [placeholder]="'EVENTS.LIST.SEARCH_PLACEHOLDER' | translate">
+            <input #searchInput matInput [value]="search()" (input)="applyFilter($event)" [placeholder]="'EVENTS.LIST.SEARCH_PLACEHOLDER' | translate">
+            @if (search()) {
+              <button mat-icon-button matSuffix type="button" aria-label="Clear" (click)="searchInput.value = ''; clearFilter('search')"><mat-icon>close</mat-icon></button>
+            }
             <mat-icon matSuffix>search</mat-icon>
           </mat-form-field>
-          <div style="display: flex; flex: 1; min-width: 0; gap: 16px;">
-            <mat-form-field appearance="outline" class="filter-field" style="flex: 1; min-width: 0;">
-              <mat-label>{{ 'EVENTS.LIST.FILTER_DATE_FROM' | translate }}</mat-label>
-              <input #dateFromInput matInput type="date" [placeholder]="'EVENTS.LIST.FILTER_DATE_FROM_PLACEHOLDER' | translate" (input)="filterByDateFrom($event)" [value]="dateFrom()">
-              <mat-icon matSuffix class="calendar-icon" style="cursor: pointer;" (click)="dateFromInput.showPicker()">event</mat-icon>
-            </mat-form-field>
-            <mat-form-field appearance="outline" class="filter-field" style="flex: 1; min-width: 0;">
-              <mat-label>{{ 'EVENTS.LIST.FILTER_DATE_TO' | translate }}</mat-label>
-              <input #dateToInput matInput type="date" [placeholder]="'EVENTS.LIST.FILTER_DATE_TO_PLACEHOLDER' | translate" (input)="filterByDateTo($event)" [value]="dateTo()">
-              <mat-icon matSuffix class="calendar-icon" style="cursor: pointer;" (click)="dateToInput.showPicker()">event</mat-icon>
-            </mat-form-field>
-          </div>
+          <mat-form-field appearance="outline" class="date-field" subscriptSizing="dynamic">
+            <mat-label>{{ 'EVENTS.LIST.FILTER_DATE_FROM' | translate }}</mat-label>
+            <input #dateFromInput matInput type="date" [placeholder]="'EVENTS.LIST.FILTER_DATE_FROM_PLACEHOLDER' | translate" (input)="filterByDateFrom($event)" [value]="dateFrom()">
+            <span matSuffix class="date-suffix">
+              @if (dateFrom()) {
+                <button mat-icon-button type="button" aria-label="Clear" (click)="dateFromInput.value = ''; clearFilter('dateFrom')"><mat-icon>close</mat-icon></button>
+              }
+              <mat-icon class="calendar-icon" style="cursor: pointer;" (click)="dateFromInput.showPicker()">event</mat-icon>
+            </span>
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="date-field" subscriptSizing="dynamic">
+            <mat-label>{{ 'EVENTS.LIST.FILTER_DATE_TO' | translate }}</mat-label>
+            <input #dateToInput matInput type="date" [placeholder]="'EVENTS.LIST.FILTER_DATE_TO_PLACEHOLDER' | translate" (input)="filterByDateTo($event)" [value]="dateTo()">
+            <span matSuffix class="date-suffix">
+              @if (dateTo()) {
+                <button mat-icon-button type="button" aria-label="Clear" (click)="dateToInput.value = ''; clearFilter('dateTo')"><mat-icon>close</mat-icon></button>
+              }
+              <mat-icon class="calendar-icon" style="cursor: pointer;" (click)="dateToInput.showPicker()">event</mat-icon>
+            </span>
+          </mat-form-field>
+          <button mat-stroked-button class="filters-toggle" (click)="filtersOpen.set(!filtersOpen())" [attr.aria-expanded]="filtersOpen()">
+            <mat-icon>tune</mat-icon>
+            {{ 'EVENTS.LIST.FILTERS' | translate }}
+            @if (activeFiltersCount() > 0) {
+              <span class="filters-count">{{ activeFiltersCount() }}</span>
+            }
+          </button>
         </div>
-        <div class="advanced-filters" style="display: flex; gap: 16px;">
-          <mat-form-field appearance="outline" class="filter-field" style="flex: 1; min-width: 0;">
+
+        @if (filtersOpen()) {
+        <div class="advanced-filters">
+          <mat-form-field appearance="outline" class="filter-field">
             <mat-label>{{ 'EVENTS.LIST.FILTER_SHOW' | translate }}</mat-label>
             <input type="text" matInput [matAutocomplete]="autoShow" (input)="filterShowInput($event)" [value]="showInputValue" [placeholder]="'EVENTS.LIST.FILTER_SHOW_PLACEHOLDER' | translate">
+            @if (selectedShowId() !== null || showInputValue) {
+              <button mat-icon-button matSuffix type="button" aria-label="Clear" (click)="clearFilter('show')"><mat-icon>close</mat-icon></button>
+            }
             <mat-autocomplete #autoShow="matAutocomplete" (optionSelected)="filterByShow($event)">
               <mat-option value="">{{ 'EVENTS.LIST.FILTER_SHOW_ALL' | translate }}</mat-option>
               @for (show of filteredShows() | orderByName; track show.showId) {
@@ -46,9 +69,12 @@
             </mat-autocomplete>
             <mat-icon matSuffix>theaters</mat-icon>
           </mat-form-field>
-          <mat-form-field appearance="outline" class="filter-field" style="flex: 1; min-width: 0;">
+          <mat-form-field appearance="outline" class="filter-field">
             <mat-label>{{ 'EVENTS.LIST.FILTER_VENUE' | translate }}</mat-label>
             <input type="text" matInput [matAutocomplete]="autoVenue" (input)="filterVenueInput($event)" [value]="venueInputValue" [placeholder]="'EVENTS.LIST.FILTER_VENUE_PLACEHOLDER' | translate">
+            @if (selectedVenueId() !== null || venueInputValue) {
+              <button mat-icon-button matSuffix type="button" aria-label="Clear" (click)="clearFilter('venue')"><mat-icon>close</mat-icon></button>
+            }
             <mat-autocomplete #autoVenue="matAutocomplete" (optionSelected)="filterByVenue($event)">
               <mat-option value="">{{ 'EVENTS.LIST.FILTER_VENUE_ALL' | translate }}</mat-option>
               @for (venue of filteredVenues() | orderByName; track venue.venueId) {
@@ -58,6 +84,7 @@
             <mat-icon matSuffix>location_on</mat-icon>
           </mat-form-field>
         </div>
+        }
       </div>
     </mat-card-content>
   </mat-card>

@@ -595,6 +595,8 @@
       "ADD_BUTTON": "ADD EVENT",
       "SEARCH_LABEL": "Search Events",
       "SEARCH_PLACEHOLDER": "Search by show, venue, etc.",
+      "FILTERS": "Filters",
+      "FOUND": "Found: {{count}} events",
       "FILTER_DATE_FROM": "Date from",
       "FILTER_DATE_FROM_PLACEHOLDER": "Filter from date",
       "FILTER_DATE_TO": "Date to",

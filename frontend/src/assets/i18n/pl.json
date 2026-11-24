@@ -593,6 +593,8 @@
       "ADD_BUTTON": "DODAJ WYDARZENIE",
       "SEARCH_LABEL": "Szukaj wydarzeń",
       "SEARCH_PLACEHOLDER": "Szukaj wg spektaklu, obiektu itp.",
+      "FILTERS": "Filtry",
+      "FOUND": "Znaleziono: {{count}} wydarzeń",
       "FILTER_DATE_FROM": "Data od",
       "FILTER_DATE_FROM_PLACEHOLDER": "Filtruj od daty",
       "FILTER_DATE_TO": "Data do",

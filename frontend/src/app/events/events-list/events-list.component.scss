@@ -57,7 +57,51 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  
+
+  .search-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+
+    .search-field {
+      flex: 1;
+    }
+
+    .date-field {
+      width: 210px;
+      flex: none;
+
+      .date-suffix {
+        display: flex;
+        align-items: center;
+        flex-wrap: nowrap;
+        padding-right: 12px;
+      }
+    }
+
+    .filters-toggle {
+      border-radius: 8px;
+      background: #e8ecfb;
+      border-color: #3f51b5;
+      color: #3f51b5;
+
+      .filters-count {
+        margin-left: 8px;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 6px;
+        box-sizing: border-box;
+        border-radius: 10px;
+        background: #3f51b5;
+        color: #fff;
+        font-size: 12px;
+        line-height: 20px;
+        text-align: center;
+      }
+    }
+
+  }
+
   .search-field {
     width: 100%;
     

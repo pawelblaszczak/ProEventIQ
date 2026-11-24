@@ -1,4 +1,4 @@
-import { Component, signal, inject, OnInit, effect } from '@angular/core';
+import { Component, signal, computed, inject, OnInit, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MaterialModule } from '../../material.module';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -59,6 +59,12 @@ export class EventsListComponent implements OnInit {
   public selectedVenueId = signal<number | null>(savedFilters.venueId);
   public dateFrom = signal<string>(savedFilters.dateFrom ?? this.today);
   public dateTo = signal<string>(savedFilters.dateTo);
+
+  public filtersOpen = signal(false);
+  // Dates stay visible in the first row, so only show/venue count as hidden filters
+  public activeFiltersCount = computed(() =>
+    [this.selectedShowId() !== null, this.selectedVenueId() !== null].filter(Boolean).length
+  );
 
   // Pagination state
   public page = signal(savedFilters.page); // 1-based
@@ -229,6 +235,26 @@ export class EventsListComponent implements OnInit {
     this.dateToSubject.next(value);
   }
 
+  clearFilter(name: 'search' | 'dateFrom' | 'dateTo' | 'show' | 'venue'): void {
+    switch (name) {
+      case 'show':
+        this.selectedShowId.set(null);
+        this.showInputValue = '';
+        savedFilters.showInputValue = '';
+        this.filteredShows.set(this.shows());
+        break;
+      case 'venue':
+        this.selectedVenueId.set(null);
+        this.venueInputValue = '';
+        savedFilters.venueInputValue = '';
+        this.filteredVenues.set(this.venues());
+        break;
+      default:
+        this[name].set('');
+    }
+    this.page.set(1);
+  }
+
   resetFilters(): void {
     this.search.set('');
     this.selectedShowId.set(null);
@@ -239,8 +265,9 @@ export class EventsListComponent implements OnInit {
     this.venueInputValue = '';
     savedFilters.showInputValue = '';
     savedFilters.venueInputValue = '';
+    this.filteredShows.set(this.shows());
+    this.filteredVenues.set(this.venues());
     this.page.set(1);
-    this.loadEvents();
   }
 
   formatDateTime(dateTime: string | undefined): string {
